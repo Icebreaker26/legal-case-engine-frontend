@@ -86,6 +86,32 @@ export default function Dashboard() {
     return 'text-gray-600 bg-gray-50';
   };
 
+  const tareas = useMemo(() => {
+    const hoy = new Date();
+    const lista = [];
+
+    // 1. Vencimientos cercanos (próximos 3 días)
+    tutelas.filter(t => t.estado !== ESTADOS.RESPONDIDA).forEach(t => {
+        const fecha = new Date(t.fecha_vencimiento);
+        const diffDays = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
+        if (diffDays <= 3) {
+            lista.push({
+                tipo: 'vencimiento',
+                titulo: `Vencimiento: ${t.radicado}`,
+                subtitulo: t.accionante,
+                fecha: fecha,
+                urgencia: diffDays <= 0 ? 'critica' : 'alta',
+                id: t.id
+            });
+        }
+    });
+
+    // 2. Seguimientos pendientes (fecha_seguimiento alcanzada o pasada)
+    // Nota: Necesitaríamos traer todos los logs para esto, simplificado por ahora buscando en tutelas si hubiera campos extra, 
+    // pero idealmente se extraería de los logs.
+    return lista.sort((a, b) => a.fecha - b.fecha);
+  }, [tutelas]);
+
   return (
     <div className="animate-fade-in pb-12">
       <div className="flex justify-between items-end mb-6">
@@ -96,6 +122,29 @@ export default function Dashboard() {
         <button onClick={() => { fetchTutelas(); fetchEstadisticas(); }} className="bg-white px-4 py-2 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-medium">
           <TrendingUp size={16} /> Actualizar Datos
         </button>
+      </div>
+
+      {/* Agenda Jurídica */}
+      <div className="mb-8">
+        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <Calendar size={18} className="text-blue-600"/> Agenda Jurídica (Próximas Tareas)
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {tareas.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">No hay tareas urgentes programadas.</p>
+            ) : tareas.map((tarea, i) => (
+                <Link to={`/tutela/${tarea.id}`} key={i} className={`p-4 rounded-xl border-l-4 shadow-sm bg-white hover:shadow-md transition-all ${tarea.urgencia === 'critica' ? 'border-red-500' : 'border-amber-500'}`}>
+                    <div className="flex justify-between items-start">
+                        <h4 className="font-bold text-gray-800 text-sm">{tarea.titulo}</h4>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${tarea.urgencia === 'critica' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                            {tarea.urgencia}
+                        </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1 mb-2">{tarea.subtitulo}</p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase">Vence: {tarea.fecha.toLocaleDateString()}</p>
+                </Link>
+            ))}
+        </div>
       </div>
 
       {/* ROI Header */}
@@ -176,7 +225,7 @@ export default function Dashboard() {
                       {tutela.derecho_vulnerado && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{tutela.derecho_vulnerado}</span>}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{tutela.responsable_nombre || 'Sin asignar'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{tutela.responsables_nombres?.join(', ') || 'Sin asignar'}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">{new Date(tutela.fecha_vencimiento).toLocaleDateString()}</td>
                   <td className="px-6 py-4"><span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getPrioridadColor(tutela.prioridad)}`}>{tutela.prioridad}</span></td>
                   <td className="px-6 py-4"><span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${getEstadoColor(tutela.estado)}`}>{tutela.estado}</span></td>

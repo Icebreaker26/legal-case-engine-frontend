@@ -73,5 +73,45 @@ export const tutelaService = {
   eliminar: async (id) => {
     const { data } = await apiService.delete(`${ENDPOINT}/${id}`);
     return data;
+  },
+
+  generarBorradorIA: async (id) => {
+    const { data } = await apiService.post(`${ENDPOINT}/${id}/generar-borrador`);
+    return data;
+  },
+
+  refinarBorradorIA: async (id, payload) => {
+    const { data } = await apiService.post(`${ENDPOINT}/${id}/refinar-borrador`, payload);
+    return data;
+  },
+
+  obtenerConfiguracion: async () => {
+    const { data } = await apiService.get('/admin/config');
+    return data;
+  },
+
+  listarRequerimientos: async (id) => {
+    const { data } = await apiService.get(`${ENDPOINT}/${id}/requerimientos`);
+    return data;
+  },
+
+  crearRequerimiento: async (id, payload) => {
+    const { data } = await apiService.post(`${ENDPOINT}/${id}/requerimientos`, payload);
+    return data;
+  },
+
+  gestionarResponsables: async (id, abogados_ids) => {
+    const { data } = await apiService.patch(`${ENDPOINT}/${id}/responsables`, { abogados_ids });
+    return data;
+  },
+
+  actualizarEstadoRequerimiento: async (reqId, estado, respuesta_texto) => {
+    const { data } = await apiService.patch(`${ENDPOINT}/requerimientos/${reqId}`, { estado, respuesta_texto });
+    return data;
+  },
+
+  listarAreas: async () => {
+    const { data } = await apiService.get('/admin/areas');
+    return data;
   }
 };

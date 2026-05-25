@@ -11,6 +11,8 @@ export default function AdminDashboard() {
   const [categorias, setCategorias] = useState([]);
   const [patterns, setPatterns] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [systemConfig, setSystemConfig] = useState({});
+  const [nuevaNota, setNuevaNota] = useState({ titulo: '', contenido: '' });
   const [roi, setRoi] = useState({ totalTutelas: 0, horasAhorradas: 0, dineroAhorrado: 0, configuracion: { tiempo_ahorrado_minutos: 100, costo_hora_juridico: 50.00 } });
   const [cargaTrabajo, setCargaTrabajo] = useState([]);
   const [latencia, setLatencia] = useState([]);
@@ -41,7 +43,47 @@ export default function AdminDashboard() {
     fetchROI();
     fetchCargaTrabajo();
     fetchLatencia();
+    fetchConfig();
   }, []);
+
+  const fetchConfig = async () => {
+    try {
+      const { data } = await apiService.get('/admin/config');
+      setSystemConfig(data);
+    } catch (err) { toast.error('Error al cargar configuración'); }
+  };
+
+  const toggleConfig = async (key, currentValue) => {
+    try {
+      await apiService.post('/admin/config', { key, value: !currentValue });
+      setSystemConfig(prev => ({ ...prev, [key]: !currentValue }));
+      toast.success('Configuración actualizada');
+    } catch (err) { toast.error('Error al actualizar'); }
+  };
+
+  const handleAgregarNota = async (e) => {
+    e.preventDefault();
+    if (!nuevaNota.titulo.trim() || !nuevaNota.contenido.trim()) return;
+
+    const notasActuales = systemConfig.legal_notes || [];
+    const nuevasNotas = [...notasActuales, { ...nuevaNota, id: Date.now() }];
+
+    try {
+      await apiService.post('/admin/config', { key: 'legal_notes', value: nuevasNotas });
+      setSystemConfig(prev => ({ ...prev, legal_notes: nuevasNotas }));
+      setNuevaNota({ titulo: '', contenido: '' });
+      toast.success('Argumento fijo agregado');
+    } catch (err) { toast.error('Error al guardar nota'); }
+  };
+
+  const handleEliminarNota = async (id) => {
+    const nuevasNotas = systemConfig.legal_notes.filter(n => n.id !== id);
+    try {
+      await apiService.post('/admin/config', { key: 'legal_notes', value: nuevasNotas });
+      setSystemConfig(prev => ({ ...prev, legal_notes: nuevasNotas }));
+      toast.success('Nota eliminada');
+    } catch (err) { toast.error('Error al eliminar'); }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -280,7 +322,7 @@ export default function AdminDashboard() {
             <span className="text-gray-400 text-xs ml-2 uppercase hidden md:inline">admin@{import.meta.env.VITE_APP_NAME}: ~</span>
           </div>
           <div className="flex gap-1 text-[10px] md:text-xs">
-              {['usuarios', 'areas', 'categorias', 'ruido', 'logs', 'roi'].map(tab => (
+              {['usuarios', 'areas', 'categorias', 'ruido', 'logs', 'roi', 'config'].map(tab => (
                   <button 
                       key={tab}
                       onClick={() => setActiveTab(tab)}
@@ -293,6 +335,80 @@ export default function AdminDashboard() {
         </div>
 
         <div className="p-4 md:p-6 text-green-500">
+          {activeTab === 'config' && (
+            <div className="mt-6">
+                <div className="flex items-center gap-3 mb-6 border-b border-green-800 pb-4">
+                  <Shield className="text-green-400" size={20} />
+                  <h2 className="text-lg md:text-xl font-bold uppercase tracking-wider">Configuración del Sistema</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-gray-900 p-6 border border-green-900 rounded-lg flex justify-between items-center">
+                        <div>
+                            <h3 className="text-white font-bold">Borradores IA (OpenAI)</h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Habilita la redacción automática de contestaciones usando GPT-4o. 
+                                Requiere conexión externa.
+                            </p>
+                        </div>
+                        <button 
+                            onClick={() => toggleConfig('ai_draft_enabled', systemConfig.ai_draft_enabled)}
+                            className={`px-4 py-2 rounded font-bold text-xs transition-colors ${systemConfig.ai_draft_enabled ? 'bg-green-600 text-black hover:bg-green-500' : 'bg-red-900 text-white hover:bg-red-800'}`}
+                        >
+                            {systemConfig.ai_draft_enabled ? 'ACTIVADO' : 'DESACTIVADO'}
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-12 border-t border-green-800 pt-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <Terminal className="text-green-400" size={20} />
+                        <h3 className="text-white font-bold uppercase tracking-widest">Gestión de Argumentos Fijos (Notas Legales)</h3>
+                    </div>
+
+                    <form onSubmit={handleAgregarNota} className="grid grid-cols-1 md:grid-cols-12 gap-4 mb-8 bg-gray-900 p-4 rounded-lg border border-green-900">
+                        <div className="md:col-span-4">
+                            <input 
+                                className="bg-black border border-green-700 p-2 text-xs w-full text-green-400 placeholder-green-900 outline-none focus:border-green-400" 
+                                value={nuevaNota.titulo} 
+                                onChange={e => setNuevaNota({...nuevaNota, titulo: e.target.value})} 
+                                placeholder="Título (ej: Prescripción)" 
+                            />
+                        </div>
+                        <div className="md:col-span-6">
+                            <input 
+                                className="bg-black border border-green-700 p-2 text-xs w-full text-green-400 placeholder-green-900 outline-none focus:border-green-400" 
+                                value={nuevaNota.contenido} 
+                                onChange={e => setNuevaNota({...nuevaNota, contenido: e.target.value})} 
+                                placeholder="Contenido legal o legislación..." 
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <button type="submit" className="w-full bg-green-800 text-black py-2 hover:bg-green-600 font-bold uppercase text-[10px] transition-colors flex items-center justify-center gap-2">
+                                <Plus size={14} /> Guardar
+                            </button>
+                        </div>
+                    </form>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {(systemConfig.legal_notes || []).map(nota => (
+                            <div key={nota.id} className="bg-gray-950 p-4 border border-green-900 flex justify-between items-start gap-4">
+                                <div className="flex-1">
+                                    <h4 className="text-green-400 font-bold text-xs uppercase mb-1">{nota.titulo}</h4>
+                                    <p className="text-[10px] text-gray-500 leading-relaxed">{nota.contenido}</p>
+                                </div>
+                                <button onClick={() => handleEliminarNota(nota.id)} className="text-red-900 hover:text-red-500 transition-colors pt-1">
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        {(systemConfig.legal_notes || []).length === 0 && (
+                            <p className="text-[10px] text-gray-700 italic">No hay argumentos fijos definidos.</p>
+                        )}
+                    </div>
+                </div>
+            </div>
+          )}
           {activeTab === 'usuarios' && (
             <div>
               <div className="flex items-center gap-3 mb-6 border-b border-green-800 pb-4">
