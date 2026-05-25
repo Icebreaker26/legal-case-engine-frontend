@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+/* Definimos los colores corporativos al estilo v4 */
+@theme {
+  --color-enel-blue: #002E6D;
+  --color-enel-magenta: #E20074;
+  --color-enel-orange: #FF7900;
+  --color-enel-green: #00A300;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #f4f7f6;
+}
