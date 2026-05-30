@@ -3,10 +3,18 @@ import apiService from '../services/apiService';
 import toast from 'react-hot-toast';
 import { Shield, Lock, CheckCircle, XCircle, Search, UserCog, Plus, Trash2, Edit, Terminal, TrendingUp, DollarSign, Clock, BarChart2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import PermissionModal from '../components/PermissionModal';
+
+const PERMISSION_PRESETS = {
+  juridico: [{ modulo: 'tutelas', accion: 'READ' }, { modulo: 'tutelas', accion: 'WRITE' }],
+  admin: [{ modulo: 'tutelas', accion: 'READ' }, { modulo: 'tutelas', accion: 'WRITE' }, { modulo: 'tutelas', accion: 'DELETE' }, { modulo: 'admin', accion: 'READ' }, { modulo: 'admin', accion: 'WRITE' }]
+};
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('usuarios');
   const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userPermissions, setUserPermissions] = useState({});
   const [areas, setAreas] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [patterns, setPatterns] = useState([]);
@@ -85,10 +93,45 @@ export default function AdminDashboard() {
     } catch (err) { toast.error('Error al eliminar'); }
   };
 
+  const fetchUserPermissions = async (userId) => {
+    try {
+      const { data } = await apiService.get(`/permisos/usuario/${userId}`);
+      setUserPermissions(prev => ({ ...prev, [userId]: data }));
+    } catch (error) { console.error(`Error al cargar permisos del usuario ${userId}`); }
+  };
+
+  const asignarPermiso = async (userId, modulo, accion) => {
+    try {
+      const response = await apiService.post('/permisos/asignar', { 
+          usuario_id: userId, modulo, accion 
+      }, {
+          validateStatus: (status) => status >= 200 && status < 300 || status === 409
+      });
+
+      if (response.status === 409) {
+        toast.success('El permiso ya estaba asignado');
+      } else {
+        toast.success('Permiso asignado');
+      }
+      fetchUserPermissions(userId);
+    } catch (error) {
+        toast.error('Error al asignar');
+    }
+  };
+
+  const revocarPermiso = async (userId, modulo, accion) => {
+    try {
+      await apiService.delete('/permisos/revocar', { data: { usuario_id: userId, modulo, accion } });
+      toast.success('Permiso revocado');
+      fetchUserPermissions(userId);
+    } catch (error) { toast.error('Error al revocar'); }
+  };
+
   const fetchUsers = async () => {
     try {
       const { data } = await apiService.get('/admin/usuarios');
       setUsers(data);
+      data.forEach(u => fetchUserPermissions(u.id));
     } catch (error) {
       toast.error('Error al cargar usuarios');
     }
@@ -252,6 +295,22 @@ export default function AdminDashboard() {
         fetchNoise();
         toast.success('Estado actualizado');
     } catch (err) { toast.error('Error al actualizar'); }
+  };
+
+  const getPredominantRole = (userId) => {
+    const perms = userPermissions[userId] || [];
+    if (perms.length === 0) return 'Sin Rol';
+
+    const hasRole = (role) => {
+        return PERMISSION_PRESETS[role].every(presetPerm => 
+            perms.some(p => p.modulo === presetPerm.modulo && p.accion === presetPerm.accion)
+        );
+    };
+
+    if (hasRole('admin')) return 'Admin';
+    if (hasRole('juridico')) return 'Jurídico';
+    
+    return 'Personalizado';
   };
 
   const filteredUsers = useMemo(() => {
@@ -437,14 +496,22 @@ export default function AdminDashboard() {
                       <th className="px-4 py-2">Nombre</th>
                       <th className="px-4 py-2">Estado</th>
                       <th className="px-4 py-2">Aprobado</th>
-                      <th className="px-4 py-2">Rol</th>
+                      <th className="px-4 py-2">Permisos</th>
                       <th className="px-4 py-2 text-center">Acciones</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-green-900">
                     {filteredUsers.map(u => (
                       <tr key={u.id} className="hover:bg-green-950">
-                        <td className="px-4 py-3">{u.nombre}<br/><span className="text-xs text-gray-500">{u.email}</span></td>
+                        <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium text-white">{u.nombre}</span>
+                                {(userPermissions[u.id] || []).some(p => p.modulo === 'admin' && p.accion === 'WRITE') && (
+                                    <Shield className="text-red-500 flex-shrink-0" size={14} title="Administrador" />
+                                )}
+                            </div>
+                            <span className="text-xs text-gray-500">{u.email}</span>
+                        </td>
                         <td className="px-4 py-3">
                           <button onClick={() => toggleStatus(u.id, u.activo, u.is_approved)} className={`px-2 py-1 rounded text-xs font-bold ${u.activo ? 'text-green-400' : 'text-red-400'}`}>
                             {u.activo ? 'ACTIVE' : 'INACTIVE'}
@@ -457,16 +524,7 @@ export default function AdminDashboard() {
                           </button>
                         </td>
                         <td className="px-4 py-3">
-                          <select 
-                            value={u.rol} 
-                            onChange={(e) => cambiarRol(u.id, e.target.value)}
-                            className="bg-black border border-green-900 text-green-500 text-xs rounded p-1"
-                          >
-                            <option value="juridico">Jurídico</option>
-                            <option value="auditor">Auditor</option>
-                            <option value="admin">Admin</option>
-                            <option value="super_admin">Super Admin</option>
-                          </select>
+                           <button onClick={() => setSelectedUser(u)} className="bg-green-900 hover:bg-green-700 text-white px-2 py-1 rounded text-[10px] font-bold uppercase">Gestionar</button>
                         </td>
                         <td className="px-4 py-3 text-center">
                           <button onClick={() => handleResetPassword(u.id, u.nombre)} className="text-green-600 hover:underline font-mono">
@@ -727,6 +785,16 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+      {selectedUser && (
+        <PermissionModal 
+          user={selectedUser} 
+          permissions={userPermissions} 
+          onClose={() => setSelectedUser(null)}
+          onAsignar={asignarPermiso}
+          onRevocar={revocarPermiso}
+          presets={PERMISSION_PRESETS}
+        />
+      )}
     </div>
   );
 }

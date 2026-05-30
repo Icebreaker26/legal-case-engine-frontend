@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, BrainCircuit, LogOut, User, UserCog, FileBarChart, Bell, BookOpen, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import PermissionGuard from './PermissionGuard';
 
 export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
@@ -55,12 +56,12 @@ export default function Sidebar({ onClose }) {
           <CalendarIcon size={20} />
           <span>Calendario</span>
         </NavLink>
-        {(user?.rol === 'admin' || user?.rol === 'super_admin') && (
+        <PermissionGuard modulo="tutelas" accion="DELETE">
           <NavLink to="/papelera" className={linkClass}>
             <Trash2 size={20} />
             <span>Papelera</span>
           </NavLink>
-        )}
+        </PermissionGuard>
         <NavLink to="/informes" className={linkClass}>
           <FileBarChart size={20} />
           <span>Informes</span>
@@ -69,14 +70,12 @@ export default function Sidebar({ onClose }) {
           <Bell size={20} />
           <span>Notificaciones</span>
         </NavLink>
-        {(user?.rol === 'admin' || user?.rol === 'super_admin') && (
-          <>
-            <NavLink to="/admin" className={linkClass}>
-              <UserCog size={20} />
-              <span>Administración</span>
-            </NavLink>
-          </>
-        )}
+        <PermissionGuard modulo="admin" accion="READ">
+          <NavLink to="/admin" className={linkClass}>
+            <UserCog size={20} />
+            <span>Administración</span>
+          </NavLink>
+        </PermissionGuard>
       </nav>
 
       <div className="p-4 border-t border-gray-100">

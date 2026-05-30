@@ -5,19 +5,36 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
-      setUser(JSON.parse(storedUser));
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      loadPermissions(userData.id);
+    } else {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
-  const login = (userData) => {
+  const loadPermissions = async (userId) => {
+    try {
+      setLoading(true);
+      const res = await apiService.get(`/permisos/usuario/${userId}`);
+      setPermissions(res.data); // [{modulo, accion}, ...]
+    } catch (err) {
+      console.error("Error al cargar permisos", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (userData) => {
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
+    await loadPermissions(userData.id);
   };
 
   const logout = async () => {
@@ -28,10 +45,16 @@ export const AuthProvider = ({ children }) => {
     }
     localStorage.removeItem('user');
     setUser(null);
+    setPermissions([]);
+  };
+
+  // Función auxiliar para verificar permisos
+  const hasPermission = (modulo, accion) => {
+    return permissions.some(p => p.modulo === modulo && p.accion === accion);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, permissions, login, logout, loading, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );
