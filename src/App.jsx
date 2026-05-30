@@ -15,6 +15,10 @@ import Papelera from './pages/Papelera';
 import Memoria from './pages/Memoria';
 import Calendario from './pages/Calendario';
 import DetalleTutela from './pages/DetalleTutela';
+import RendimientoLayout from './modules/rendimiento/components/RendimientoLayout';
+import DashboardRendimiento from './modules/rendimiento/pages/DashboardRendimiento';
+import ManagerDashboard from './modules/rendimiento/pages/ManagerDashboard';
+import GestorEquipos from './modules/rendimiento/pages/GestorEquipos';
 
 function App() {
   return (
@@ -31,6 +35,7 @@ function App() {
               <Register />
             </PublicOnlyRoute>
           } />
+          
           <Route path="/" element={
             <ProtectedRoute>
               <Layout />
@@ -46,6 +51,17 @@ function App() {
             <Route path="informes" element={<Informes />} />
             <Route path="notificaciones" element={<Notificaciones />} />
             <Route path="tutela/:id" element={<DetalleTutela />} />
+          </Route>
+
+          {/* Nuevo módulo de rendimiento */}
+          <Route path="/rendimiento" element={
+            <ProtectedRoute>
+              <RendimientoLayout />
+            </ProtectedRoute>
+          }>
+            <Route path="dashboard" element={<DashboardRendimiento />} />
+            <Route path="manager" element={<ManagerDashboard />} />
+            <Route path="equipos" element={<GestorEquipos />} />
           </Route>
         </Routes>
       </BrowserRouter>
