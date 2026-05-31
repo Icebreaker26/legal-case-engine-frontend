@@ -7,7 +7,7 @@ import { useAuth } from '../../../context/AuthContext';
  * Protegido por autenticación.
  */
 export default function RendimientoLayout() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, logout } = useAuth();
 
   return (
     <ProtectedRoute>
@@ -17,12 +17,21 @@ export default function RendimientoLayout() {
         
         <header className="border-b-2 border-[#1A441A] p-4 flex gap-4 items-center">
             <h1 className="text-xl font-bold uppercase tracking-widest">[ R_M0DULO RENDIM1ENT0 ]</h1>
-            <nav className="flex gap-4 ml-auto">
-                <Link to="/rendimiento/dashboard" className="hover:bg-[#1A441A] px-2 uppercase">Dashboard</Link>
-                <Link to="/rendimiento/manager" className="hover:bg-[#1A441A] px-2 uppercase">Manager</Link>
+            <nav className="flex gap-4 ml-auto items-center">
+                <Link to="/rendimiento" className="hover:bg-[#1A441A] px-2 uppercase">Dashboard</Link>
                 {hasPermission('rendimiento', 'MANAGE_TEAMS') && (
-                    <Link to="/rendimiento/equipos" className="hover:bg-[#1A441A] px-2 uppercase">Equipos</Link>
+                    <>
+                        <Link to="/rendimiento/manager" className="hover:bg-[#1A441A] px-2 uppercase">Manager</Link>
+                        <Link to="/rendimiento/equipos" className="hover:bg-[#1A441A] px-2 uppercase">Equipos</Link>
+                    </>
                 )}
+                <button 
+                  onClick={logout} 
+                  className="bg-[#1A441A] text-[#33FF33] hover:bg-[#FF3333] hover:text-black px-2 py-1 uppercase text-xs"
+                >
+                  [ L0G0UT ]
+                </button>
+                <Link to="/selector" className="text-[#1A441A] hover:text-[#33FF33] px-2 uppercase text-xs italic border-l border-[#1A441A] pl-4">{'<'} CAMBIAR MÓDULO</Link>
             </nav>
         </header>
         <main className="p-6">

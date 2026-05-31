@@ -6,8 +6,12 @@ import apiService from '../services/apiService';
 import { ESTADOS, PRIORIDADES } from '../constants';
 import toast from 'react-hot-toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Dashboard() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark-pro';
+  
   const [tutelas, setTutelas] = useState([]);
   const [estadisticas, setEstadisticas] = useState([]);
   const [roi, setRoi] = useState({ totalTutelas: 0, horasAhorradas: 0, dineroAhorrado: 0 });
@@ -90,7 +94,6 @@ export default function Dashboard() {
     const hoy = new Date();
     const lista = [];
 
-    // 1. Vencimientos cercanos (próximos 3 días)
     tutelas.filter(t => t.estado !== ESTADOS.RESPONDIDA).forEach(t => {
         const fecha = new Date(t.fecha_vencimiento);
         const diffDays = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
@@ -106,9 +109,6 @@ export default function Dashboard() {
         }
     });
 
-    // 2. Seguimientos pendientes (fecha_seguimiento alcanzada o pasada)
-    // Nota: Necesitaríamos traer todos los logs para esto, simplificado por ahora buscando en tutelas si hubiera campos extra, 
-    // pero idealmente se extraería de los logs.
     return lista.sort((a, b) => a.fecha - b.fecha);
   }, [tutelas]);
 
@@ -116,32 +116,32 @@ export default function Dashboard() {
     <div className="animate-fade-in pb-12">
       <div className="flex justify-between items-end mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-[#002E6D] mb-2">{import.meta.env.VITE_APP_NAME}</h1>
-          <p className="text-gray-600">Gestión de tutelas activas y asignación de responsables.</p>
+          <h1 className={`text-3xl font-bold mb-2 ${isDark ? 'text-white' : 'text-[#002E6D]'}`}>{import.meta.env.VITE_APP_NAME}</h1>
+          <p className={isDark ? 'text-slate-400' : 'text-gray-600'}>Gestión de tutelas activas y asignación de responsables.</p>
         </div>
-        <button onClick={() => { fetchTutelas(); fetchEstadisticas(); }} className="bg-white px-4 py-2 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm font-medium">
+        <button onClick={() => { fetchTutelas(); fetchEstadisticas(); }} className={`px-4 py-2 border rounded-lg shadow-sm transition-colors flex items-center gap-2 text-sm font-medium ${isDark ? 'bg-[#0F172A] border-slate-700 hover:bg-slate-800 text-slate-200' : 'bg-white border-gray-200 hover:bg-gray-50'}`}>
           <TrendingUp size={16} /> Actualizar Datos
         </button>
       </div>
 
       {/* Agenda Jurídica */}
       <div className="mb-8">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
             <Calendar size={18} className="text-blue-600"/> Agenda Jurídica (Próximas Tareas)
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {tareas.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">No hay tareas urgentes programadas.</p>
+                <p className={`text-sm italic ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>No hay tareas urgentes programadas.</p>
             ) : tareas.map((tarea, i) => (
-                <Link to={`/tutela/${tarea.id}`} key={i} className={`p-4 rounded-xl border-l-4 shadow-sm bg-white hover:shadow-md transition-all ${tarea.urgencia === 'critica' ? 'border-red-500' : 'border-amber-500'}`}>
+                <Link to={`/tutela/${tarea.id}`} key={i} className={`p-4 rounded-xl border-l-4 shadow-sm transition-all ${isDark ? 'bg-[#0F172A] border-slate-700' : 'bg-white border-gray-200'} ${tarea.urgencia === 'critica' ? 'border-red-500' : 'border-amber-500'}`}>
                     <div className="flex justify-between items-start">
-                        <h4 className="font-bold text-gray-800 text-sm">{tarea.titulo}</h4>
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${tarea.urgencia === 'critica' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                        <h4 className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>{tarea.titulo}</h4>
+                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${tarea.urgencia === 'critica' ? 'bg-red-900/30 text-red-500' : 'bg-amber-900/30 text-amber-500'}`}>
                             {tarea.urgencia}
                         </span>
                     </div>
                     <p className="text-xs text-gray-500 mt-1 mb-2">{tarea.subtitulo}</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase">Vence: {tarea.fecha.toLocaleDateString()}</p>
+                    <p className={`text-[10px] font-bold uppercase ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Vence: {tarea.fecha.toLocaleDateString()}</p>
                 </Link>
             ))}
         </div>
@@ -170,8 +170,8 @@ export default function Dashboard() {
           <KPICard titulo="Respondidas" valor={filteredTutelas.filter(t => t.estado === ESTADOS.RESPONDIDA).length} icono={<FileCheck size={20} className="text-green-500" />} color="bg-green-50" />
           <KPICard titulo="Urgentes" valor={filteredTutelas.filter(t => t.prioridad === PRIORIDADES.ALTA && t.estado !== ESTADOS.RESPONDIDA).length} icono={<AlertTriangle size={20} className="text-red-500" />} color="bg-red-50" alerta={true} />
         </div>
-        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <h3 className="font-bold text-gray-800 mb-4 text-sm">Distribución por Derecho Vulnerado</h3>
+        <div className={`p-6 rounded-xl border shadow-sm ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'}`}>
+            <h3 className={`font-bold mb-4 text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>Distribución por Derecho Vulnerado</h3>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={dataDerechos} dataKey="value" nameKey="name" outerRadius={70} label>
@@ -184,24 +184,24 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6 flex flex-wrap gap-4 items-center">
+      <div className={`p-4 rounded-xl border shadow-sm mb-6 flex flex-wrap gap-4 items-center ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'}`}>
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-          <input type="text" placeholder="Buscar por radicado o accionante..." className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm" onChange={(e) => setSearchTerm(e.target.value)} />
+          <Search className={`absolute left-3 top-2.5 ${isDark ? 'text-slate-500' : 'text-gray-400'}`} size={18} />
+          <input type="text" placeholder="Buscar por radicado o accionante..." className={`w-full pl-10 pr-4 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#020617] border-slate-700 text-white placeholder-slate-500' : 'bg-white border-gray-300'}`} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
-        <select className="px-3 py-2 border rounded-lg text-sm" onChange={(e) => setEstadoFilter(e.target.value)}>
+        <select className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#020617] border-slate-700 text-white' : 'bg-white border-gray-300'}`} onChange={(e) => setEstadoFilter(e.target.value)}>
           <option value="Todos">Todos los Estados</option>
           {Object.values(ESTADOS).map(e => <option key={e} value={e}>{e}</option>)}
         </select>
-        <select className="px-3 py-2 border rounded-lg text-sm" onChange={(e) => setPrioridadFilter(e.target.value)}>
+        <select className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#020617] border-slate-700 text-white' : 'bg-white border-gray-300'}`} onChange={(e) => setPrioridadFilter(e.target.value)}>
           <option value="Todas">Todas las Prioridades</option>
           {Object.values(PRIORIDADES).map(p => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-8">
+      <div className={`rounded-xl border shadow-sm overflow-hidden mb-8 ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'}`}>
         <table className="w-full text-left">
-            <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
+            <thead className={`text-xs uppercase font-semibold ${isDark ? 'bg-[#020617] text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
               <tr>
                 <th className="px-6 py-4">Radicado / Accionante</th>
                 <th className="px-6 py-4">Responsable</th>
@@ -211,25 +211,25 @@ export default function Dashboard() {
                 <th className="px-6 py-4 text-center">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className={`divide-y ${isDark ? 'divide-slate-800' : 'divide-gray-100'}`}>
               {loading ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400">Cargando bandeja de entrada...</td></tr>
+                <tr><td colSpan="6" className={`px-6 py-12 text-center ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>Cargando bandeja de entrada...</td></tr>
               ) : filteredTutelas.length === 0 ? (
-                <tr><td colSpan="6" className="px-6 py-12 text-center text-gray-400">No se encontraron tutelas que coincidan.</td></tr>
+                <tr><td colSpan="6" className={`px-6 py-12 text-center ${isDark ? 'text-slate-500' : 'text-gray-400'}`}>No se encontraron tutelas que coincidan.</td></tr>
               ) : filteredTutelas.map((tutela) => (
-                <tr key={tutela.id} className="hover:bg-gray-50 transition-colors group">
+                <tr key={tutela.id} className={`transition-colors group ${isDark ? 'hover:bg-[#1E293B]' : 'hover:bg-gray-50'}`}>
                   <td className="px-6 py-4">
-                    <div className="font-bold text-gray-800 text-sm">{tutela.radicado}</div>
+                    <div className={`font-bold text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>{tutela.radicado}</div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500 truncate max-w-[150px]">{tutela.accionante}</span>
-                      {tutela.derecho_vulnerado && <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded font-medium">{tutela.derecho_vulnerado}</span>}
+                      <span className={`text-xs truncate max-w-[150px] ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{tutela.accionante}</span>
+                      {tutela.derecho_vulnerado && <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${isDark ? 'bg-slate-800 text-slate-300' : 'bg-gray-100 text-gray-600'}`}>{tutela.derecho_vulnerado}</span>}
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-700">{tutela.responsables_nombres?.join(', ') || 'Sin asignar'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{new Date(tutela.fecha_vencimiento).toLocaleDateString()}</td>
+                  <td className={`px-6 py-4 text-sm ${isDark ? 'text-slate-300' : 'text-gray-700'}`}>{tutela.responsables_nombres?.join(', ') || 'Sin asignar'}</td>
+                  <td className={`px-6 py-4 text-sm ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>{new Date(tutela.fecha_vencimiento).toLocaleDateString()}</td>
                   <td className="px-6 py-4"><span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${getPrioridadColor(tutela.prioridad)}`}>{tutela.prioridad}</span></td>
                   <td className="px-6 py-4"><span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${getEstadoColor(tutela.estado)}`}>{tutela.estado}</span></td>
-                  <td className="px-6 py-4 text-center"><Link to={`/tutela/${tutela.id}`} className="text-gray-400 hover:text-[#002E6D] transition-colors"><ExternalLink size={18} /></Link></td>
+                  <td className="px-6 py-4 text-center"><Link to={`/tutela/${tutela.id}`} className={`${isDark ? 'text-slate-500 hover:text-sky-400' : 'text-gray-400 hover:text-[#002E6D]'} transition-colors`}><ExternalLink size={18} /></Link></td>
                 </tr>
               ))}
             </tbody>
@@ -237,15 +237,15 @@ export default function Dashboard() {
       </div>
 
       {/* Gráfica de Tendencia */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-8">
-          <h3 className="font-bold text-gray-800 mb-6 text-sm">Evolución de Tutelas (Últimos 6 meses)</h3>
+      <div className={`p-6 rounded-xl border shadow-sm mb-8 ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'}`}>
+          <h3 className={`font-bold mb-6 text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>Evolución de Tutelas (Últimos 6 meses)</h3>
           <ResponsiveContainer width="100%" height={300}>
               <LineChart data={estadisticas}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="mes" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="total" stroke="#002E6D" strokeWidth={3} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#334155' : '#e5e7eb'} />
+                  <XAxis dataKey="mes" stroke={isDark ? '#94a3b8' : '#6b7280'} />
+                  <YAxis stroke={isDark ? '#94a3b8' : '#6b7280'} />
+                  <Tooltip contentStyle={{ backgroundColor: isDark ? '#020617' : '#fff', borderColor: isDark ? '#334155' : '#e5e7eb' }} />
+                  <Line type="monotone" dataKey="total" stroke="#38bdf8" strokeWidth={3} />
               </LineChart>
           </ResponsiveContainer>
       </div>
@@ -254,14 +254,16 @@ export default function Dashboard() {
 }
 
 function KPICard({ titulo, valor, icono, color, alerta }) {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark-pro';
   return (
-    <div className={`bg-white p-6 rounded-xl border ${alerta && valor > 0 ? 'border-red-200 shadow-md' : 'border-gray-200 shadow-sm'}`}>
+    <div className={`p-6 rounded-xl border shadow-sm ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'} ${alerta && valor > 0 ? 'border-red-500' : ''}`}>
       <div className="flex justify-between items-center mb-4">
         <div className={`p-3 rounded-lg ${color}`}>{icono}</div>
         {alerta && valor > 0 && <span className="flex h-3 w-3 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span></span>}
       </div>
-      <h4 className="text-3xl font-bold text-gray-800 mb-1">{valor}</h4>
-      <p className="text-sm font-medium text-gray-500">{titulo}</p>
+      <h4 className={`text-3xl font-bold mb-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{valor}</h4>
+      <p className={`text-sm font-medium ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>{titulo}</p>
     </div>
   );
 }

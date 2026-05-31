@@ -1,10 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, FileText, BrainCircuit, LogOut, User, UserCog, FileBarChart, Bell, BookOpen, Trash2, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import PermissionGuard from './PermissionGuard';
 
 export default function Sidebar({ onClose }) {
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -20,22 +22,25 @@ export default function Sidebar({ onClose }) {
   const linkClass = ({ isActive }) => 
     `flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
       isActive 
-        ? 'bg-blue-600 text-white shadow-lg' 
-        : 'text-gray-500 hover:bg-gray-100 hover:text-blue-600'
+        ? (theme === 'dark-pro' ? 'bg-[#1E293B] text-sky-400 border border-slate-700' : 'bg-blue-600 text-white shadow-lg')
+        : (theme === 'dark-pro' ? 'text-slate-400 hover:bg-[#0F172A]' : 'text-gray-500 hover:bg-gray-100 hover:text-blue-600')
     }`;
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 h-screen fixed left-0 top-0 z-50 flex flex-col">
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-bold text-enel-blue flex items-center gap-2">
+    <div className={`w-64 h-screen fixed left-0 top-0 z-50 flex flex-col ${theme === 'dark-pro' ? 'bg-[#020617] border-r border-slate-800' : 'bg-white border-r border-gray-200'}`}>
+      <div className={`p-6 border-b ${theme === 'dark-pro' ? 'border-slate-800' : 'border-gray-200'}`}>
+        <h2 className={`text-xl font-bold ${theme === 'dark-pro' ? 'text-white' : 'text-enel-blue'} flex items-center gap-2`}>
            {import.meta.env.VITE_APP_NAME}
         </h2>
-        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-          Enel LegalTech
+        <span className={`text-[10px] ${theme === 'dark-pro' ? 'text-slate-500' : 'text-gray-400'} font-bold uppercase tracking-widest`}>
+          LegalTech Suite
         </span>
       </div>
 
       <nav className="flex-1 p-4 mt-4 space-y-2 overflow-y-auto" onClick={handleNav}>
+        <NavLink to="/selector" className="flex items-center gap-2 px-4 py-1 text-[10px] text-gray-400 hover:text-blue-600 mb-4 italic uppercase">
+          {'<'} Cambiar módulo
+        </NavLink>
         <NavLink to="/" className={linkClass}>
           <LayoutDashboard size={20} />
           <span>Dashboard</span>
@@ -78,19 +83,19 @@ export default function Sidebar({ onClose }) {
         </PermissionGuard>
       </nav>
 
-      <div className="p-4 border-t border-gray-100">
-        <div className="flex items-center gap-3 mb-4 p-2 bg-gray-50 rounded-lg">
-          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700">
+      <div className={`p-4 border-t ${theme === 'dark-pro' ? 'border-slate-800' : 'border-gray-100'}`}>
+        <div className={`flex items-center gap-3 mb-4 p-2 rounded-lg ${theme === 'dark-pro' ? 'bg-[#0F172A]' : 'bg-gray-50'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === 'dark-pro' ? 'bg-slate-800 text-sky-400' : 'bg-blue-100 text-blue-700'}`}>
             <User size={16} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-gray-800 truncate">{user?.nombre || 'Usuario'}</p>
-            <p className="text-[10px] text-gray-500 truncate">{user?.email}</p>
+            <p className={`text-xs font-bold ${theme === 'dark-pro' ? 'text-white' : 'text-gray-800'} truncate`}>{user?.nombre || 'Usuario'}</p>
+            <p className={`text-[10px] ${theme === 'dark-pro' ? 'text-slate-500' : 'text-gray-500'} truncate`}>{user?.email}</p>
           </div>
         </div>
         <button 
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 text-xs text-red-600 font-bold hover:bg-red-50 py-2 rounded-lg transition-colors"
+          className={`w-full flex items-center justify-center gap-2 text-xs font-bold py-2 rounded-lg transition-colors ${theme === 'dark-pro' ? 'text-red-400 hover:bg-[#0F172A]' : 'text-red-600 hover:bg-red-50'}`}
         >
           <LogOut size={14} /> Cerrar Sesión
         </button>
