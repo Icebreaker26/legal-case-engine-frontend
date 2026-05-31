@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, Settings, Shield } from 'lucide-react';
+import { FileText, BarChart3, Settings, Shield, Mail, LogOut } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 export default function ModuleSelector() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, logout } = useAuth();
 
   const modules = [
     {
@@ -26,6 +26,15 @@ export default function ModuleSelector() {
       hoverGlow: 'hover:border-emerald-500 hover:shadow-[0_0_25px_-5px_rgba(16,185,129,0.5)]'
     },
     {
+      id: 'comunicaciones',
+      name: 'Comunicaciones',
+      description: 'Gestión de correspondencia y trazabilidad',
+      path: '/comunicaciones/dashboard',
+      icon: <Mail size={40} className="text-amber-400" />,
+      permission: ['comunicaciones', 'READ_COM'],
+      hoverGlow: 'hover:border-amber-500 hover:shadow-[0_0_25px_-5px_rgba(251,191,36,0.5)]'
+    },
+    {
       id: 'admin',
       name: 'Administración',
       description: 'Configuración, usuarios y permisos del sistema',
@@ -42,21 +51,24 @@ export default function ModuleSelector() {
         
         <header className="w-full max-w-6xl mb-16 flex justify-between items-center border-b border-slate-800/50 pb-8 z-10">
             <div>
-                <h1 className="text-xl font-medium tracking-[0.3em] text-white uppercase">Legal Operations Center</h1>
-                <p className="text-emerald-900 text-[10px] font-mono mt-1 tracking-[0.2em]">{'>'} SUITE DE GESTIÓN INTEGRADA</p>
+                <h1 className="text-xl font-medium tracking-[0.3em] text-white uppercase">ICEBREAKER CORE OPERATING SYSTEM</h1>
+                <p className="text-emerald-900 text-[10px] font-mono mt-1 tracking-[0.2em]">{'>'} GESTIÓN CENTRALIZADA</p>
             </div>
-            <div className="text-right font-mono">
-                <p className="text-xs text-slate-500">STATUS: OPERATIONAL</p>
-                <p className="text-xs text-slate-500">VERSION: 2.0.26</p>
+            <div className="text-right font-mono flex flex-col items-end gap-2">
+                <button onClick={logout} className="text-xs text-red-500 hover:text-red-300 flex items-center gap-1 uppercase tracking-widest transition-colors">
+                    <LogOut size={12} /> Logout
+                </button>
+                <p className="text-[10px] text-slate-500">VERSION: 2.0.26</p>
             </div>
         </header>
 
         <main className="w-full max-w-6xl z-10">
             <h2 className="text-2xl font-light text-slate-400 mb-12 uppercase tracking-[0.3em] text-center">Seleccione un módulo operativo</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {modules.map((mod) => (
-                    hasPermission(mod.permission[0], mod.permission[1]) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {modules
+                  .filter(mod => hasPermission(mod.permission[0], mod.permission[1]))
+                  .map((mod) => (
                         <Link 
                             key={mod.id} 
                             to={mod.path}
@@ -71,7 +83,6 @@ export default function ModuleSelector() {
                                 [ ACCEDER ]
                             </div>
                         </Link>
-                    )
                 ))}
             </div>
         </main>

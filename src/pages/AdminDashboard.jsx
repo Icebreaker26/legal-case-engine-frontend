@@ -7,7 +7,8 @@ import PermissionModal from '../components/PermissionModal';
 
 const PERMISSION_PRESETS = {
   juridico: [{ modulo: 'tutelas', accion: 'READ' }, { modulo: 'tutelas', accion: 'WRITE' }],
-  admin: [{ modulo: 'tutelas', accion: 'READ' }, { modulo: 'tutelas', accion: 'WRITE' }, { modulo: 'tutelas', accion: 'DELETE' }, { modulo: 'admin', accion: 'READ' }, { modulo: 'admin', accion: 'WRITE' }]
+  comunicaciones: [{ modulo: 'comunicaciones', accion: 'READ_COM' }, { modulo: 'comunicaciones', accion: 'WRITE_COM' }],
+  admin: [{ modulo: 'tutelas', accion: 'READ' }, { modulo: 'tutelas', accion: 'WRITE' }, { modulo: 'tutelas', accion: 'DELETE' }, { modulo: 'admin', accion: 'READ' }, { modulo: 'admin', accion: 'WRITE' }, { modulo: 'comunicaciones', accion: 'READ_COM' }, { modulo: 'comunicaciones', accion: 'WRITE_COM' }, { modulo: 'comunicaciones', accion: 'DELETE_COM' }]
 };
 
 export default function AdminDashboard() {
