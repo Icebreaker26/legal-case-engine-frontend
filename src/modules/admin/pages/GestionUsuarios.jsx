@@ -19,6 +19,12 @@ const PERMISSION_PRESETS = {
       { modulo: 'rendimiento', accion: 'READ' },
       { modulo: 'rendimiento', accion: 'MANAGE_TEAMS' }
   ],
+  comunicaciones: [
+      { modulo: 'comunicaciones', accion: 'READ_COM' },
+      { modulo: 'comunicaciones', accion: 'WRITE_COM' },
+      { modulo: 'comunicaciones', accion: 'DELETE_COM' },
+      { modulo: 'comunicaciones', accion: 'MANAGE_COM' }
+  ],
   admin: [
       { modulo: 'tutelas', accion: 'READ' }, 
       { modulo: 'tutelas', accion: 'WRITE' }, 
@@ -27,7 +33,11 @@ const PERMISSION_PRESETS = {
       { modulo: 'admin', accion: 'WRITE' },
       { modulo: 'rendimiento', accion: 'READ' },
       { modulo: 'rendimiento', accion: 'WRITE' },
-      { modulo: 'rendimiento', accion: 'MANAGE_TEAMS' }
+      { modulo: 'rendimiento', accion: 'MANAGE_TEAMS' },
+      { modulo: 'comunicaciones', accion: 'READ_COM' },
+      { modulo: 'comunicaciones', accion: 'WRITE_COM' },
+      { modulo: 'comunicaciones', accion: 'DELETE_COM' },
+      { modulo: 'comunicaciones', accion: 'MANAGE_COM' }
   ]
 };
 

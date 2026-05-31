@@ -46,7 +46,7 @@ export default function PermissionModal({ user, permissions, onClose, onAsignar,
           <div>
             <label className="block text-[#1A441A] mb-1 uppercase tracking-widest">Asignación Granular:</label>
             <div className="flex flex-wrap gap-2">
-                {['tutelas:READ', 'tutelas:WRITE', 'tutelas:DELETE', 'admin:READ'].map(perm => (
+                {['tutelas:READ', 'tutelas:WRITE', 'tutelas:DELETE', 'admin:READ', 'comunicaciones:READ_COM', 'comunicaciones:WRITE_COM', 'comunicaciones:DELETE_COM'].map(perm => (
                     <button 
                         key={perm}
                         onClick={() => {

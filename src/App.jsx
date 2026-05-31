@@ -23,6 +23,12 @@ import ManagerDashboard from './modules/rendimiento/pages/ManagerDashboard';
 import GestorEquipos from './modules/rendimiento/pages/GestorEquipos';
 import GestionUsuarios from './modules/admin/pages/GestionUsuarios';
 import ModuleSelector from './pages/ModuleSelector';
+import ComunicacionesLayout from './modules/comunicaciones/components/ComunicacionesLayout';
+import ListaComunicaciones from './modules/comunicaciones/pages/ListaComunicaciones';
+import DetalleComunicacion from './modules/comunicaciones/pages/DetalleComunicacion';
+import NuevaComunicacion from './modules/comunicaciones/pages/NuevaComunicacion';
+import DashboardComunicaciones from './modules/comunicaciones/pages/DashboardComunicaciones';
+import GestionEntidadesGrupos from './modules/comunicaciones/pages/GestionEntidadesGrupos';
 
 function App() {
   return (
@@ -71,6 +77,19 @@ function App() {
                 <ModuleSelector />
               </ProtectedRoute>
             } />
+
+            {/* Nuevo módulo de comunicaciones */}
+            <Route path="/comunicaciones" element={
+              <ProtectedRoute>
+                <ComunicacionesLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<ListaComunicaciones />} />
+              <Route path="dashboard" element={<DashboardComunicaciones />} />
+              <Route path="nueva" element={<NuevaComunicacion />} />
+              <Route path="gestion" element={<GestionEntidadesGrupos />} />
+              <Route path=":id" element={<DetalleComunicacion />} />
+            </Route>
 
             {/* Nuevo módulo de rendimiento */}
             <Route path="/rendimiento" element={

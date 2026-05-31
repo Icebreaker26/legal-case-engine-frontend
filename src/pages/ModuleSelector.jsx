@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, Settings, Shield } from 'lucide-react';
+import { FileText, BarChart3, Settings, Shield, Mail } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 export default function ModuleSelector() {
@@ -24,6 +24,15 @@ export default function ModuleSelector() {
       icon: <BarChart3 size={40} className="text-emerald-400" />,
       permission: ['rendimiento', 'READ'],
       hoverGlow: 'hover:border-emerald-500 hover:shadow-[0_0_25px_-5px_rgba(16,185,129,0.5)]'
+    },
+    {
+      id: 'comunicaciones',
+      name: 'Comunicaciones',
+      description: 'Gestión de correspondencia y trazabilidad',
+      path: '/comunicaciones/dashboard',
+      icon: <Mail size={40} className="text-amber-400" />,
+      permission: ['comunicaciones', 'READ_COM'],
+      hoverGlow: 'hover:border-amber-500 hover:shadow-[0_0_25px_-5px_rgba(251,191,36,0.5)]'
     },
     {
       id: 'admin',
@@ -54,9 +63,10 @@ export default function ModuleSelector() {
         <main className="w-full max-w-6xl z-10">
             <h2 className="text-2xl font-light text-slate-400 mb-12 uppercase tracking-[0.3em] text-center">Seleccione un módulo operativo</h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {modules.map((mod) => (
-                    hasPermission(mod.permission[0], mod.permission[1]) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {modules
+                  .filter(mod => hasPermission(mod.permission[0], mod.permission[1]))
+                  .map((mod) => (
                         <Link 
                             key={mod.id} 
                             to={mod.path}
@@ -71,7 +81,6 @@ export default function ModuleSelector() {
                                 [ ACCEDER ]
                             </div>
                         </Link>
-                    )
                 ))}
             </div>
         </main>
