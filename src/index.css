@@ -1,16 +1,45 @@
 @import "tailwindcss";
 
-/* Definimos los colores corporativos al estilo v4 */
-@theme {
-  --color-enel-blue: #002E6D;
-  --color-enel-magenta: #E20074;
-  --color-enel-orange: #FF7900;
-  --color-enel-green: #00A300;
+@keyframes scan {
+    from { transform: translateY(0); }
+    to { transform: translateY(100vh); }
 }
 
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background-color: #f4f7f6;
+@keyframes sonar {
+    0% { transform: scale(0.1); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes signal {
+    0%, 100% { height: 10%; }
+    50% { height: 90%; }
+}
+
+.terminal-border {
+    position: relative;
+}
+
+.terminal-border::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid rgba(51, 255, 51, 0.2);
+    pointer-events: none;
+    animation: border-pulse 2s infinite;
+}
+
+@keyframes border-pulse {
+    0%, 100% { border-color: rgba(51, 255, 51, 0.2); }
+    50% { border-color: rgba(51, 255, 51, 0.6); }
+}
+
+.sonar-circle {
+    animation: sonar 2s infinite ease-out;
+}
+
+.animate-signal {
+    animation: signal 2s infinite ease-in-out;
 }
