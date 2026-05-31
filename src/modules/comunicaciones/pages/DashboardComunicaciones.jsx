@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiService from '../../../services/apiService';
 import toast from 'react-hot-toast';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import { Search, X } from 'lucide-react';
 
 export default function DashboardComunicaciones() {
@@ -13,7 +13,6 @@ export default function DashboardComunicaciones() {
 
     const [entidades, setEntidades] = useState([]);
     const [grupos, setGrupos] = useState([]);
-    const [abogados, setAbogados] = useState([]);
     const [filters, setFilters] = useState({
         fecha_inicio: '',
         fecha_fin: '',
@@ -21,9 +20,6 @@ export default function DashboardComunicaciones() {
         grupo_id: '',
         responsable_id: ''
     });
-
-    const [searchResponsable, setSearchResponsable] = useState('');
-    const [mostrarBusquedaResponsable, setMostrarBusquedaResponsable] = useState(false);
 
     useEffect(() => {
         fetchMetadata();
@@ -36,14 +32,12 @@ export default function DashboardComunicaciones() {
 
     const fetchMetadata = async () => {
         try {
-            const [entidadesRes, gruposRes, abogadosRes] = await Promise.all([
+            const [entidadesRes, gruposRes] = await Promise.all([
                 apiService.get('/comunicaciones/entidades'),
-                apiService.get('/comunicaciones/grupos'),
-                apiService.get('/admin/usuarios')
+                apiService.get('/comunicaciones/grupos')
             ]);
             setEntidades(entidadesRes.data);
             setGrupos(gruposRes.data);
-            setAbogados(abogadosRes.data);
         } catch (error) { toast.error('Error al cargar filtros'); }
     };
 
@@ -54,6 +48,8 @@ export default function DashboardComunicaciones() {
             setStats(data);
         } catch (error) { toast.error('Error al cargar estadísticas'); }
     };
+
+    const sonarData = [{ name: 'Activas', value: stats.kpis?.total > 0 ? (stats.kpis.respondidas / stats.kpis.total) * 100 : 0 }];
 
     return (
         <div className="space-y-6 font-mono text-[#1a1a1a]">
@@ -71,35 +67,32 @@ export default function DashboardComunicaciones() {
                     <option value="">Todos los grupos</option>
                     {grupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
                 </select>
-
-                <div className="relative">
-                    <button onClick={() => setMostrarBusquedaResponsable(!mostrarBusquedaResponsable)} className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-1 text-xs uppercase flex items-center gap-1">
-                        {searchResponsable ? searchResponsable : "Responsable"} {mostrarBusquedaResponsable ? <X size={12}/> : <Search size={12}/>}
-                    </button>
-                    {mostrarBusquedaResponsable && (
-                        <div className="absolute z-10 w-48 bg-[#e0dcc8] border border-[#2d4a3e] max-h-60 overflow-y-auto mt-1">
-                            <input className="w-full bg-transparent p-2 border-b border-[#2d4a3e] text-xs" placeholder="Buscar..." value={searchResponsable} onChange={e => setSearchResponsable(e.target.value)} />
-                            <div className="p-2 hover:bg-[#2d4a3e] hover:text-[#e0dcc8] cursor-pointer text-xs font-bold" onClick={() => { setFilters({...filters, responsable_id: ''}); setSearchResponsable(''); setMostrarBusquedaResponsable(false); }}>TODOS</div>
-                            {abogados.filter(a => a.nombre.toLowerCase().includes(searchResponsable.toLowerCase())).map(a => (
-                                <div key={a.id} className="p-2 hover:bg-[#2d4a3e] hover:text-[#e0dcc8] cursor-pointer text-xs" onClick={() => { setFilters({...filters, responsable_id: a.id}); setSearchResponsable(a.nombre); setMostrarBusquedaResponsable(false); }}>
-                                    {a.nombre}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
                 
                 <button onClick={() => setFilters({fecha_inicio: '', fecha_fin: '', entidad_id: '', grupo_id: '', responsable_id: ''})} className="bg-[#2d4a3e] text-[#e0dcc8] px-3 py-1 text-xs font-bold uppercase">Limpiar</button>
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
+                {/* Sonar */}
+                <div className="bg-[#e0dcc8] p-4 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e] flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={80}>
+                        <RadialBarChart innerRadius="60%" outerRadius="100%" barSize={8} data={sonarData} startAngle={90} endAngle={-270}>
+                            <PolarAngleAxis type="number" domain={[0, 100]} angleAxisId={0} tick={false} />
+                            <RadialBar background dataKey="value" fill="#2d4a3e" />
+                            <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle" className="text-lg font-black fill-[#2d4a3e]">
+                                {Math.round(sonarData[0].value)}%
+                            </text>
+                        </RadialBarChart>
+                    </ResponsiveContainer>
+                </div>
+                
+                {/* KPIs */}
                 {[
                     { label: 'Total Activas', value: stats.kpis?.total || 0 },
                     { label: 'Pendientes', value: stats.kpis?.pendientes || 0 },
                     { label: 'Respondidas', value: stats.kpis?.respondidas || 0 },
                     { label: 'Vencidas', value: stats.kpis?.vencidas || 0 },
-                    { label: 'Entidad Activa', value: stats.kpis?.entidad_mas_activa || 'TODAS LAS ENTIDADES' }
+                    { label: 'Entidad Activa', value: filters.entidad_id ? (stats.kpis?.entidad_mas_activa || 'N/A') : 'TODAS LAS ENTIDADES' }
                 ].map(item => (
                     <div key={item.label} className="bg-[#e0dcc8] p-6 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e]">
                         <h3 className="text-[10px] uppercase tracking-wider font-bold mb-2 text-[#2d4a3e]">{item.label}</h3>
@@ -109,6 +102,7 @@ export default function DashboardComunicaciones() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Volumen por Entidad */}
                 <div className="bg-[#e0dcc8] p-6 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e]">
                     <h3 className="text-xs uppercase font-bold mb-4 text-[#2d4a3e]">Volumen por Entidad</h3>
                     <div className="h-64">
@@ -124,6 +118,7 @@ export default function DashboardComunicaciones() {
                     </div>
                 </div>
 
+                {/* Tendencia Temporal */}
                 <div className="bg-[#e0dcc8] p-6 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e]">
                     <h3 className="text-xs uppercase font-bold mb-4 text-[#2d4a3e]">Tendencia Temporal</h3>
                     <div className="h-64">

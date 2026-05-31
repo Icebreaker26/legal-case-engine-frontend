@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, Settings, Shield, Mail } from 'lucide-react';
+import { FileText, BarChart3, Settings, Shield, Mail, LogOut } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 export default function ModuleSelector() {
-  const { hasPermission } = useAuth();
+  const { hasPermission, logout } = useAuth();
 
   const modules = [
     {
@@ -51,12 +51,14 @@ export default function ModuleSelector() {
         
         <header className="w-full max-w-6xl mb-16 flex justify-between items-center border-b border-slate-800/50 pb-8 z-10">
             <div>
-                <h1 className="text-xl font-medium tracking-[0.3em] text-white uppercase">Legal Operations Center</h1>
-                <p className="text-emerald-900 text-[10px] font-mono mt-1 tracking-[0.2em]">{'>'} SUITE DE GESTIÓN INTEGRADA</p>
+                <h1 className="text-xl font-medium tracking-[0.3em] text-white uppercase">ICEBREAKER CORE OPERATING SYSTEM</h1>
+                <p className="text-emerald-900 text-[10px] font-mono mt-1 tracking-[0.2em]">{'>'} GESTIÓN CENTRALIZADA</p>
             </div>
-            <div className="text-right font-mono">
-                <p className="text-xs text-slate-500">STATUS: OPERATIONAL</p>
-                <p className="text-xs text-slate-500">VERSION: 2.0.26</p>
+            <div className="text-right font-mono flex flex-col items-end gap-2">
+                <button onClick={logout} className="text-xs text-red-500 hover:text-red-300 flex items-center gap-1 uppercase tracking-widest transition-colors">
+                    <LogOut size={12} /> Logout
+                </button>
+                <p className="text-[10px] text-slate-500">VERSION: 2.0.26</p>
             </div>
         </header>
 
