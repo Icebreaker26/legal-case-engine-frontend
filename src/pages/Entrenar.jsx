@@ -3,8 +3,12 @@ import { Database, Upload, CheckCircle, Info, Bookmark, ShieldCheck } from 'luci
 import { tutelaService } from '../services/tutelaService';
 import apiService from '../services/apiService';
 import toast from 'react-hot-toast';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Entrenar() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark-pro';
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     categoria: '',
@@ -75,50 +79,54 @@ export default function Entrenar() {
     }
   };
 
+  const textClass = isDark ? 'text-white' : 'text-gray-800';
+  const mutedTextClass = isDark ? 'text-slate-400' : 'text-gray-600';
+  const inputClass = `w-full px-4 py-2 border rounded-lg text-sm outline-none transition-colors ${isDark ? 'bg-[#020617] border-slate-700 text-white focus:border-sky-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`;
+
   return (
-    <div className="max-w-4xl mx-auto pb-12 animate-fade-in">
+    <div className={`max-w-4xl mx-auto pb-12 animate-fade-in ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[#002E6D] mb-2 flex items-center gap-3">
-          <Database size={32} /> Alimentar Memoria Local
+        <h1 className={`text-3xl font-bold mb-2 flex items-center gap-3 ${textClass}`}>
+          <Database size={32} className="text-sky-500" /> Alimentar Memoria Local
         </h1>
-        <p className="text-gray-600">Fortalece el motor de búsqueda semántica con argumentos y contestaciones exitosas.</p>
+        <p className={mutedTextClass}>Fortalece el motor de búsqueda semántica con argumentos y contestaciones exitosas.</p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-100 p-6 rounded-xl mb-8 flex gap-4 items-start">
-        <ShieldCheck className="text-[#002E6D] shrink-0" size={24} />
+      <div className={`border p-6 rounded-xl mb-8 flex gap-4 items-start ${isDark ? 'bg-sky-900/10 border-sky-900' : 'bg-blue-50 border-blue-100'}`}>
+        <ShieldCheck className="text-sky-500 shrink-0" size={24} />
         <div>
-          <h4 className="font-bold text-[#002E6D] mb-1">Privacidad Garantizada</h4>
-          <p className="text-sm text-blue-800">
+          <h4 className={`font-bold mb-1 ${textClass}`}>Privacidad Garantizada</h4>
+          <p className={`text-sm ${isDark ? 'text-slate-300' : 'text-blue-800'}`}>
             Todo el contenido cargado se procesa localmente mediante vectores de 384 dimensiones. 
-            <strong> Ningún dato legal sale de la infraestructura de Enel.</strong>
+            <strong> Ningún dato legal sale de la infraestructura corporativa.</strong>
           </p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm space-y-6">
+        <div className={`p-8 rounded-xl border shadow-sm space-y-6 ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'}`}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Categoría Jurídica</label>
+              <label className={`block text-sm font-bold mb-2 ${textClass}`}>Categoría Jurídica</label>
               <select 
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className={inputClass}
                 value={formData.categoria}
                 onChange={(e) => setFormData({...formData, categoria: e.target.value})}
                 required
               >
-                <option value="">Seleccione una categoría...</option>
+                <option value="" className={isDark ? 'bg-[#020617]' : 'bg-white'}>Seleccione una categoría...</option>
                 {categorias.map(c => (
-                  <option key={c.id} value={c.nombre}>{c.nombre}</option>
+                  <option key={c.id} value={c.nombre} className={isDark ? 'bg-[#020617]' : 'bg-white'}>{c.nombre}</option>
                 ))}
               </select>
             </div>
             
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Título de Referencia</label>
+              <label className={`block text-sm font-bold mb-2 ${textClass}`}>Título de Referencia</label>
               <input 
                 type="text"
                 placeholder="Ej: Contestación Radicado 2024-001..."
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                className={inputClass}
                 value={formData.titulo_referencia}
                 onChange={(e) => setFormData({...formData, titulo_referencia: e.target.value})}
                 required
@@ -127,21 +135,18 @@ export default function Entrenar() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-4">Método de Carga</label>
+            <label className={`block text-sm font-bold mb-4 ${textClass}`}>Método de Carga</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className={`
-                border-2 border-dashed p-6 rounded-xl text-center cursor-pointer transition-all
-                ${file ? 'border-green-300 bg-green-50' : 'border-gray-200 hover:border-[#002E6D]'}
-              `}>
+              <div className={`border-2 border-dashed p-6 rounded-xl text-center cursor-pointer transition-all ${file ? 'border-emerald-500 bg-emerald-900/10' : (isDark ? 'border-slate-700 bg-[#020617]' : 'border-gray-200 bg-white')}`}>
                 <input type="file" id="pdf-train" className="hidden" accept=".pdf" onChange={handleFileChange} />
                 <label htmlFor="pdf-train" className="cursor-pointer">
-                  <Upload size={24} className={`mx-auto mb-2 ${file ? 'text-green-600' : 'text-gray-400'}`} />
-                  <p className="text-xs font-bold text-gray-700">{file ? file.name : 'Subir Contestación (PDF)'}</p>
+                  <Upload size={24} className={`mx-auto mb-2 ${file ? 'text-emerald-500' : 'text-slate-500'}`} />
+                  <p className={`text-xs font-bold ${textClass}`}>{file ? file.name : 'Subir Contestación (PDF)'}</p>
                 </label>
               </div>
 
-              <div className="p-6 border border-gray-200 rounded-xl bg-gray-50 flex items-center justify-center">
-                <p className="text-xs text-center text-gray-500 italic">
+              <div className={`p-6 border rounded-xl flex items-center justify-center ${isDark ? 'bg-[#020617] border-slate-700' : 'bg-gray-50 border-gray-200'}`}>
+                <p className={`text-xs text-center italic ${mutedTextClass}`}>
                   O escribe el argumento legal directamente abajo.
                 </p>
               </div>
@@ -149,18 +154,18 @@ export default function Entrenar() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-              Contenido Legal / Argumento <Bookmark size={14} className="text-gray-400" />
+            <label className={`block text-sm font-bold mb-2 flex items-center gap-2 ${textClass}`}>
+              Contenido Legal / Argumento <Bookmark size={14} className={mutedTextClass} />
             </label>
             <textarea 
               rows="6"
               placeholder="Pega aquí los párrafos o argumentos legales que quieres que el sistema aprenda..."
-              className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none font-serif"
+              className={inputClass + ' font-serif'}
               value={formData.contenido_legal}
               disabled={!!file}
               onChange={(e) => setFormData({...formData, contenido_legal: e.target.value})}
             ></textarea>
-            {file && <p className="text-xs text-orange-600 mt-2 italic flex items-center gap-1">
+            {file && <p className="text-xs text-orange-500 mt-2 italic flex items-center gap-1">
               <Info size={12} /> Se extraerá el texto del archivo PDF seleccionado.
             </p>}
           </div>
@@ -169,10 +174,7 @@ export default function Entrenar() {
         <button
           type="submit"
           disabled={loading || (!file && !formData.contenido_legal)}
-          className={`
-            w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-3
-            ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#002E6D] hover:bg-[#001d4a]'}
-          `}
+          className={`w-full py-4 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-3 ${loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-sky-600 hover:bg-sky-700'}`}
         >
           {loading ? (
             <>

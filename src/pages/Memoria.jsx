@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react';
 import apiService from '../services/apiService';
 import { toast } from 'react-hot-toast';
 import { BookOpen, FileText, Calendar, Trash2, Eye } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Memoria() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark-pro';
+  
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedDoc, setSelectedDoc] = useState(null);
@@ -12,20 +16,13 @@ export default function Memoria() {
   const renderFormattedText = (text) => {
     return text.split('\n').map((line, index) => {
       const trimmedLine = line.trim();
-      // Detectar encabezados numerados (ej: "1. RESPUESTA")
-      if (/^\d+\./.test(trimmedLine)) {
-        return <p key={index} className="font-bold text-gray-900 mt-6 mb-2">{line}</p>;
-      }
-      // Detectar líneas completamente en mayúsculas como encabezados
-      if (trimmedLine.length > 5 && trimmedLine === trimmedLine.toUpperCase() && !trimmedLine.match(/^\d/)) {
-        return <p key={index} className="font-bold text-gray-900 mt-6 mb-2">{line}</p>;
-      }
-      // Detectar líneas clave (ej: "Referencia:")
-      if (trimmedLine.endsWith(':')) {
-        return <p key={index} className="font-semibold text-gray-800 mt-4">{line}</p>;
-      }
-      // Párrafos normales
-      return <p key={index} className="mb-4">{line || <br />}</p>;
+      const textClass = isDark ? 'text-slate-300' : 'text-gray-900';
+      const headerClass = isDark ? 'font-bold text-white mt-6 mb-2' : 'font-bold text-gray-900 mt-6 mb-2';
+      
+      if (/^\d+\./.test(trimmedLine)) return <p key={index} className={headerClass}>{line}</p>;
+      if (trimmedLine.length > 5 && trimmedLine === trimmedLine.toUpperCase() && !trimmedLine.match(/^\d/)) return <p key={index} className={headerClass}>{line}</p>;
+      if (trimmedLine.endsWith(':')) return <p key={index} className={`font-semibold mt-4 ${isDark ? 'text-slate-200' : 'text-gray-800'}`}>{line}</p>;
+      return <p key={index} className={`mb-4 ${textClass}`}>{line || <br />}</p>;
     });
   };
 
@@ -66,25 +63,25 @@ export default function Memoria() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Cargando base de conocimiento...</div>;
+  if (loading) return <div className={`p-8 text-center ${isDark ? 'text-slate-400' : 'text-gray-600'}`}>Cargando base de conocimiento...</div>;
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className={`max-w-6xl mx-auto p-6 ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+        <h1 className={`text-2xl font-bold flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
           <BookOpen className="text-blue-600" />
           Memoria Institucional (RAG)
         </h1>
       </div>
 
       {selectedDoc && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4" onClick={() => setSelectedDoc(null)}>
-          <div className="bg-white p-12 rounded-sm shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold mb-8 border-b pb-4 text-gray-800 uppercase tracking-wide">Contenido del Documento</h2>
-            <div className="font-serif text-gray-900 leading-relaxed text-justify">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={() => setSelectedDoc(null)}>
+          <div className={`p-12 rounded-sm shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-y-auto ${isDark ? 'bg-[#0F172A] border border-slate-700' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
+            <h2 className={`text-xl font-bold mb-8 border-b pb-4 uppercase tracking-wide ${isDark ? 'text-white border-slate-700' : 'text-gray-800 border-gray-200'}`}>Contenido del Documento</h2>
+            <div className={`font-serif leading-relaxed text-justify ${isDark ? 'text-slate-300' : 'text-gray-900'}`}>
               {renderFormattedText(docContent)}
             </div>
-            <button onClick={() => setSelectedDoc(null)} className="mt-8 w-full bg-gray-800 hover:bg-gray-900 text-white py-3 rounded-none font-bold uppercase tracking-widest text-sm transition">
+            <button onClick={() => setSelectedDoc(null)} className={`mt-8 w-full py-3 font-bold uppercase tracking-widest text-sm transition ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-gray-800 hover:bg-gray-900 text-white'}`}>
               Cerrar Documento
             </button>
           </div>
@@ -93,18 +90,18 @@ export default function Memoria() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {docs.map((doc) => (
-          <div key={doc.documento_id} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition flex flex-col">
+          <div key={doc.documento_id} className={`p-6 rounded-xl border shadow-sm hover:shadow-md transition flex flex-col ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'}`}>
             <div className="flex items-start justify-between mb-4">
-              <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded uppercase">{doc.categoria}</span>
+              <span className={`px-2 py-1 text-xs font-semibold rounded uppercase ${isDark ? 'bg-slate-800 text-sky-400' : 'bg-blue-50 text-blue-700'}`}>{doc.categoria}</span>
               <FileText className="text-gray-400" size={20} />
             </div>
-            <h3 className="font-semibold text-gray-800 mb-2 flex-1">{doc.titulo_referencia}</h3>
-            <div className="flex items-center text-sm text-gray-500 gap-2 mb-4">
+            <h3 className={`font-semibold mb-2 flex-1 ${isDark ? 'text-white' : 'text-gray-800'}`}>{doc.titulo_referencia}</h3>
+            <div className={`flex items-center text-sm gap-2 mb-4 ${isDark ? 'text-slate-400' : 'text-gray-500'}`}>
               <Calendar size={14} />
               <span>{new Date(doc.created_at).toLocaleDateString()}</span>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => handleView(doc.documento_id)} className="flex-1 flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 py-2 rounded text-sm font-medium transition">
+              <button onClick={() => handleView(doc.documento_id)} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded text-sm font-medium transition ${isDark ? 'bg-slate-800 hover:bg-slate-700 text-sky-400' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}>
                 <Eye size={16} /> Ver
               </button>
               <button onClick={() => handleDelete(doc.documento_id)} className="flex-1 flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 py-2 rounded text-sm font-medium transition">

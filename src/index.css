@@ -1,16 +1,89 @@
 @import "tailwindcss";
 
-/* Definimos los colores corporativos al estilo v4 */
-@theme {
-  --color-enel-blue: #002E6D;
-  --color-enel-magenta: #E20074;
-  --color-enel-orange: #FF7900;
-  --color-enel-green: #00A300;
+@keyframes scan {
+    from { transform: translateY(0); }
+    to { transform: translateY(100vh); }
 }
 
-html, body, #root {
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  background-color: #f4f7f6;
+@keyframes sonar {
+    0% { transform: scale(0.1); opacity: 1; }
+    100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes signal {
+    0%, 100% { height: 10%; }
+    50% { height: 90%; }
+}
+
+@keyframes border-pulse {
+    0%, 100% { border-color: rgba(51, 255, 51, 0.2); }
+    50% { border-color: rgba(51, 255, 51, 0.6); }
+}
+
+@keyframes neon-pulse {
+    0%, 100% { box-shadow: 0 0 10px rgba(51, 255, 51, 0.2); }
+    50% { box-shadow: 0 0 25px rgba(51, 255, 51, 0.5); }
+}
+
+@keyframes line-draw {
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: 0.5; }
+}
+
+/* Corporate Dark Theme */
+.dark-pro-theme {
+    background-color: #020617;
+    color: #F8FAFC; /* Increased contrast for text */
+}
+
+.dark-pro-theme .bg-white,
+.dark-pro-theme .bg-gray-50 {
+    background-color: #0F172A;
+}
+
+.dark-pro-theme .border-gray-200,
+.dark-pro-theme .border-gray-100 {
+    border-color: #334155;
+}
+
+.dark-pro-theme .text-gray-800,
+.dark-pro-theme .text-gray-900 {
+    color: #F8FAFC; /* High contrast text */
+}
+
+.dark-pro-theme .text-gray-500,
+.dark-pro-theme .text-gray-600 {
+    color: #CBD5E1; /* Better readability than 94A3B8 */
+}
+
+.terminal-border {
+    position: relative;
+}
+
+.terminal-border::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid rgba(51, 255, 51, 0.2);
+    pointer-events: none;
+    animation: border-pulse 2s infinite;
+}
+
+.sonar-circle {
+    animation: sonar 2s infinite ease-out;
+}
+
+.animate-signal {
+    animation: signal 2s infinite ease-in-out;
+}
+
+.animate-neon-pulse {
+    animation: neon-pulse 3s infinite;
+}
+
+.animate-line-draw {
+    animation: line-draw 4s infinite ease-in-out;
 }
