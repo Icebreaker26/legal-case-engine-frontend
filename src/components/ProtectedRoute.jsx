@@ -22,6 +22,10 @@ export default function ProtectedRoute({ children }) {
     );
   }
   
+  if (user && user.mustChangePassword && window.location.pathname !== '/change-password') {
+      return <Navigate to="/change-password" replace />;
+  }
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }

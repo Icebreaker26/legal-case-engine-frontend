@@ -13,6 +13,8 @@ import Informes from './pages/Informes';
 import Notificaciones from './pages/Notificaciones';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import RegistrationPending from './pages/RegistrationPending';
+import ChangePassword from './pages/ChangePassword';
 import Papelera from './pages/Papelera';
 import Memoria from './pages/Memoria';
 import Calendario from './pages/Calendario';
@@ -46,6 +48,11 @@ function App() {
                 <Register />
               </PublicOnlyRoute>
             } />
+            <Route path="/registration-pending" element={
+              <PublicOnlyRoute>
+                <RegistrationPending />
+              </PublicOnlyRoute>
+            } />
             
             <Route path="/" element={
               <ProtectedRoute>
@@ -69,6 +76,12 @@ function App() {
                 <AdminRoute>
                   <GestionUsuarios />
                 </AdminRoute>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/change-password" element={
+              <ProtectedRoute>
+                <ChangePassword />
               </ProtectedRoute>
             } />
 

@@ -19,7 +19,7 @@ export default function Register() {
     try {
       await apiService.post('/auth/register', formData);
       toast.success('Usuario registrado exitosamente');
-      navigate('/login');
+      navigate('/registration-pending');
     } catch (error) {
       toast.error('Error al registrar usuario: ' + (error.response?.data?.error || 'Intente de nuevo'));
     }
