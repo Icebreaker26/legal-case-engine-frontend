@@ -4,6 +4,7 @@ import apiService from '../../../services/apiService';
 import toast from 'react-hot-toast';
 import { Search, CheckCircle, XCircle } from 'lucide-react';
 import PermissionModal from '../../../components/PermissionModal';
+import PasswordDisplayModal from '../../../components/PasswordDisplayModal';
 import Typewriter from '../../rendimiento/components/Typewriter';
 
 const PERMISSION_PRESETS = {
@@ -17,15 +18,22 @@ const PERMISSION_PRESETS = {
   ],
   manager_rendimiento: [
       { modulo: 'rendimiento', accion: 'READ' },
-      { modulo: 'rendimiento', accion: 'MANAGE_TEAMS' }
+      { modulo: 'rendimiento', accion: 'WRITE' },
+      { modulo: 'rendimiento', accion: 'DELETE' },
+      { modulo: 'rendimiento', accion: 'MANAGE_TEAMS' },
+      { modulo: 'rendimiento', accion: 'READ_ALL' }
   ],
-  comunicaciones: [
+  comunicaciones_operativo: [
+      { modulo: 'comunicaciones', accion: 'READ_COM' },
+      { modulo: 'comunicaciones', accion: 'WRITE_COM' }
+  ],
+  comunicaciones_admin: [
       { modulo: 'comunicaciones', accion: 'READ_COM' },
       { modulo: 'comunicaciones', accion: 'WRITE_COM' },
       { modulo: 'comunicaciones', accion: 'DELETE_COM' },
       { modulo: 'comunicaciones', accion: 'MANAGE_COM' }
   ],
-  admin: [
+  admin_total: [
       { modulo: 'tutelas', accion: 'READ' }, 
       { modulo: 'tutelas', accion: 'WRITE' }, 
       { modulo: 'tutelas', accion: 'DELETE' }, 
@@ -34,6 +42,7 @@ const PERMISSION_PRESETS = {
       { modulo: 'rendimiento', accion: 'READ' },
       { modulo: 'rendimiento', accion: 'WRITE' },
       { modulo: 'rendimiento', accion: 'MANAGE_TEAMS' },
+      { modulo: 'rendimiento', accion: 'READ_ALL' },
       { modulo: 'comunicaciones', accion: 'READ_COM' },
       { modulo: 'comunicaciones', accion: 'WRITE_COM' },
       { modulo: 'comunicaciones', accion: 'DELETE_COM' },
@@ -44,6 +53,7 @@ const PERMISSION_PRESETS = {
 export default function GestionUsuarios() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [passwordModal, setPasswordModal] = useState(null);
   const [userPermissions, setUserPermissions] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('Todos');
@@ -117,11 +127,14 @@ export default function GestionUsuarios() {
   };
 
   const handleResetPassword = async (id, nombre) => {
-    const newPassword = prompt(`Introduce la nueva contraseña para ${nombre}:`);
-    if (!newPassword) return;
+    const userDefinedPassword = prompt(`Introduce la nueva contraseña para ${nombre} (dejar vacío para generar automáticamente):`);
     
     try {
-      await apiService.post(`/admin/usuarios/${id}/reset-password`, { newPassword });
+      const { data } = await apiService.post(`/admin/usuarios/${id}/reset-password`, { 
+          newPassword: userDefinedPassword || null 
+      });
+      
+      setPasswordModal({ password: data.newPassword, nombre });
       toast.success('Contraseña actualizada correctamente');
     } catch (error) {
       toast.error('Error al resetear contraseña');
@@ -189,6 +202,14 @@ export default function GestionUsuarios() {
             </tbody>
         </table>
       </div>
+      
+      {passwordModal && (
+          <PasswordDisplayModal 
+              password={passwordModal.password}
+              nombre={passwordModal.nombre}
+              onClose={() => setPasswordModal(null)}
+          />
+      )}
       
       {selectedUser && (
         <PermissionModal 

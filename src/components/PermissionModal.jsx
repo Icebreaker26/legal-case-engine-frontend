@@ -1,4 +1,6 @@
 import { X } from 'lucide-react';
+import apiService from '../services/apiService';
+import toast from 'react-hot-toast';
 
 export default function PermissionModal({ user, permissions, onClose, onAsignar, onRevocar, presets }) {
   if (!user) return null;
@@ -15,14 +17,31 @@ export default function PermissionModal({ user, permissions, onClose, onAsignar,
           <div className="mb-4">
             <label className="block text-[#1A441A] mb-1 uppercase tracking-widest">Asignar Rol (Preset):</label>
             <select 
-                className="bg-[#050A05] border border-[#1A441A] text-[#33FF33] w-full rounded-none p-2 outline-none"
-                onChange={(e) => {
-                    const rol = e.target.value;
-                    if (rol && presets[rol]) {
-                        presets[rol].forEach(p => onAsignar(user.id, p.modulo, p.accion));
-                    }
-                }}
-                defaultValue=""
+            className="bg-[#050A05] border border-[#1A441A] text-[#33FF33] w-full rounded-none p-2 outline-none"
+            onChange={async (e) => {
+                const rol = e.target.value;
+                if (rol && presets[rol]) {
+                    try {
+                        await apiService.post('/permisos/asignar-masivo', {
+                            usuario_id: user.id,
+                            permisos: presets[rol]
+                        });
+
+                        // 2. Si el rol es 'admin', actualizar is_admin en DB
+                        if (rol === 'admin_total') {
+                            try {
+                                await apiService.patch(`/admin/usuarios/${user.id}`, { is_admin: true });
+                                toast.success('Rol de administrador asignado y privilegios elevados');
+                            } catch (error) { toast.error('Error al elevar privilegios de administrador'); }
+                        } else {
+                            toast.success(`Rol ${rol} asignado con éxito`);
+                        }
+                        // Refrescar permisos
+                        onAsignar(user.id, null, null); 
+                    } catch (error) { toast.error('Error al asignar el rol'); }
+                }
+            }}
+            defaultValue=""
             >
                 <option value="" disabled className="bg-[#050A05]">-- Seleccionar Rol --</option>
                 {Object.keys(presets).map(rol => (
@@ -46,7 +65,7 @@ export default function PermissionModal({ user, permissions, onClose, onAsignar,
           <div>
             <label className="block text-[#1A441A] mb-1 uppercase tracking-widest">Asignación Granular:</label>
             <div className="flex flex-wrap gap-2">
-                {['tutelas:READ', 'tutelas:WRITE', 'tutelas:DELETE', 'admin:READ', 'comunicaciones:READ_COM', 'comunicaciones:WRITE_COM', 'comunicaciones:DELETE_COM'].map(perm => (
+                {['tutelas:READ', 'tutelas:WRITE', 'tutelas:DELETE', 'admin:READ', 'comunicaciones:READ_COM', 'comunicaciones:WRITE_COM', 'comunicaciones:DELETE_COM', 'comunicaciones:MANAGE_COM'].map(perm => (
                     <button 
                         key={perm}
                         onClick={() => {
