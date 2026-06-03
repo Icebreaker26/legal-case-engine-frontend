@@ -21,7 +21,16 @@ export default function Register() {
       toast.success('Usuario registrado exitosamente');
       navigate('/registration-pending');
     } catch (error) {
-      toast.error('Error al registrar usuario: ' + (error.response?.data?.error || 'Intente de nuevo'));
+      const responseErrors = error.response?.data?.error;
+      let errorMessage = 'Error al registrar usuario. Intente de nuevo';
+      
+      if (Array.isArray(responseErrors) && responseErrors.length > 0 && responseErrors[0].message) {
+          errorMessage = responseErrors[0].message;
+      } else if (typeof responseErrors === 'string') {
+          errorMessage = responseErrors;
+      }
+      
+      toast.error(errorMessage);
     }
   };
 

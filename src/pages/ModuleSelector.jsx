@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, Settings, Shield, Mail, LogOut } from 'lucide-react';
+import { FileText, BarChart3, Settings, Shield, Mail, LogOut, Wallet } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 export default function ModuleSelector() {
@@ -33,6 +33,15 @@ export default function ModuleSelector() {
       icon: <Mail size={40} className="text-amber-400" />,
       permission: ['comunicaciones', 'READ_COM'],
       hoverGlow: 'hover:border-amber-500 hover:shadow-[0_0_25px_-5px_rgba(251,191,36,0.5)]'
+    },
+    {
+      id: 'pagos',
+      name: 'Módulo Pagos (PDP)',
+      description: 'Gestión y trazabilidad de pagos SAP',
+      path: '/pagos',
+      icon: <Wallet size={40} className="text-sky-400" />,
+      permission: ['pagos', 'READ_PAGO'],
+      hoverGlow: 'hover:border-sky-500 hover:shadow-[0_0_25px_-5px_rgba(56,189,248,0.5)]'
     },
     {
       id: 'admin',

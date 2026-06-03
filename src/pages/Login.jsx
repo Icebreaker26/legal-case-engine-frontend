@@ -18,7 +18,7 @@ export default function Login() {
       login(response.data.user);
 
       toast.success('Acceso autorizado');
-      navigate('/selector');
+      window.location.href = '/selector';
     } catch (error) {
       toast.error('Credenciales inválidas');
     }

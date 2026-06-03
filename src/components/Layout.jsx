@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
 import Sidebar from './Sidebar';
 import { Menu, X, Sun, Moon } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
@@ -41,8 +40,6 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
-
-      <Toaster position="top-right" />
     </div>
   );
 }

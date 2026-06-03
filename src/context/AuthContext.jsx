@@ -1,7 +1,14 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiService from '../services/apiService';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext({
+    user: null,
+    permissions: [],
+    loading: false,
+    login: () => {},
+    logout: () => {},
+    hasPermission: () => false
+});
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
