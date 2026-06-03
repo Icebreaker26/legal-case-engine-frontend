@@ -33,6 +33,15 @@ const PERMISSION_PRESETS = {
       { modulo: 'comunicaciones', accion: 'DELETE_COM' },
       { modulo: 'comunicaciones', accion: 'MANAGE_COM' }
   ],
+  pagos_operativo: [
+      { modulo: 'pagos', accion: 'READ_PAGO' },
+      { modulo: 'pagos', accion: 'WRITE_PAGO' }
+  ],
+  pagos_admin: [
+      { modulo: 'pagos', accion: 'READ_PAGO' },
+      { modulo: 'pagos', accion: 'WRITE_PAGO' },
+      { modulo: 'pagos', accion: 'DELETE_PAGO' }
+  ],
   admin_total: [
       { modulo: 'tutelas', accion: 'READ' }, 
       { modulo: 'tutelas', accion: 'WRITE' }, 
@@ -46,7 +55,10 @@ const PERMISSION_PRESETS = {
       { modulo: 'comunicaciones', accion: 'READ_COM' },
       { modulo: 'comunicaciones', accion: 'WRITE_COM' },
       { modulo: 'comunicaciones', accion: 'DELETE_COM' },
-      { modulo: 'comunicaciones', accion: 'MANAGE_COM' }
+      { modulo: 'comunicaciones', accion: 'MANAGE_COM' },
+      { modulo: 'pagos', accion: 'READ_PAGO' },
+      { modulo: 'pagos', accion: 'WRITE_PAGO' },
+      { modulo: 'pagos', accion: 'DELETE_PAGO' }
   ]
 };
 

@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -31,12 +32,19 @@ import DetalleComunicacion from './modules/comunicaciones/pages/DetalleComunicac
 import NuevaComunicacion from './modules/comunicaciones/pages/NuevaComunicacion';
 import DashboardComunicaciones from './modules/comunicaciones/pages/DashboardComunicaciones';
 import GestionEntidadesGrupos from './modules/comunicaciones/pages/GestionEntidadesGrupos';
+import PagosLayout from './modules/pagos/components/PagosLayout';
+import ListaPagos from './modules/pagos/pages/ListaPagos';
+import NuevaSolicitudPago from './modules/pagos/pages/NuevaSolicitudPago';
+import DashboardPagos from './modules/pagos/pages/DashboardPagos';
+import DetallePago from './modules/pagos/pages/DetallePago';
+import GestionEstadosYGrupos from './modules/pagos/pages/GestionEstadosYGrupos';
 
 function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
         <BrowserRouter>
+          <Toaster position="top-right" />
           <Routes>
             <Route path="/login" element={
               <PublicOnlyRoute>
@@ -102,6 +110,19 @@ function App() {
               <Route path="nueva" element={<NuevaComunicacion />} />
               <Route path="gestion" element={<GestionEntidadesGrupos />} />
               <Route path=":id" element={<DetalleComunicacion />} />
+            </Route>
+
+            {/* Nuevo módulo de pagos */}
+            <Route path="/pagos" element={
+              <ProtectedRoute>
+                <PagosLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<ListaPagos />} />
+              <Route path="nueva" element={<NuevaSolicitudPago />} />
+              <Route path="dashboard" element={<DashboardPagos />} />
+              <Route path="gestion" element={<GestionEstadosYGrupos />} />
+              <Route path=":id" element={<DetallePago />} />
             </Route>
 
             {/* Nuevo módulo de rendimiento */}
