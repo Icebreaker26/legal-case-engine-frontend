@@ -5,6 +5,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { LogOut, LayoutGrid, Menu, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import MorseStream from './MorseStream';
+import NotificationBell from '../../../components/NotificationBell';
 
 export default function ComunicacionesLayout() {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export default function ComunicacionesLayout() {
 
         <MorseStream />
         
-        <header className="bg-[#e0dcc8] border-b-4 border-double border-[#2d4a3e] p-4 flex justify-between items-center relative z-10">
+        <header className="bg-[#e0dcc8] border-b-4 border-double border-[#2d4a3e] p-4 flex justify-between items-center relative z-50">
             <h1 className="text-xl font-bold uppercase tracking-[0.2em] text-[#2d4a3e]">Sistema de Comunicaciones</h1>
             
             {/* Desktop Nav */}
@@ -49,6 +50,7 @@ export default function ComunicacionesLayout() {
                 </nav>
                 
                 <div className="flex items-center gap-4 border-l-2 border-[#2d4a3e] pl-4">
+                    <NotificationBell />
                     <button onClick={() => navigate('/selector')} className="text-[#2d4a3e] flex items-center gap-1 hover:text-black transition-colors" title="Cambiar Módulo">
                         <LayoutGrid size={18} />
                     </button>
@@ -67,6 +69,10 @@ export default function ComunicacionesLayout() {
         {/* Mobile Menu */}
         {isOpen && (
             <div className="md:hidden bg-[#e0dcc8] p-4 border-b-4 border-double border-[#2d4a3e] z-10 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <NotificationBell />
+                    <button onClick={() => setIsOpen(false)}><X /></button>
+                </div>
                 {navLinks.map(link => (
                     <Link key={link.to} to={link.to} onClick={() => setIsOpen(false)} className="text-[#2d4a3e] font-bold uppercase tracking-widest">{link.label}</Link>
                 ))}
