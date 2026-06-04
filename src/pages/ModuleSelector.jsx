@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, Settings, Shield, Mail, LogOut, Wallet } from 'lucide-react';
+import { FileText, BarChart3, Settings, Shield, Mail, LogOut, Wallet, User } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 export default function ModuleSelector() {
@@ -9,7 +9,7 @@ export default function ModuleSelector() {
   const modules = [
     {
       id: 'tutelas',
-      name: 'Sistema de Tutelas',
+      name: 'Derechos de Petición',
       description: 'Gestión documental y flujo de procesos legales',
       path: '/',
       icon: <FileText size={40} className="text-blue-400" />,
@@ -42,6 +42,15 @@ export default function ModuleSelector() {
       icon: <Wallet size={40} className="text-sky-400" />,
       permission: ['pagos', 'READ_PAGO'],
       hoverGlow: 'hover:border-sky-500 hover:shadow-[0_0_25px_-5px_rgba(56,189,248,0.5)]'
+    },
+    {
+      id: 'perfil',
+      name: 'Mi Perfil',
+      description: 'Ver mis tareas y actividades asignadas',
+      path: '/perfil',
+      icon: <User size={40} className="text-slate-400" />,
+      permission: ['tutelas', 'READ'], // Reutilizamos permiso base
+      hoverGlow: 'hover:border-slate-500 hover:shadow-[0_0_25px_-5px_rgba(148,163,184,0.5)]'
     },
     {
       id: 'admin',

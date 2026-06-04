@@ -46,7 +46,7 @@ export default function DashboardPagos() {
                 </div>
                 <div className="bg-[#e0dcc8] p-6 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e]">
                     <p className="text-[10px] uppercase text-[#2d4a3e]">Monto Total</p>
-                    <p className="text-3xl font-bold text-[#2d4a3e]">${stats.monto_total || 0}</p>
+                    <p className="text-3xl font-bold text-[#2d4a3e]">${parseInt(stats.monto_total || 0).toLocaleString('es-CO')}</p>
                 </div>
                 <div className="bg-[#e0dcc8] p-6 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e]">
                     <p className="text-[10px] uppercase text-[#2d4a3e]">Liberados</p>

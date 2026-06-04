@@ -16,6 +16,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import RegistrationPending from './pages/RegistrationPending';
 import ChangePassword from './pages/ChangePassword';
+import PerfilLayout from './modules/perfil/components/PerfilLayout';
+import MiPerfil from './modules/perfil/pages/MiPerfil';
 import Papelera from './pages/Papelera';
 import Memoria from './pages/Memoria';
 import Calendario from './pages/Calendario';
@@ -92,6 +94,20 @@ function App() {
                 <ChangePassword />
               </ProtectedRoute>
             } />
+
+            <Route path="/change-password" element={
+              <ProtectedRoute>
+                <ChangePassword />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/perfil" element={
+              <ProtectedRoute>
+                <PerfilLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<MiPerfil />} />
+            </Route>
 
             <Route path="/selector" element={
               <ProtectedRoute>
