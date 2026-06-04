@@ -28,7 +28,7 @@ export default function MiPerfil() {
     const [tareas, setTareas] = useState({ tutelas: [], comunicaciones: [], pagos: [], objetivos: [], logs: [] });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [soloPendientes, setSoloPendientes] = useState(false);
+    const [mostrarTodo, setMostrarTodo] = useState(false);
 
     const QUICK_ACTIONS = [
         { label: 'Nueva Tutela', path: '/procesar', permission: ['tutelas', 'WRITE'], icon: <Plus size={16}/> },
@@ -64,21 +64,21 @@ export default function MiPerfil() {
         return {
             tutelas: tareas.tutelas.filter(t => 
                 (t.radicado.toLowerCase().includes(term) || t.accionante.toLowerCase().includes(term)) &&
-                (!soloPendientes || t.estado !== 'Finalizada')
+                (mostrarTodo || t.estado.toLowerCase() !== 'finalizada')
             ),
             comunicaciones: tareas.comunicaciones.filter(c => 
                 (c.asunto.toLowerCase().includes(term) || c.entidad.toLowerCase().includes(term)) &&
-                (!soloPendientes || c.estado !== 'respondida')
+                (mostrarTodo || c.estado.toLowerCase() !== 'respondida')
             ),
             pagos: tareas.pagos.filter(p => 
                 (p.concepto.toLowerCase().includes(term) || p.nit.toLowerCase().includes(term)) &&
-                (!soloPendientes || !['completado', 'pagado', 'rechazado'].includes(p.estado))
+                (mostrarTodo || !['completado', 'pagado', 'rechazado'].includes(p.estado.toLowerCase()))
             ),
             objetivos: tareas.objetivos.filter(o => 
                 o.meta_acciones.toLowerCase().includes(term)
             )
         };
-    }, [tareas, searchTerm, soloPendientes]);
+    }, [tareas, searchTerm, mostrarTodo]);
 
     const proximosVencimientos = useMemo(() => {
         const hoy = new Date();
@@ -138,8 +138,8 @@ export default function MiPerfil() {
                 {/* Filtros */}
                 <div className="flex flex-col md:flex-row gap-4 mt-6">
                     <label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
-                        <input type="checkbox" checked={soloPendientes} onChange={e => setSoloPendientes(e.target.checked)} />
-                        Solo pendientes
+                        <input type="checkbox" checked={mostrarTodo} onChange={e => setMostrarTodo(e.target.checked)} />
+                        Mostrar todo
                     </label>
                     <input 
                         type="text" 
@@ -197,7 +197,10 @@ export default function MiPerfil() {
                     renderItem={(p) => (
                         <Link to={`/pagos/${p.id}`} className="flex justify-between w-full">
                             <span className="font-bold">{p.concepto}</span>
-                            <span className="text-[9px] bg-[#2d4a3e]/10 px-1">{p.estado}</span>
+                            <div className="flex flex-col items-end">
+                                <span className="text-[9px] bg-[#2d4a3e]/10 px-1">{p.estado}</span>
+                                <span className="text-[10px] font-bold">${parseFloat(p.monto).toLocaleString('es-CO')}</span>
+                            </div>
                         </Link>
                     )}
                 />

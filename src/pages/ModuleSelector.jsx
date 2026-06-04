@@ -49,7 +49,7 @@ export default function ModuleSelector() {
       description: 'Ver mis tareas y actividades asignadas',
       path: '/perfil',
       icon: <User size={40} className="text-slate-400" />,
-      permission: ['tutelas', 'READ'], // Reutilizamos permiso base
+      permission: ['perfil', 'READ'], 
       hoverGlow: 'hover:border-slate-500 hover:shadow-[0_0_25px_-5px_rgba(148,163,184,0.5)]'
     },
     {
