@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 import { 
   ArrowLeft, 
   User, 
@@ -29,6 +30,8 @@ import apiService from '../services/apiService';
 import toast from 'react-hot-toast';
 
 export default function DetalleTutela() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark-pro';
   const { id } = useParams();
   const navigate = useNavigate();
   const [tutela, setTutela] = useState(null);
@@ -70,7 +73,7 @@ export default function DetalleTutela() {
 
   // Estados para edición y eliminación
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ radicado: '', accionante: '', sharepoint_link: '', responsables_ids: [] });
+  const [editForm, setEditForm] = useState({ radicado: '', accionante: '', sharepoint_link: '', categoria: '', responsables_ids: [] });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [confirmInput, setConfirmInput] = useState('');
 
@@ -454,7 +457,7 @@ export default function DetalleTutela() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-            <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-4 ${tutela.prioridad === 'Alta' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+            <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-4 ${tutela.prioridad === 'Alta' ? (isDark ? 'bg-red-900/30 text-red-300' : 'bg-red-100 text-red-700') : (isDark ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-700')}`}>
               Prioridad {tutela.prioridad}
             </div>
             

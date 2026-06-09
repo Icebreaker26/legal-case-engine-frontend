@@ -19,6 +19,9 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState('Todos');
   const [prioridadFilter, setPrioridadFilter] = useState('Todas');
+  const [areaFilter, setAreaFilter] = useState('Todas');
+
+  const areas = useMemo(() => [...new Set(tutelas.map(t => t.area_responsable).filter(Boolean))], [tutelas]);
 
   const fetchEstadisticas = async () => {
     try {
@@ -60,9 +63,10 @@ export default function Dashboard() {
                             t.accionante.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesEstado = estadoFilter === 'Todos' || t.estado === estadoFilter;
       const matchesPrioridad = prioridadFilter === 'Todas' || t.prioridad === prioridadFilter;
-      return matchesSearch && matchesEstado && matchesPrioridad;
+      const matchesArea = areaFilter === 'Todas' || t.area_responsable === areaFilter;
+      return matchesSearch && matchesEstado && matchesPrioridad && matchesArea;
     });
-  }, [tutelas, searchTerm, estadoFilter, prioridadFilter]);
+  }, [tutelas, searchTerm, estadoFilter, prioridadFilter, areaFilter]);
 
   const dataDerechos = useMemo(() => {
     const counts = tutelas.reduce((acc, t) => {
@@ -77,17 +81,17 @@ export default function Dashboard() {
 
   const getPrioridadColor = (prioridad) => {
     switch (prioridad) {
-      case PRIORIDADES.ALTA: return 'bg-enel-magenta text-white border-enel-magenta';
-      case PRIORIDADES.MEDIA: return 'bg-enel-orange text-white border-enel-orange';
-      default: return 'bg-enel-blue text-white border-enel-blue';
+      case PRIORIDADES.ALTA: return isDark ? 'bg-enel-magenta text-white border-enel-magenta' : 'bg-red-600 text-white border-red-600';
+      case PRIORIDADES.MEDIA: return isDark ? 'bg-enel-orange text-white border-enel-orange' : 'bg-amber-500 text-white border-amber-500';
+      default: return isDark ? 'bg-enel-blue text-white border-enel-blue' : 'bg-blue-600 text-white border-blue-600';
     }
   };
 
   const getEstadoColor = (estado) => {
-    if (estado === ESTADOS.PENDIENTE) return 'text-enel-blue bg-blue-50';
-    if (estado === ESTADOS.EN_PROCESO) return 'text-enel-green bg-green-50';
-    if (estado === ESTADOS.RESPONDIDA) return 'text-gray-600 bg-gray-100';
-    return 'text-gray-600 bg-gray-50';
+    if (estado === ESTADOS.PENDIENTE) return isDark ? 'text-blue-300 bg-blue-900/30' : 'text-enel-blue bg-blue-50';
+    if (estado === ESTADOS.EN_PROCESO) return isDark ? 'text-green-300 bg-green-900/30' : 'text-enel-green bg-green-50';
+    if (estado === ESTADOS.RESPONDIDA) return isDark ? 'text-slate-300 bg-slate-800' : 'text-gray-600 bg-gray-100';
+    return isDark ? 'text-slate-400 bg-slate-900' : 'text-gray-600 bg-gray-50';
   };
 
   const tareas = useMemo(() => {
@@ -196,6 +200,10 @@ export default function Dashboard() {
         <select className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#020617] border-slate-700 text-white' : 'bg-white border-gray-300'}`} onChange={(e) => setPrioridadFilter(e.target.value)}>
           <option value="Todas">Todas las Prioridades</option>
           {Object.values(PRIORIDADES).map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <select className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#020617] border-slate-700 text-white' : 'bg-white border-gray-300'}`} onChange={(e) => setAreaFilter(e.target.value)}>
+          <option value="Todas">Todas las Áreas</option>
+          {areas.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
 
