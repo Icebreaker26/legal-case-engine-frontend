@@ -201,13 +201,23 @@ export default function ListaComunicaciones() {
                                     {urgencia.label}
                                 </motion.div>
                             )}
-                            <h3 className="font-bold uppercase tracking-wider pr-16 text-[#2d4a3e]">{com.asunto}</h3>
-                            <p className="text-[10px] uppercase mb-2">Entidad: {com.entidad} | {com.tipo}</p>
-                            <p className="text-[10px] italic">Límite: {new Date(com.fecha_limite).toLocaleDateString()}</p>
-                            <p className="text-[10px] font-bold uppercase">Estado: {com.estado}</p>
+                            <h3 className="font-bold uppercase tracking-wider pr-16 text-[#2d4a3e] text-sm mb-1">{com.asunto}</h3>
+                            <p className="text-xs uppercase mb-2"><strong>Entidad:</strong> {com.entidad} | {com.tipo}</p>
+                            <p className="text-xs italic mb-1">Límite: {new Date(com.fecha_limite).toLocaleDateString()}</p>
+                            {(() => {
+                                const diffTime = new Date(com.fecha_limite) - new Date();
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                const colorClass = diffDays <= 0 ? 'text-red-600' : diffDays <= 3 ? 'text-orange-600' : 'text-green-700';
+                                return (
+                                    <p className={`text-xs font-bold ${colorClass} mb-1`}>
+                                        {diffDays <= 0 ? 'Vencido' : `${diffDays} día${diffDays > 1 ? 's' : ''} restante${diffDays > 1 ? 's' : ''}`}
+                                    </p>
+                                );
+                            })()}
+                            <p className="text-xs font-bold uppercase mb-2">Estado: {com.estado}</p>
                             <div className="mt-2 flex flex-wrap gap-1">
                                 {com.grupos && com.grupos.filter(g => g).map((g, index) => (
-                                    <span key={`${com.id}-${g}-${index}`} className="bg-[#2d4a3e] text-[#e0dcc8] text-[9px] px-1 uppercase font-bold tracking-tighter">{g}</span>
+                                    <span key={`${com.id}-${g}-${index}`} className="bg-[#2d4a3e] text-[#e0dcc8] text-[10px] px-1.5 py-0.5 uppercase font-bold tracking-tighter">{g}</span>
                                 ))}
                             </div>
                             <div className="mt-4 flex gap-2">

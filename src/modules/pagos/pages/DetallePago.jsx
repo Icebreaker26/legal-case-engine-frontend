@@ -130,13 +130,31 @@ export default function DetallePago() {
                         <button onClick={handleSave} className="col-span-2 bg-[#10b981] text-white py-2 font-bold uppercase">Guardar Cambios</button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 gap-4 text-xs uppercase">
-                        <p><strong>Concepto:</strong> {pago.concepto}</p>
-                        <p><strong>NIT:</strong> {pago.nit}</p>
-                        <p><strong>Monto:</strong> ${parseFloat(pago.monto).toLocaleString('es-CO')}</p>
-                        <p><strong>Estado Actual:</strong> <span className="font-bold text-[#2d4a3e]">{pago.estado}</span></p>
-                        <p><strong>Solicitante:</strong> {pago.solicitante_nombre}</p>
-                        <p><strong>Soportes:</strong> {pago.soportes_link ? <a href={pago.soportes_link} target="_blank" rel="noreferrer" className="text-blue-800 underline">Link</a> : 'N/A'}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Concepto</p>
+                            <p className="text-sm font-semibold">{pago.concepto}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">NIT</p>
+                            <p className="text-sm font-semibold">{pago.nit}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Monto</p>
+                            <p className="text-sm font-semibold">${parseFloat(pago.monto).toLocaleString('es-CO')}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Estado Actual</p>
+                            <p className="text-sm font-semibold text-[#2d4a3e]">{pago.estado}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Solicitante</p>
+                            <p className="text-sm font-semibold">{pago.solicitante_nombre}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Soportes</p>
+                            <p className="text-sm font-semibold">{pago.soportes_link ? <a href={pago.soportes_link} target="_blank" rel="noreferrer" className="text-blue-800 underline">Link</a> : 'N/A'}</p>
+                        </div>
                     </div>
                 )}
 

@@ -1,18 +1,30 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light');
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark-pro' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-  };
+  const location = useLocation();
+  
+  // Explicitly check for all routes related to Tutelas/Derechos de Petición
+  const isTutelas = [
+    '/',
+    '/procesar',
+    '/entrenar',
+    '/memoria',
+    '/calendario',
+    '/papelera',
+    '/admin',
+    '/informes',
+    '/notificaciones',
+    '/tutela'
+  ].some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
+  
+  // Default to dark-pro, force light only for Tutelas.
+  const theme = isTutelas ? 'light' : 'dark-pro';
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme }}>
       {children}
     </ThemeContext.Provider>
   );

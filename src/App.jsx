@@ -44,8 +44,8 @@ import GestionEstadosYGrupos from './modules/pagos/pages/GestionEstadosYGrupos';
 function App() {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <BrowserRouter>
+      <BrowserRouter>
+        <ThemeProvider>
           <Toaster position="top-right" />
           <Routes>
             <Route path="/login" element={
@@ -86,12 +86,6 @@ function App() {
                 <AdminRoute>
                   <GestionUsuarios />
                 </AdminRoute>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/change-password" element={
-              <ProtectedRoute>
-                <ChangePassword />
               </ProtectedRoute>
             } />
 
@@ -152,8 +146,8 @@ function App() {
               <Route path="equipos" element={<GestorEquipos />} />
             </Route>
           </Routes>
-        </BrowserRouter>
-      </ThemeProvider>
+        </ThemeProvider>
+      </BrowserRouter>
     </AuthProvider>
   );
 }

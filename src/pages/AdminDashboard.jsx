@@ -1,21 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import apiService from '../services/apiService';
 import toast from 'react-hot-toast';
-import { Shield, Lock, CheckCircle, XCircle, Search, UserCog, Plus, Trash2, Edit, Terminal, TrendingUp, DollarSign, Clock, BarChart2 } from 'lucide-react';
+import { Shield, Plus, Trash2, Edit, Terminal, DollarSign, Search } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import PermissionModal from '../components/PermissionModal';
-
-const PERMISSION_PRESETS = {
-  juridico: [{ modulo: 'tutelas', accion: 'READ' }, { modulo: 'tutelas', accion: 'WRITE' }],
-  comunicaciones: [{ modulo: 'comunicaciones', accion: 'READ_COM' }, { modulo: 'comunicaciones', accion: 'WRITE_COM' }],
-  admin: [{ modulo: 'tutelas', accion: 'READ' }, { modulo: 'tutelas', accion: 'WRITE' }, { modulo: 'tutelas', accion: 'DELETE' }, { modulo: 'admin', accion: 'READ' }, { modulo: 'admin', accion: 'WRITE' }, { modulo: 'comunicaciones', accion: 'READ_COM' }, { modulo: 'comunicaciones', accion: 'WRITE_COM' }, { modulo: 'comunicaciones', accion: 'DELETE_COM' }]
-};
+import { useAuth } from '../context/AuthContext';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState('usuarios');
-  const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [userPermissions, setUserPermissions] = useState({});
+  const { hasPermission } = useAuth();
+  
+  const [activeTab, setActiveTab] = useState('areas');
   const [areas, setAreas] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [patterns, setPatterns] = useState([]);
@@ -25,6 +18,7 @@ export default function AdminDashboard() {
   const [roi, setRoi] = useState({ totalTutelas: 0, horasAhorradas: 0, dineroAhorrado: 0, configuracion: { tiempo_ahorrado_minutos: 100, costo_hora_juridico: 50.00 } });
   const [cargaTrabajo, setCargaTrabajo] = useState([]);
   const [latencia, setLatencia] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [nuevaArea, setNuevaArea] = useState('');
   const [editAreaId, setEditAreaId] = useState(null);
@@ -39,12 +33,31 @@ export default function AdminDashboard() {
   const [editPatronId, setEditPatronId] = useState(null);
   const [editPatronData, setEditPatronData] = useState({ patron: '', descripcion: '' });
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('Todos');
-  const [filterApproval, setFilterApproval] = useState('Todos');
+  const tabs = useMemo(() => {
+    const allTabs = [
+      { id: 'areas', label: 'Áreas' },
+      { id: 'categorias', label: 'Categorías' },
+      { id: 'ruido', label: 'Ruido' },
+      { id: 'logs', label: 'Logs' },
+      { id: 'roi', label: 'ROI', adminOnly: true },
+      { id: 'config', label: 'Config', adminOnly: true }
+    ];
+
+    return allTabs.filter(tab => {
+        if (tab.adminOnly) {
+            return hasPermission('admin', 'WRITE');
+        }
+        return true;
+    });
+  }, [hasPermission]);
 
   useEffect(() => {
-    fetchUsers();
+    if (!tabs.find(t => t.id === activeTab)) {
+        setActiveTab(tabs[0].id);
+    }
+  }, [tabs, activeTab]);
+
+  useEffect(() => {
     fetchAreas();
     fetchCategorias();
     fetchNoise();
@@ -94,50 +107,6 @@ export default function AdminDashboard() {
     } catch (err) { toast.error('Error al eliminar'); }
   };
 
-  const fetchUserPermissions = async (userId) => {
-    try {
-      const { data } = await apiService.get(`/permisos/usuario/${userId}`);
-      setUserPermissions(prev => ({ ...prev, [userId]: data }));
-    } catch (error) { console.error(`Error al cargar permisos del usuario ${userId}`); }
-  };
-
-  const asignarPermiso = async (userId, modulo, accion) => {
-    try {
-      const response = await apiService.post('/permisos/asignar', { 
-          usuario_id: userId, modulo, accion 
-      }, {
-          validateStatus: (status) => status >= 200 && status < 300 || status === 409
-      });
-
-      if (response.status === 409) {
-        toast.success('El permiso ya estaba asignado');
-      } else {
-        toast.success('Permiso asignado');
-      }
-      fetchUserPermissions(userId);
-    } catch (error) {
-        toast.error('Error al asignar');
-    }
-  };
-
-  const revocarPermiso = async (userId, modulo, accion) => {
-    try {
-      await apiService.delete('/permisos/revocar', { data: { usuario_id: userId, modulo, accion } });
-      toast.success('Permiso revocado');
-      fetchUserPermissions(userId);
-    } catch (error) { toast.error('Error al revocar'); }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const { data } = await apiService.get('/admin/usuarios');
-      setUsers(data);
-      data.forEach(u => fetchUserPermissions(u.id));
-    } catch (error) {
-      toast.error('Error al cargar usuarios');
-    }
-  };
-  
   const fetchAreas = async () => {
     try {
       const { data } = await apiService.get('/admin/areas');
@@ -298,77 +267,6 @@ export default function AdminDashboard() {
     } catch (err) { toast.error('Error al actualizar'); }
   };
 
-  const getPredominantRole = (userId) => {
-    const perms = userPermissions[userId] || [];
-    if (perms.length === 0) return 'Sin Rol';
-
-    const hasRole = (role) => {
-        return PERMISSION_PRESETS[role].every(presetPerm => 
-            perms.some(p => p.modulo === presetPerm.modulo && p.accion === presetPerm.accion)
-        );
-    };
-
-    if (hasRole('admin')) return 'Admin';
-    if (hasRole('juridico')) return 'Jurídico';
-    
-    return 'Personalizado';
-  };
-
-  const filteredUsers = useMemo(() => {
-    return users.filter(u => {
-      const matchesSearch = u.nombre.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            u.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus === 'Todos' || (filterStatus === 'Activos' ? u.activo : !u.activo);
-      const matchesApproval = filterApproval === 'Todos' || (filterApproval === 'Aprobados' ? u.is_approved : !u.is_approved);
-      return matchesSearch && matchesStatus && matchesApproval;
-    });
-  }, [users, searchTerm, filterStatus, filterApproval]);
-
-  const cambiarRol = async (id, nuevoRol) => {
-    try {
-      await apiService.patch(`/admin/usuarios/${id}/rol`, { rol: nuevoRol });
-      fetchUsers();
-      toast.success('Rol actualizado');
-    } catch (error) {
-      toast.error('Error al actualizar rol');
-    }
-  };
-
-  const toggleApproval = async (id, currentApproval) => {
-    try {
-      await apiService.patch(`/admin/usuarios/${id}`, { is_approved: !currentApproval });
-      fetchUsers();
-      toast.success('Estado de aprobación actualizado');
-    } catch (error) {
-      toast.error('Error al actualizar aprobación');
-    }
-  };
-
-  const toggleStatus = async (id, currentStatus, isApproved) => {
-    try {
-      await apiService.patch(`/admin/usuarios/${id}`, { 
-        activo: !currentStatus,
-        is_approved: isApproved
-      });
-      fetchUsers();
-      toast.success('Estado actualizado');
-    } catch (error) {
-      toast.error('Error al actualizar');
-    }
-  };
-
-  const handleResetPassword = async (id, nombre) => {
-    const newPassword = prompt(`Introduce la nueva contraseña para ${nombre}:`);
-    if (!newPassword) return;
-    
-    try {
-      await apiService.post(`/admin/usuarios/${id}/reset-password`, { newPassword });
-      toast.success('Contraseña actualizada correctamente');
-    } catch (error) {
-      toast.error('Error al resetear contraseña');
-    }
-  };
-
   return (
     <div className="p-4 md:p-8 bg-gray-100 min-h-screen">
       <div className="max-w-6xl mx-auto bg-black rounded-lg shadow-2xl border border-gray-800 overflow-hidden font-mono text-[10px] md:text-sm">
@@ -382,13 +280,13 @@ export default function AdminDashboard() {
             <span className="text-gray-400 text-xs ml-2 uppercase hidden md:inline">admin@{import.meta.env.VITE_APP_NAME}: ~</span>
           </div>
           <div className="flex gap-1 text-[10px] md:text-xs">
-              {['usuarios', 'areas', 'categorias', 'ruido', 'logs', 'roi', 'config'].map(tab => (
+              {tabs.map(tab => (
                   <button 
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`px-2 py-1 md:px-3 md:py-1 uppercase tracking-wider transition-colors ${activeTab === tab ? 'bg-green-900 text-white' : 'text-gray-500 hover:text-gray-300'}`}
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`px-2 py-1 md:px-3 md:py-1 uppercase tracking-wider transition-colors ${activeTab === tab.id ? 'bg-green-900 text-white' : 'text-gray-500 hover:text-gray-300'}`}
                   >
-                      {tab}
+                      {tab.label}
                   </button>
               ))}
           </div>
@@ -469,77 +367,6 @@ export default function AdminDashboard() {
                 </div>
             </div>
           )}
-          {activeTab === 'usuarios' && (
-            <div>
-              <div className="flex items-center gap-3 mb-6 border-b border-green-800 pb-4">
-                <UserCog className="text-green-400" size={20} />
-                <h1 className="text-lg md:text-xl font-bold uppercase tracking-wider">User Administration</h1>
-              </div>
-              
-              <div className="bg-gray-900 p-4 rounded-lg border border-green-900 mb-6 flex flex-wrap gap-4 items-center">
-                <Search className="text-green-700" size={16} />
-                <input 
-                  type="text" placeholder="grep user..."
-                  className="bg-transparent border-none outline-none text-green-400 placeholder-green-900 w-full md:w-auto flex-1"
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <select className="bg-black border border-green-900 text-green-500 p-1 rounded" onChange={(e) => setFilterStatus(e.target.value)}>
-                  <option value="Todos">Status: ALL</option>
-                  <option value="Activos">Active</option>
-                  <option value="Inactivos">Inactive</option>
-                </select>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse min-w-[600px]">
-                  <thead>
-                    <tr className="border-b border-green-900 text-green-700 uppercase">
-                      <th className="px-4 py-2">Nombre</th>
-                      <th className="px-4 py-2">Estado</th>
-                      <th className="px-4 py-2">Aprobado</th>
-                      <th className="px-4 py-2">Permisos</th>
-                      <th className="px-4 py-2 text-center">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-green-900">
-                    {filteredUsers.map(u => (
-                      <tr key={u.id} className="hover:bg-green-950">
-                        <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                                <span className="font-medium text-white">{u.nombre}</span>
-                                {(userPermissions[u.id] || []).some(p => p.modulo === 'admin' && p.accion === 'WRITE') && (
-                                    <Shield className="text-red-500 flex-shrink-0" size={14} title="Administrador" />
-                                )}
-                            </div>
-                            <span className="text-xs text-gray-500">{u.email}</span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button onClick={() => toggleStatus(u.id, u.activo, u.is_approved)} className={`px-2 py-1 rounded text-xs font-bold ${u.activo ? 'text-green-400' : 'text-red-400'}`}>
-                            {u.activo ? 'ACTIVE' : 'INACTIVE'}
-                          </button>
-                        </td>
-                        <td className="px-4 py-3">
-                          <button onClick={() => toggleApproval(u.id, u.is_approved)} className="flex items-center gap-1">
-                            {u.is_approved ? <CheckCircle className="text-green-600" size={16} /> : <XCircle className="text-yellow-600" size={16} />}
-                            <span className="text-xs">{u.is_approved ? 'APPROVED' : 'PENDING'}</span>
-                          </button>
-                        </td>
-                        <td className="px-4 py-3">
-                           <button onClick={() => setSelectedUser(u)} className="bg-green-900 hover:bg-green-700 text-white px-2 py-1 rounded text-[10px] font-bold uppercase">Gestionar</button>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button onClick={() => handleResetPassword(u.id, u.nombre)} className="text-green-600 hover:underline font-mono">
-                            [RESET_PASS]
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           {activeTab === 'areas' && (
             <div className="mt-6">
                 <div className="flex items-center gap-3 mb-6 border-b border-green-800 pb-4">
@@ -582,7 +409,6 @@ export default function AdminDashboard() {
                 </div>
             </div>
           )}
-
           {activeTab === 'categorias' && (
             <div className="mt-6">
                 <div className="flex items-center gap-3 mb-6 border-b border-green-800 pb-4">
@@ -638,7 +464,6 @@ export default function AdminDashboard() {
                 </div>
             </div>
           )}
-
           {activeTab === 'ruido' && (
             <div className="mt-6">
                 <div className="flex items-center gap-3 mb-6 border-b border-green-800 pb-4">
@@ -671,7 +496,6 @@ export default function AdminDashboard() {
                 </div>
             </div>
           )}
-
           {activeTab === 'roi' && (
             <div className="mt-6">
                 <div className="flex items-center gap-3 mb-6 border-b border-green-800 pb-4">
@@ -786,16 +610,6 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
-      {selectedUser && (
-        <PermissionModal 
-          user={selectedUser} 
-          permissions={userPermissions} 
-          onClose={() => setSelectedUser(null)}
-          onAsignar={asignarPermiso}
-          onRevocar={revocarPermiso}
-          presets={PERMISSION_PRESETS}
-        />
-      )}
     </div>
   );
 }
