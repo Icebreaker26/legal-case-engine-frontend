@@ -20,8 +20,15 @@ export default function Dashboard() {
   const [estadoFilter, setEstadoFilter] = useState('Todos');
   const [prioridadFilter, setPrioridadFilter] = useState('Todas');
   const [areaFilter, setAreaFilter] = useState('Todas');
+  const [areas, setAreas] = useState([]); // State for areas
 
-  const areas = useMemo(() => [...new Set(tutelas.map(t => t.area_responsable).filter(Boolean))], [tutelas]);
+  // Fetch areas from backend
+  const fetchAreas = async () => {
+    try {
+      const { data } = await apiService.get('/admin/areas');
+      setAreas(data.filter(a => a.activo).map(a => a.nombre));
+    } catch (err) { toast.error('Error al cargar áreas'); }
+  };
 
   const fetchEstadisticas = async () => {
     try {
@@ -55,6 +62,7 @@ export default function Dashboard() {
     fetchTutelas();
     fetchEstadisticas();
     fetchROI();
+    fetchAreas(); // Add fetchAreas call
   }, []);
 
   const filteredTutelas = useMemo(() => {
