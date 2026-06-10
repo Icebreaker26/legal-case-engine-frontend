@@ -75,7 +75,7 @@ export default function Sidebar({ onClose }) {
           <Bell size={20} />
           <span>Notificaciones</span>
         </NavLink>
-        <PermissionGuard modulo="admin" accion="READ">
+        <PermissionGuard modulo="tutelas" accion="READ">
           <NavLink to="/admin" className={linkClass}>
             <UserCog size={20} />
             <span>Administración</span>

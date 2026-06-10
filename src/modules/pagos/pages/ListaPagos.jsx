@@ -105,16 +105,28 @@ export default function ListaPagos() {
                         exit={{ opacity: 0, scale: 0.9 }}
                         className={"relative bg-[#e0dcc8] p-4 border " + getEstadoColor(pago.estado)}
                     >
-                        <h3 className="font-bold uppercase tracking-wider text-[#2d4a3e]">{pago.concepto}</h3>
-                        <p className="text-[10px] uppercase">NIT: {pago.nit} | Monto: ${parseFloat(pago.monto).toLocaleString('es-CO')}</p>
-                        <p className="text-[10px] italic">Solicitado: {new Date(pago.fecha_solicitud).toLocaleDateString()}</p>
+                        <h3 className="font-bold uppercase tracking-wider text-[#2d4a3e] text-sm mb-1">{pago.concepto}</h3>
+                        <p className="text-xs uppercase mb-1"><strong>NIT:</strong> {pago.nit} | <strong>Monto:</strong> ${parseFloat(pago.monto).toLocaleString('es-CO')}</p>
+                        <p className="text-xs italic mb-1">Solicitado: {new Date(pago.fecha_solicitud).toLocaleDateString()}</p>
+                        {(() => {
+                            const isFinalizado = pago.estado === 'pagado' || pago.estado === 'completado';
+                            const diffTime = isFinalizado 
+                                ? (new Date(pago.fecha_finalizacion || new Date()) - new Date(pago.fecha_solicitud))
+                                : (new Date() - new Date(pago.fecha_solicitud));
+                            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                            return (
+                                <p className={`text-xs font-bold mb-1 ${isFinalizado ? 'text-green-800' : 'text-[#2d4a3e]'}`}>
+                                    {isFinalizado ? `Finalizado en ${diffDays} día${diffDays !== 1 ? 's' : ''}` : `${diffDays} día${diffDays !== 1 ? 's' : ''} desde solicitud`}
+                                </p>
+                            );
+                        })()}
                         <div className="flex flex-wrap gap-1 mt-2">
                             {pago.grupos && pago.grupos.filter(g => g).map(g => (
-                                <span key={g} className="bg-[#2d4a3e] text-[#e0dcc8] text-[9px] px-1 py-0.5 rounded">{g}</span>
+                                <span key={g} className="bg-[#2d4a3e] text-[#e0dcc8] text-[10px] px-1.5 py-0.5 rounded font-bold">{g}</span>
                             ))}
                         </div>
-                        <p className="text-[10px] font-bold uppercase mt-2">Estado: {pago.estado}</p>
-                        <div className="mt-4">
+                        <p className="text-xs font-bold uppercase mt-2 mb-2">Estado: {pago.estado}</p>
+                        <div className="mt-2">
                             <Link to={`/pagos/${pago.id}`} className="text-[#2d4a3e] font-bold text-xs uppercase hover:underline border-b border-[#2d4a3e]">Ver detalle</Link>
                         </div>
                     </motion.div>

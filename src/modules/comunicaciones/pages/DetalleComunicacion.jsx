@@ -128,13 +128,44 @@ export default function DetalleComunicacion() {
             ) : (
                 <>
                     <h2 className="text-2xl font-bold uppercase tracking-widest mb-4 border-b border-[#2d4a3e] pb-2">{comunicacion.asunto}</h2>
+                    <div className="grid grid-cols-2 gap-4 mb-6">
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Entidad</p>
+                            <p className="text-sm font-semibold">{comunicacion.entidad}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Tipo</p>
+                            <p className="text-sm font-semibold">{comunicacion.tipo}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Responsable</p>
+                            <p className="text-sm font-semibold">{comunicacion.responsable_nombre || 'No asignado'}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Estado</p>
+                            <p className="text-sm font-semibold">{comunicacion.estado}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2] col-span-2">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Límite</p>
+                            <div className="flex justify-between items-center">
+                                <p className="text-sm font-semibold">{new Date(comunicacion.fecha_limite).toLocaleDateString()}</p>
+                                {(() => {
+                                    const diffTime = new Date(comunicacion.fecha_limite) - new Date();
+                                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    const colorClass = diffDays <= 0 ? 'text-red-600' : diffDays <= 3 ? 'text-orange-600' : 'text-green-700';
+                                    return (
+                                        <p className={`text-xs font-bold ${colorClass}`}>
+                                            {diffDays <= 0 ? 'Vencido' : `${diffDays} día${diffDays > 1 ? 's' : ''} restante${diffDays > 1 ? 's' : ''}`}
+                                        </p>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div className="text-xs space-y-2 mb-6">
-                        <p><strong>Entidad:</strong> {comunicacion.entidad}</p>
-                        <p><strong>Tipo:</strong> {comunicacion.tipo}</p>
-                        <p><strong>Responsable:</strong> {comunicacion.responsable_nombre || 'No asignado'}</p>
-                        <p><strong>Estado:</strong> {comunicacion.estado}</p>
-                        <p><strong>Límite:</strong> {new Date(comunicacion.fecha_limite).toLocaleDateString()}</p>
-                        <p><strong>Descripción:</strong> {comunicacion.descripcion}</p>
+                        <p><strong>Descripción:</strong></p>
+                        <div className="text-justify border border-[#2d4a3e] p-2 bg-[#d8d4c2]">{comunicacion.descripcion}</div>
                         <p><strong>Grupos:</strong></p>
                         <div className="flex flex-wrap gap-2">
                             {comunicacion.grupos && comunicacion.grupos.filter(g => g).map((g, index) => {
@@ -148,7 +179,7 @@ export default function DetalleComunicacion() {
                             })}
                         </div>
                         {comunicacion.link && (
-                            <p><strong>Link:</strong> <a href={comunicacion.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{comunicacion.link}</a></p>
+                            <p className="break-all"><strong>Link:</strong> <a href={comunicacion.link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{comunicacion.link}</a></p>
                         )}
                     </div>
 
