@@ -10,37 +10,63 @@ import Typewriter from '../../rendimiento/components/Typewriter';
 const PERMISSION_PRESETS = {
   juridico: [
       { modulo: 'tutelas', accion: 'READ' }, 
-      { modulo: 'tutelas', accion: 'WRITE' }
+      { modulo: 'tutelas', accion: 'WRITE' },
+      { modulo: 'notificaciones', accion: 'READ_NOT' },
+      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
+      { modulo: 'perfil', accion: 'READ' }
   ],
   profesional_rendimiento: [
       { modulo: 'rendimiento', accion: 'READ' },
-      { modulo: 'rendimiento', accion: 'WRITE' }
+      { modulo: 'rendimiento', accion: 'WRITE' },
+      { modulo: 'notificaciones', accion: 'READ_NOT' },
+      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
+      { modulo: 'perfil', accion: 'READ' }
   ],
   manager_rendimiento: [
       { modulo: 'rendimiento', accion: 'READ' },
       { modulo: 'rendimiento', accion: 'WRITE' },
       { modulo: 'rendimiento', accion: 'DELETE' },
       { modulo: 'rendimiento', accion: 'MANAGE_TEAMS' },
-      { modulo: 'rendimiento', accion: 'READ_ALL' }
+      { modulo: 'rendimiento', accion: 'READ_ALL' },
+      { modulo: 'notificaciones', accion: 'READ_NOT' },
+      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
+      { modulo: 'perfil', accion: 'READ' }
   ],
   comunicaciones_operativo: [
       { modulo: 'comunicaciones', accion: 'READ_COM' },
-      { modulo: 'comunicaciones', accion: 'WRITE_COM' }
+      { modulo: 'comunicaciones', accion: 'WRITE_COM' },
+      { modulo: 'notificaciones', accion: 'READ_NOT' },
+      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
+      { modulo: 'perfil', accion: 'READ' }
   ],
   comunicaciones_admin: [
       { modulo: 'comunicaciones', accion: 'READ_COM' },
       { modulo: 'comunicaciones', accion: 'WRITE_COM' },
       { modulo: 'comunicaciones', accion: 'DELETE_COM' },
-      { modulo: 'comunicaciones', accion: 'MANAGE_COM' }
+      { modulo: 'comunicaciones', accion: 'MANAGE_COM' },
+      { modulo: 'notificaciones', accion: 'READ_NOT' },
+      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
+      { modulo: 'perfil', accion: 'READ' }
   ],
   pagos_operativo: [
       { modulo: 'pagos', accion: 'READ_PAGO' },
-      { modulo: 'pagos', accion: 'WRITE_PAGO' }
+      { modulo: 'pagos', accion: 'WRITE_PAGO' },
+      { modulo: 'notificaciones', accion: 'READ_NOT' },
+      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
+      { modulo: 'perfil', accion: 'READ' }
   ],
   pagos_admin: [
       { modulo: 'pagos', accion: 'READ_PAGO' },
       { modulo: 'pagos', accion: 'WRITE_PAGO' },
-      { modulo: 'pagos', accion: 'DELETE_PAGO' }
+      { modulo: 'pagos', accion: 'DELETE_PAGO' },
+      { modulo: 'notificaciones', accion: 'READ_NOT' },
+      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
+      { modulo: 'perfil', accion: 'READ' }
+  ],
+  notificaciones_user: [
+      { modulo: 'notificaciones', accion: 'READ_NOT' },
+      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
+      { modulo: 'perfil', accion: 'READ' }
   ],
   conformidades_operativo: [
       { modulo: 'conformidades', accion: 'READ' },
