@@ -68,6 +68,15 @@ const PERMISSION_PRESETS = {
       { modulo: 'notificaciones', accion: 'WRITE_NOT' },
       { modulo: 'perfil', accion: 'READ' }
   ],
+  conformidades_operativo: [
+      { modulo: 'conformidades', accion: 'READ' },
+      { modulo: 'conformidades', accion: 'WRITE' }
+  ],
+  conformidades_admin: [
+      { modulo: 'conformidades', accion: 'READ' },
+      { modulo: 'conformidades', accion: 'WRITE' },
+      { modulo: 'conformidades', accion: 'DELETE' }
+  ],
   admin_total: [
       { modulo: 'tutelas', accion: 'READ' }, 
       { modulo: 'tutelas', accion: 'WRITE' }, 
@@ -85,9 +94,9 @@ const PERMISSION_PRESETS = {
       { modulo: 'pagos', accion: 'READ_PAGO' },
       { modulo: 'pagos', accion: 'WRITE_PAGO' },
       { modulo: 'pagos', accion: 'DELETE_PAGO' },
-      { modulo: 'notificaciones', accion: 'READ_NOT' },
-      { modulo: 'notificaciones', accion: 'WRITE_NOT' },
-      { modulo: 'perfil', accion: 'READ' }
+      { modulo: 'conformidades', accion: 'READ' },
+      { modulo: 'conformidades', accion: 'WRITE' },
+      { modulo: 'conformidades', accion: 'DELETE' }
   ]
 };
 

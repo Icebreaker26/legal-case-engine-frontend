@@ -1,0 +1,35 @@
+import apiService from '../services/apiService';
+
+const conformidadesService = {
+  getAll: () => apiService.get('/conformidades'),
+  getMy: () => apiService.get('/conformidades/mis-conformidades'),
+  create: (data) => apiService.post('/conformidades', data),
+  getStats: (entidadId) => apiService.get('/conformidades/stats', { params: entidadId ? { entidad_id: entidadId } : {} }),
+  getEstados: () => apiService.get('/conformidades/estados'),
+  getInactivosEstados: () => apiService.get('/conformidades/estados/inactivos'),
+  crearEstado: (data) => apiService.post('/conformidades/estados', data),
+  actualizarEstado: (id, data) => apiService.patch(`/conformidades/estados/${id}`, data),
+  eliminarEstado: (id) => apiService.delete(`/conformidades/estados/${id}`),
+  recuperarEstado: (id) => apiService.patch(`/conformidades/estados/${id}/recuperar`),
+  getGrupos: () => apiService.get('/conformidades/grupos'),
+  getEntidades: () => apiService.get('/conformidades/entidades'),
+  getInactivosEntidades: () => apiService.get('/conformidades/entidades/inactivas'),
+  crearEntidad: (data) => apiService.post('/conformidades/entidades', data),
+  actualizarEntidad: (id, data) => apiService.patch(`/conformidades/entidades/${id}`, data),
+  eliminarEntidad: (id) => apiService.delete(`/conformidades/entidades/${id}`),
+  recuperarEntidad: (id) => apiService.patch(`/conformidades/entidades/${id}/recuperar`),
+  getProyectos: () => apiService.get('/conformidades/proyectos'),
+  crearProyecto: (data) => apiService.post('/conformidades/proyectos', data),
+  actualizarProyecto: (id, data) => apiService.patch(`/conformidades/proyectos/${id}`, data),
+  eliminarProyecto: (id) => apiService.delete(`/conformidades/proyectos/${id}`),
+  getContratos: () => apiService.get('/conformidades/contratos'),
+  crearContrato: (data) => apiService.post('/conformidades/contratos', data),
+  actualizarContrato: (id, data) => apiService.patch(`/conformidades/contratos/${id}`, data),
+  eliminarContrato: (id) => apiService.delete(`/conformidades/contratos/${id}`),
+  assignGrupo: (id, grupo_id) => apiService.post(`/conformidades/${id}/grupos`, { grupo_id }),
+  removeGrupo: (id, grupo_id) => apiService.delete(`/conformidades/${id}/grupos/${grupo_id}`),
+  updateEstado: (id, data) => apiService.patch(`/conformidades/${id}/estado`, data),
+  getTrazabilidad: (id) => apiService.get(`/conformidades/${id}/trazabilidad`),
+};
+
+export default conformidadesService;

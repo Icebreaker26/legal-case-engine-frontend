@@ -145,11 +145,33 @@ function App() {
               <Route path="manager" element={<ManagerDashboard />} />
               <Route path="equipos" element={<GestorEquipos />} />
             </Route>
+
+            {/* Nuevo módulo de conformidades */}
+            <Route path="/conformidades" element={
+              <ProtectedRoute>
+                <ConformidadesLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<ListaConformidades />} />
+              <Route path="nueva" element={<NuevaSolicitudConformidad />} />
+              <Route path="dashboard" element={<DashboardConformidades />} />
+              <Route path="gestion" element={<GestionEstadosYGruposConformidades />} />
+              <Route path=":id" element={<DetalleConformidad />} />
+            </Route>
           </Routes>
         </ThemeProvider>
       </BrowserRouter>
     </AuthProvider>
   );
 }
+
+// ... imports ...
+
+import ConformidadesLayout from './modules/conformidades/components/ConformidadesLayout';
+import ListaConformidades from './modules/conformidades/pages/ListaConformidades';
+import DashboardConformidades from './modules/conformidades/pages/DashboardConformidades';
+import DetalleConformidad from './modules/conformidades/pages/DetalleConformidad';
+import NuevaSolicitudConformidad from './modules/conformidades/pages/NuevaSolicitudConformidad';
+import GestionEstadosYGruposConformidades from './modules/conformidades/pages/GestionEstadosYGruposConformidades';
 
 export default App;
