@@ -44,6 +44,15 @@ export default function ModuleSelector() {
       hoverGlow: 'hover:border-sky-500 hover:shadow-[0_0_25px_-5px_rgba(56,189,248,0.5)]'
     },
     {
+      id: 'conformidades',
+      name: 'Módulo Conformidades',
+      description: 'Gestión y trazabilidad de conformidades',
+      path: '/conformidades',
+      icon: <Shield size={40} className="text-emerald-400" />,
+      permission: ['conformidades', 'READ'],
+      hoverGlow: 'hover:border-emerald-500 hover:shadow-[0_0_25px_-5px_rgba(16,185,129,0.5)]'
+    },
+    {
       id: 'perfil',
       name: 'Mi Perfil',
       description: 'Ver mis tareas y actividades asignadas',
