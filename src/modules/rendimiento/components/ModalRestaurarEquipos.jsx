@@ -12,14 +12,14 @@ export default function ModalRestaurarEquipos({ onClose, onRefresh }) {
 
   const fetchEliminados = async () => {
     try {
-      const { data } = await apiService.get('/rendimiento/equipos/eliminados');
+      const { data } = await apiService.get('/core/areas/inactivas');
       setEquiposEliminados(data);
     } catch (error) { toast.error('Error al cargar equipos eliminados'); }
   };
 
   const handleRestaurar = async (id) => {
     try {
-      await apiService.patch(`/rendimiento/equipos/${id}/restaurar`);
+      await apiService.patch(`/core/areas/${id}/recuperar`);
       fetchEliminados();
       onRefresh();
       toast.success('Equipo restaurado');

@@ -31,7 +31,7 @@ export default function ManagerDashboard() {
 
   const fetchEquipos = async () => {
     try {
-      const { data } = await apiService.get('/rendimiento/equipos');
+      const { data } = await apiService.get('/core/areas');
       setEquipos(data);
       if (data.length > 0) {
         setSelectedEquipo(data[0].id);
@@ -66,7 +66,7 @@ export default function ManagerDashboard() {
   useEffect(() => {
       if (activeProfessional) {
           const prof = teamData.find(d => d.profesional === activeProfessional);
-          if (prof) fetchObjetivosPorUsuario(prof.usuario_id);
+          if (prof) fetchObjetivosPorUsuario(prof.usuario_uuid);
           else setObjetivos([]);
       } else {
           // Si no hay profesional activo, recargar todos los objetivos del equipo seleccionado

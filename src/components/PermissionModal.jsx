@@ -22,25 +22,25 @@ export default function PermissionModal({ user, permissions, onClose, onAsignar,
                 const rol = e.target.value;
                 if (rol && presets[rol]) {
                     try {
-                        await apiService.post('/permisos/asignar-masivo', {
-                            usuario_id: user.id,
-                            permisos: presets[rol]
-                        });
+                    await apiService.post('/permisos/asignar-masivo', {
+                        usuario_uuid: user.id,
+                        permisos: presets[rol]
+                    });
 
-                        // 2. Si el rol es 'admin', actualizar is_admin en DB
-                        if (rol === 'admin_total') {
-                            try {
-                                await apiService.patch(`/admin/usuarios/${user.id}`, { is_admin: true });
-                                toast.success('Rol de administrador asignado y privilegios elevados');
-                            } catch (error) { toast.error('Error al elevar privilegios de administrador'); }
-                        } else {
-                            toast.success(`Rol ${rol} asignado con éxito`);
-                        }
-                        // Refrescar permisos
-                        onAsignar(user.id, null, null); 
+                    // 2. Si el rol es 'admin', actualizar is_admin en DB
+                    if (rol === 'admin_total') {
+                        try {
+                            await apiService.patch(`/admin/usuarios/${user.id}`, { is_admin: true });
+                            toast.success('Rol de administrador asignado y privilegios elevados');
+                        } catch (error) { toast.error('Error al elevar privilegios de administrador'); }
+                    } else {
+                        toast.success(`Rol ${rol} asignado con éxito`);
+                    }
+                    // Refrescar permisos
+                    onAsignar(user.id, null, null); 
                     } catch (error) { toast.error('Error al asignar el rol'); }
-                }
-            }}
+                    }
+                    }}
             defaultValue=""
             >
                 <option value="" disabled className="bg-[#050A05]">-- Seleccionar Rol --</option>

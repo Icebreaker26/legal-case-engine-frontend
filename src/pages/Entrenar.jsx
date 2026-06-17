@@ -4,6 +4,7 @@ import { tutelaService } from '../services/tutelaService';
 import apiService from '../services/apiService';
 import toast from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
+import SearchableSelect from '../modules/conformidades/components/SearchableSelect';
 
 export default function Entrenar() {
   const { theme } = useTheme();
@@ -25,7 +26,7 @@ export default function Entrenar() {
 
   const fetchCategorias = async () => {
     try {
-      const { data } = await apiService.get('/tutelas/categorias');
+      const { data } = await apiService.get('/core/categorias');
       setCategorias(data);
     } catch (err) {
       toast.error('Error cargando categorías');
@@ -81,7 +82,8 @@ export default function Entrenar() {
 
   const textClass = isDark ? 'text-white' : 'text-gray-800';
   const mutedTextClass = isDark ? 'text-slate-400' : 'text-gray-600';
-  const inputClass = `w-full px-4 py-2 border rounded-lg text-sm outline-none transition-colors ${isDark ? 'bg-[#020617] border-slate-700 text-white focus:border-sky-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`;
+  const inputClass = `w-full p-3 border rounded-lg text-sm outline-none transition-colors ${isDark ? 'bg-[#020617] border-slate-700 text-white focus:border-sky-500' : 'bg-white border-gray-200 text-gray-900 focus:border-blue-500'}`;
+  const labelClass = `block text-sm font-semibold mb-2 ${isDark ? 'text-slate-300' : 'text-gray-700'}`;
 
   return (
     <div className={`max-w-4xl mx-auto pb-12 animate-fade-in ${isDark ? 'text-slate-200' : 'text-gray-900'}`}>
@@ -107,22 +109,18 @@ export default function Entrenar() {
         <div className={`p-8 rounded-xl border shadow-sm space-y-6 ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'}`}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className={`block text-sm font-bold mb-2 ${textClass}`}>Categoría Jurídica</label>
-              <select 
-                className={inputClass}
-                value={formData.categoria}
-                onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-                required
-              >
-                <option value="" className={isDark ? 'bg-[#020617]' : 'bg-white'}>Seleccione una categoría...</option>
-                {categorias.map(c => (
-                  <option key={c.id} value={c.nombre} className={isDark ? 'bg-[#020617]' : 'bg-white'}>{c.nombre}</option>
-                ))}
-              </select>
+              <label className={labelClass}>Categoría Jurídica</label>
+              <SearchableSelect 
+                  variant="white"
+                  options={categorias} 
+                  value={formData.categoria} 
+                  onChange={nombre => setFormData({...formData, categoria: nombre})} 
+                  placeholder="Seleccione una categoría..." 
+              />
             </div>
             
             <div>
-              <label className={`block text-sm font-bold mb-2 ${textClass}`}>Título de Referencia</label>
+              <label className={labelClass}>Título de Referencia</label>
               <input 
                 type="text"
                 placeholder="Ej: Contestación Radicado 2024-001..."
@@ -135,7 +133,7 @@ export default function Entrenar() {
           </div>
 
           <div>
-            <label className={`block text-sm font-bold mb-4 ${textClass}`}>Método de Carga</label>
+            <label className={labelClass}>Método de Carga</label>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className={`border-2 border-dashed p-6 rounded-xl text-center cursor-pointer transition-all ${file ? 'border-emerald-500 bg-emerald-900/10' : (isDark ? 'border-slate-700 bg-[#020617]' : 'border-gray-200 bg-white')}`}>
                 <input type="file" id="pdf-train" className="hidden" accept=".pdf" onChange={handleFileChange} />

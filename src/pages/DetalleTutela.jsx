@@ -73,7 +73,17 @@ export default function DetalleTutela() {
 
   // Estados para edición y eliminación
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ radicado: '', accionante: '', sharepoint_link: '', categoria: '', responsables_ids: [] });
+  const [editForm, setEditForm] = useState({ 
+      radicado: '', 
+      accionante: '', 
+      sharepoint_link: '', 
+      derecho_vulnerado: '', 
+      grupo_id: '', 
+      responsable_id: '', 
+      prioridad: 'Media', 
+      dias_termino: 2,
+      responsables_ids: [] 
+  });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [confirmInput, setConfirmInput] = useState('');
 
@@ -467,40 +477,40 @@ export default function DetalleTutela() {
                         <input className="border p-2 rounded text-sm w-full" value={editForm.radicado} onChange={e => setEditForm({...editForm, radicado: e.target.value})} placeholder="Radicado" />
                         <input className="border p-2 rounded text-sm w-full" value={editForm.accionante} onChange={e => setEditForm({...editForm, accionante: e.target.value})} placeholder="Accionante" />
                         <input className="border p-2 rounded text-sm w-full" value={editForm.sharepoint_link} onChange={e => setEditForm({...editForm, sharepoint_link: e.target.value})} placeholder="Link de SharePoint" />
-                        
+                        <input className="border p-2 rounded text-sm w-full" value={editForm.derecho_vulnerado} onChange={e => setEditForm({...editForm, derecho_vulnerado: e.target.value})} placeholder="Derecho Vulnerado" />
+
+                        <div className="grid grid-cols-2 gap-2">
+                           <select className="border p-2 rounded text-sm" value={editForm.grupo_id} onChange={e => setEditForm({...editForm, grupo_id: e.target.value})}>
+                             <option value="">Seleccionar Grupo</option>
+                             {areasDinamicas.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
+                           </select>
+                           <select className="border p-2 rounded text-sm" value={editForm.prioridad} onChange={e => setEditForm({...editForm, prioridad: e.target.value})}>
+                             <option value="Baja">Baja</option>
+                             <option value="Media">Media</option>
+                             <option value="Alta">Alta</option>
+                           </select>
+                        </div>
+                        <input type="number" className="border p-2 rounded text-sm w-full" value={editForm.dias_termino} onChange={e => setEditForm({...editForm, dias_termino: e.target.value})} placeholder="Días término" />
+
                         <div className="mt-2">
-                            <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Responsables:</label>
-                            <input 
-                                type="text" 
-                                placeholder="Buscar abogado..." 
-                                className="w-full border-b border-gray-200 p-2 text-xs mb-2 outline-none"
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                            <div className="max-h-32 overflow-y-auto border p-2 rounded text-sm w-full bg-white">
-                                {allAbogados
-                                  .filter(a => a.nombre.toLowerCase().includes(searchTerm.toLowerCase()))
-                                  .map(abogado => (
-                                    <label key={abogado.id} className="flex items-center gap-2 p-1 hover:bg-gray-50 cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
-                                            checked={editForm.responsables_ids.includes(abogado.id)}
-                                            onChange={(e) => {
-                                                const ids = e.target.checked 
-                                                    ? [...editForm.responsables_ids, abogado.id]
-                                                    : editForm.responsables_ids.filter(id => id !== abogado.id);
-                                                setEditForm({...editForm, responsables_ids: ids});
-                                            }}
-                                        />
-                                        {abogado.nombre}
-                                    </label>
-                                ))}
-                            </div>
+                            <label className="text-[10px] font-bold uppercase text-gray-400 mb-1 block">Responsable Principal:</label>
+                            <select className="border p-2 rounded text-sm w-full" value={editForm.responsable_id} onChange={e => setEditForm({...editForm, responsable_id: e.target.value})}>
+                                <option value="">Seleccionar Responsable...</option>
+                                {allAbogados.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+                            </select>
                         </div>
 
                         <button onClick={async () => { 
-                            await handleUpdateDatos(); 
-                            await handleUpdateResponsables(editForm.responsables_ids); 
-                        }} className="bg-green-600 text-white px-3 py-2 rounded text-sm w-full font-bold">Guardar</button>
+                            // Mapeo para enviar al backend
+                            const payload = {
+                                ...editForm,
+                                responsable_uuid: editForm.responsable_id // Mapeo solicitado por backend
+                            };
+                            await tutelaService.actualizarDatos(id, payload);
+                            toast.success('Datos actualizados');
+                            setIsEditing(false);
+                            fetchData();
+                        }} className="bg-green-600 text-white px-3 py-2 rounded text-sm w-full font-bold mt-2">Guardar</button>
                     </div>
                 ) : (
                     <>
@@ -524,19 +534,25 @@ export default function DetalleTutela() {
                                 radicado: tutela.radicado, 
                                 accionante: tutela.accionante, 
                                 sharepoint_link: tutela.sharepoint_link || '',
+                                derecho_vulnerado: tutela.derecho_vulnerado || '',
+                                grupo_id: tutela.grupo_id || '',
+                                responsable_id: tutela.responsable_uuid || '',
+                                prioridad: tutela.prioridad,
+                                dias_termino: tutela.dias_termino,
                                 responsables_ids: tutela.responsables_ids || []
                             }); 
                         }} className="text-gray-400 hover:text-blue-600"><Edit size={16}/></button>
                     </>
-                )}
+                )
+                }
             </div>
             
             <div className="space-y-4">
-              <InfoItem icon={<User size={16}/>} label="Responsables" value={tutela.responsables_nombres?.join(', ') || 'Sin asignar'} />
+              <InfoItem icon={<User size={16}/>} label="Responsables" value={tutela.responsables_nombres?.length > 0 ? tutela.responsables_nombres.join(', ') : (allAbogados.find(a => a.id === tutela.responsable_uuid)?.nombre || 'Sin asignar')} />
               <InfoItem icon={<FileText size={16}/>} label="Derecho" value={tutela.derecho_vulnerado || 'General'} />
               <InfoItem icon={<Clock size={16}/>} label="Vencimiento" value={new Date(tutela.fecha_vencimiento).toLocaleDateString()} />
               <InfoItem icon={<ShieldCheck size={16}/>} label="Estado" value={tutela.estado} />
-              <InfoItem icon={<Building size={16}/>} label="Área" value={tutela.area_responsable || 'General'} />
+              <InfoItem icon={<Building size={16}/>} label="Área" value={tutela.grupo_nombre || 'General'} />
               {tutela.sharepoint_link && <InfoItem icon={<LinkIcon size={16}/>} label="Documentación" value="SharePoint Vinculado" />}
             </div>
           </div>
@@ -757,34 +773,34 @@ export default function DetalleTutela() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {loadingSugerencias ? (
-                <div className="col-span-2 p-8 text-center text-gray-400 text-sm italic">Buscando precedentes...</div>
+              <div className="col-span-2 p-8 text-center text-gray-400 text-sm italic">Buscando precedentes...</div>
               ) : sugerencias.length > 0 ? (
-                sugerencias.map((sug, idx) => (
-                  <div key={idx} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                    <span className="text-[10px] font-bold text-[#002E6D] uppercase tracking-wider block mb-2">{sug.categoria}</span>
-                    <h4 className="font-bold text-gray-800 text-sm mb-2">{sug.titulo_referencia}</h4>
-                    <p className="text-sm text-gray-500 italic mb-4">"{sug.contenido_legal}"</p>
-                    <div className="flex flex-wrap gap-2">
-                        <button 
-                          onClick={() => {
-                            navigator.clipboard.writeText(sug.contenido_legal);
-                            toast.success('Copiado');
-                          }}
-                          className="text-[#002E6D] text-[11px] font-bold flex items-center gap-1 hover:underline"
-                        >
-                          Copiar Argumento <ChevronRight size={12} />
-                        </button>
-                        {sug.documento_id && (
-                            <button 
-                              onClick={() => handleVerDocumentoCompleto(sug)}
-                              className="text-gray-500 text-[11px] font-bold flex items-center gap-1 hover:text-[#002E6D] transition-colors ml-auto"
-                            >
-                              <Maximize2 size={12} /> Ver Contexto Completo
-                            </button>
-                        )}
-                    </div>
+              sugerencias.map((sug, idx) => (
+                <div key={sug.documento_id ? `${sug.documento_id}-${idx}` : idx} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <span className="text-[10px] font-bold text-[#002E6D] uppercase tracking-wider block mb-2">{sug.categoria}</span>
+                  <h4 className="font-bold text-gray-800 text-sm mb-2">{sug.titulo_referencia}</h4>
+                  <p className="text-sm text-gray-500 italic mb-4">"{sug.contenido_legal}"</p>
+                  <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(sug.contenido_legal);
+                          toast.success('Copiado');
+                        }}
+                        className="text-[#002E6D] text-[11px] font-bold flex items-center gap-1 hover:underline"
+                      >
+                        Copiar Argumento <ChevronRight size={12} />
+                      </button>
+                      {sug.documento_id && (
+                          <button 
+                            onClick={() => handleVerDocumentoCompleto(sug)}
+                            className="text-gray-500 text-[11px] font-bold flex items-center gap-1 hover:text-[#002E6D] transition-colors ml-auto"
+                          >
+                            <Maximize2 size={12} /> Ver Contexto Completo
+                          </button>
+                      )}
                   </div>
-                ))
+                </div>
+              ))
               ) : (
                 <div className="col-span-2 bg-gray-50 border border-dashed border-gray-300 p-8 text-center rounded-xl">
                   <p className="text-xs text-gray-400">Sin precedentes similares en la memoria.</p>

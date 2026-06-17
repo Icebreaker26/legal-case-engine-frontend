@@ -23,7 +23,7 @@ export default function TeamManagementModal({ equipo, onClose, onRefresh }) {
     try {
       await apiService.post('/rendimiento/equipos/asignar', { 
         equipo_id: equipo.id, 
-        usuario_id: parseInt(selectedAbogado) 
+        usuario_uuid: selectedAbogado
       });
       toast.success('Profesional asignado');
       onRefresh();

@@ -106,7 +106,7 @@ export default function DashboardRendimiento() {
       <div className="space-y-6">
         {objetivosFiltrados.map(obj => {
           // Debugging
-          console.log('Procesando objetivo:', obj.titulo, 'Realizadas:', obj.acciones_realizadas, 'Meta:', obj.meta_acciones);
+
           
           const realizadas = Number(obj.acciones_realizadas) || 0;
           const meta = Number(obj.meta_acciones) || 1;

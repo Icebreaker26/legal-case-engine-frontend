@@ -123,7 +123,7 @@ export default function GestionUsuarios() {
   const asignarPermiso = async (userId, modulo, accion) => {
     try {
       const response = await apiService.post('/permisos/asignar', { 
-          usuario_id: userId, modulo, accion 
+          usuario_uuid: userId, modulo, accion 
       }, {
           validateStatus: (status) => status >= 200 && status < 300 || status === 409
       });
@@ -136,7 +136,7 @@ export default function GestionUsuarios() {
 
   const revocarPermiso = async (userId, modulo, accion) => {
     try {
-      await apiService.delete('/permisos/revocar', { data: { usuario_id: userId, modulo, accion } });
+      await apiService.delete('/permisos/revocar', { data: { usuario_uuid: userId, modulo, accion } });
       toast.success('Permiso revocado');
       fetchUserPermissions(userId);
     } catch (error) { toast.error('Error al revocar'); }
