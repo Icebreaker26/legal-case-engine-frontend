@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+import { useLock } from '../hooks/useLock';
 import { 
   ArrowLeft, 
   User, 
@@ -33,6 +34,7 @@ export default function DetalleTutela() {
   const { theme } = useTheme();
   const isDark = theme === 'dark-pro';
   const { id } = useParams();
+  const { lockInfo, isLockedByMe, lock, unlock } = useLock(id);
   const navigate = useNavigate();
   const [tutela, setTutela] = useState(null);
   const [sugerencias, setSugerencias] = useState([]);
@@ -232,8 +234,12 @@ export default function DetalleTutela() {
   }, [fetchData]);
 
   const handleGenerarIA = async () => {
-    // Si ya hay contenido, solo abrimos el modal
+    // Si ya hay contenido, solo abrimos el modal e intentamos bloquear
     if (aiDraftContent) {
+        if (!isLockedByMe) {
+            const success = await lock();
+            if (!success) return; // Si no pudo bloquear, no abre
+        }
         setAiDraftModalOpen(true);
         return;
     }
@@ -247,6 +253,9 @@ export default function DetalleTutela() {
     try {
       const result = await tutelaService.generarBorradorIA(id);
       setAiDraftContent(result.borrador_completo);
+      const success = await lock(); // Intentar bloquear al generar
+      if (!success) return; 
+      
       setAiDraftModalOpen(true);
       toast.success(result.status === 'cached' ? 'Cargando borrador guardado' : 'Borrador generado con éxito');
     } catch (error) {
@@ -258,6 +267,11 @@ export default function DetalleTutela() {
     } finally {
       setLoadingAi(false);
     }
+  };
+
+  const handleCloseAiDraft = async () => {
+      if (isLockedByMe) await unlock();
+      setAiDraftModalOpen(false);
   };
 
   const handleGuardarBorradorManual = async () => {
@@ -834,7 +848,7 @@ export default function DetalleTutela() {
                             <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Generado con GPT-4o + Precedentes Internos</p>
                         </div>
                     </div>
-                    <button onClick={() => setAiDraftModalOpen(false)} className="p-3 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all group">
+                    <button onClick={handleCloseAiDraft} className="p-3 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all group">
                         <X size={28} className="group-hover:rotate-90 transition-transform" />
                     </button>
                 </div>
@@ -855,6 +869,7 @@ export default function DetalleTutela() {
                             value={aiDraftContent}
                             onChange={(e) => setAiDraftContent(e.target.value)}
                             placeholder="El borrador aparecerá aquí..."
+                            disabled={!isLockedByMe}
                         />
                     </div>
 
