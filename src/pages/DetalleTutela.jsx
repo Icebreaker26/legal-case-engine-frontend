@@ -67,6 +67,29 @@ export default function DetalleTutela() {
   const [allAbogados, setAllAbogados] = useState([]);
   const [selectedAbogados, setSelectedAbogados] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('trazabilidad');
+  const [argumentos, setArgumentos] = useState([]);
+  const [nuevoArgumento, setNuevoArgumento] = useState({ titulo: '', contenido: '' });
+  const [argEnEdicion, setArgEnEdicion] = useState(null);
+
+  const handleEliminarArgumento = async (argId) => {
+    if (!window.confirm('¿Estás seguro de eliminar este argumento?')) return;
+    try {
+        await apiService.delete(`/tutelas/${id}/argumentos/${argId}`);
+        setArgumentos(argumentos.filter(a => a.id !== argId));
+        toast.success('Argumento eliminado');
+    } catch (error) { toast.error('Error al eliminar argumento'); }
+  };
+
+  const handleActualizarArgumento = async (e) => {
+    e.preventDefault();
+    try {
+        await apiService.patch(`/tutelas/${id}/argumentos/${argEnEdicion.id}`, argEnEdicion);
+        setArgumentos(argumentos.map(a => a.id === argEnEdicion.id ? argEnEdicion : a));
+        setArgEnEdicion(null);
+        toast.success('Argumento actualizado');
+    } catch (error) { toast.error('Error al actualizar argumento'); }
+  };
 
   // Estado para validación de calidad
   const [checklistModalOpen, setChecklistModalOpen] = useState(false);
@@ -114,6 +137,13 @@ export default function DetalleTutela() {
     dias_seguimiento: ''
   });
 
+  const fetchArgumentos = useCallback(async () => {
+    try {
+        const { data } = await apiService.get(`/tutelas/${id}/argumentos`);
+        setArgumentos(data);
+    } catch (error) { toast.error('Error al cargar argumentos'); }
+  }, [id]);
+
   const fetchData = useCallback(async () => {
     try {
       const allTutelas = await tutelaService.listar();
@@ -144,6 +174,9 @@ export default function DetalleTutela() {
       setRequerimientos(reqs);
       setAreasDinamicas(areas.filter(a => a.activo));
       setAllAbogados(abogados.data || []);
+      
+      // Cargar argumentos personalizados
+      await fetchArgumentos();
 
     } catch (error) {
       toast.error('Error al cargar la información');
@@ -384,6 +417,26 @@ export default function DetalleTutela() {
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleGuardarBorrador = async () => {
+    try {
+        await apiService.patch(`/tutelas/${id}/borrador`, { contestacion_generada: aiDraftContent });
+        toast.success('Borrador guardado');
+        await unlock();
+    } catch (error) {
+        toast.error('Error al guardar el borrador');
+    }
+  };
+
+  const handleAddArgumento = async (e) => {
+    e.preventDefault();
+    try {
+        const { data } = await apiService.post(`/tutelas/${id}/argumentos`, nuevoArgumento);
+        setArgumentos([data, ...argumentos]);
+        setNuevoArgumento({ titulo: '', contenido: '' });
+        toast.success('Argumento guardado');
+    } catch (error) { toast.error('Error al guardar argumento'); }
   };
 
   const handleAddLog = async (e) => {
@@ -703,45 +756,172 @@ export default function DetalleTutela() {
         </div>
 
         <div className="lg:col-span-8 space-y-8">
-          <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
-            <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                <History size={18} className="text-gray-400" /> Trazabilidad del Caso
-              </h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-6 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">
-                {historial.length === 0 ? (
-                  <p className="text-sm text-gray-400 italic pl-8">No hay registros de gestión aún.</p>
-                ) : historial.map((log) => (
-                  <div key={log.id} className="relative pl-10">
-                    <div className="absolute left-0 top-1 w-7 h-7 bg-white border-2 border-blue-500 rounded-full flex items-center justify-center z-10">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    </div>
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="text-xs font-bold text-[#002E6D] uppercase">
-                        {log.area_involucrada || 'Gestión'} • {log.responsable_nombre}
-                      </span>
-                      <span className="text-[10px] text-gray-400 font-medium">
-                        {new Date(log.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <div className="flex flex-col h-auto w-full text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100 whitespace-pre-wrap break-words">
-                        {log.accion}
+          {/* Pestañas de Navegación */}
+          <div className="flex gap-4 mb-4 border-b border-gray-200">
+              <button onClick={() => setActiveTab('trazabilidad')} className={`pb-2 text-sm font-bold ${activeTab === 'trazabilidad' ? 'text-[#002E6D] border-b-2 border-[#002E6D]' : 'text-gray-500'}`}>Trazabilidad</button>
+              <button onClick={() => setActiveTab('borrador')} className={`pb-2 text-sm font-bold ${activeTab === 'borrador' ? 'text-[#002E6D] border-b-2 border-[#002E6D]' : 'text-gray-500'}`}>Borrador Manual</button>
+          </div>
+
+          {activeTab === 'borrador' ? (
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                  <div className="flex justify-between items-center mb-4">
+                      <h3 className="font-bold text-gray-800">Borrador de Contestación Manual</h3>
+                      <div className="flex gap-2">
+                        <button 
+                            onClick={() => {
+                                const prompt = `Actúa como abogado experto en derecho constitucional y administrativo, representando los intereses de Enel como entidad accionada. Redacta una contestación de tutela formal, profesional y defensiva basada en el siguiente caso y contexto legal.
+
+CONTEXTO DEL CASO:
+- Radicado: ${tutela.radicado}
+- Accionante: ${tutela.accionante}
+- Derecho Vulnerado: ${tutela.derecho_vulnerado}
+- Hechos: ${tutela.contenido_original}
+
+ARGUMENTOS LEGALES FIJOS (Defensa de Enel):
+${aiConfig.legal_notes?.map(n => `- ${n.titulo}: ${n.contenido}`).join('\n') || 'Ninguno.'}
+
+PRECEDENTES/SUGERENCIAS (RAG):
+${sugerencias.map(s => `- ${s.titulo_referencia} (${s.categoria}): ${s.contenido_legal}`).join('\n') || 'Ninguno.'}
+
+ARGUMENTOS PERSONALIZADOS:
+${argumentos.map(a => `- ${a.titulo}: ${a.contenido}`).join('\n') || 'Ninguno.'}
+
+INSTRUCCIONES DE REDACCIÓN:
+1. Mantén un tono formal, claro y jurídico, defendiendo la posición de Enel.
+2. PRIORIDAD CRÍTICA: Presta especial atención a la sección "ARGUMENTOS PERSONALIZADOS". Estos contienen las claves fundamentales para refutar los hechos del accionante. Debes integrarlos como el núcleo central de la defensa y la refutación.
+3. Organiza la respuesta en: Encabezado, Hechos (desde la perspectiva de la entidad), Fundamentos de Derecho (usando los argumentos arriba para sustentar la defensa), Pretensiones (solicitando la improcedencia o denegación de las pretensiones del accionante) y Conclusión.
+4. Asegúrate de citar los precedentes proporcionados si aplican para fortalecer la defensa.`;
+                                navigator.clipboard.writeText(prompt);
+                                toast.success('Prompt completo copiado para IA externa');
+                            }}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 transition-colors"
+                        >
+                            Copiar Prompt para IA
+                        </button>
+                        {!isLockedByMe ? (
+                            <button onClick={lock} className="px-4 py-2 bg-[#002E6D] text-white rounded-lg text-xs font-bold">Editar Borrador</button>
+                        ) : (
+                            <button onClick={handleGuardarBorrador} className="px-4 py-2 bg-green-600 text-white rounded-lg text-xs font-bold">Guardar y Liberar</button>
+                        )}
                       </div>
-                      {log.fecha_seguimiento && (
-                        <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-orange-600 bg-orange-50 w-fit px-2 py-1 rounded-md border border-orange-100">
-                          <AlertCircle size={10} />
-                          REVISAR EL: {new Date(log.fecha_seguimiento).toLocaleDateString()}
+                  </div>
+                  
+                  {isLockedByMe && (
+                      <div className="flex flex-wrap gap-2 mb-2 p-2 bg-gray-100 rounded-lg">
+                          <button onClick={() => setAiDraftContent(aiDraftContent + ` ${tutela.accionante} `)} className="text-[10px] bg-white px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 font-bold">[Accionante]</button>
+                          <button onClick={() => setAiDraftContent(aiDraftContent + ` ${tutela.radicado} `)} className="text-[10px] bg-white px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 font-bold">[Radicado]</button>
+                          <button onClick={() => setAiDraftContent(aiDraftContent + ` ${tutela.derecho_vulnerado} `)} className="text-[10px] bg-white px-2 py-1 rounded border border-gray-300 hover:bg-gray-50 font-bold">[Derecho]</button>
+                          {aiConfig.legal_notes?.map(nota => (
+                              <button key={nota.id} onClick={() => setAiDraftContent(aiDraftContent + `\n\n${nota.contenido}\n\n`)} className="text-[10px] bg-blue-50 text-[#002E6D] px-2 py-1 rounded border border-blue-200 hover:bg-blue-100 font-bold">[{nota.titulo}]</button>
+                          ))}
+                      </div>
+                  )}
+
+                  <textarea 
+                      className="w-full h-96 p-4 border border-gray-200 rounded-lg text-sm font-serif"
+                      value={aiDraftContent}
+                      onChange={(e) => setAiDraftContent(e.target.value)}
+                      disabled={!isLockedByMe}
+                      placeholder="Escribe aquí tu borrador..."
+                  />
+
+                  <div className="mt-8 border-t border-gray-200 pt-6">
+                      <h4 className="font-bold text-gray-800 mb-4 text-sm">Biblioteca de Argumentos</h4>
+                      <div className="grid grid-cols-1 gap-3 mb-6">
+                        {argumentos.map(arg => (
+                            <div key={arg.id} className="bg-white border border-purple-100 rounded-lg p-3 shadow-sm hover:border-purple-300 transition-all group">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-xs font-bold text-purple-900">{arg.titulo}</span>
+                                    <div className="flex gap-1">
+                                        <button onClick={() => setAiDraftContent(aiDraftContent + `\n\n${arg.contenido}\n\n`)} className="text-[10px] bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-700">Insertar</button>
+                                        <button onClick={() => setArgEnEdicion(arg)} className="text-[10px] bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300"><Edit size={10} /></button>
+                                        <button onClick={() => handleEliminarArgumento(arg.id)} className="text-[10px] bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200"><Trash2 size={10} /></button>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-600 line-clamp-2 bg-gray-50 p-2 rounded">{arg.contenido}</p>
+                            </div>
+                        ))}
+                      </div>
+                      
+                      {argEnEdicion && (
+                        <div className="fixed inset-0 bg-black/50 z-[210] flex items-center justify-center p-4">
+                            <div className="bg-white p-6 rounded-xl w-full max-w-sm shadow-2xl">
+                                <h4 className="font-bold mb-4">Editar Argumento</h4>
+                                <form onSubmit={handleActualizarArgumento} className="space-y-3">
+                                    <input className="w-full border border-gray-300 p-2 rounded text-xs" value={argEnEdicion.titulo} onChange={e => setArgEnEdicion({...argEnEdicion, titulo: e.target.value})} required />
+                                    <textarea className="w-full border border-gray-300 p-2 rounded text-xs h-32" value={argEnEdicion.contenido} onChange={e => setArgEnEdicion({...argEnEdicion, contenido: e.target.value})} required />
+                                    <div className="flex gap-2">
+                                        <button type="button" onClick={() => setArgEnEdicion(null)} className="flex-1 bg-gray-200 py-2 rounded text-xs hover:bg-gray-300">Cancelar</button>
+                                        <button type="submit" className="flex-1 bg-purple-600 text-white py-2 rounded text-xs font-bold hover:bg-purple-700">Guardar</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                       )}
-                    </div>
+
+                      <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                        <h4 className="font-bold text-gray-800 mb-3 text-xs uppercase">Nuevo Argumento</h4>
+                        <form onSubmit={handleAddArgumento} className="space-y-3">
+                            <input 
+                                className="w-full border border-gray-300 p-2 rounded text-xs" 
+                                placeholder="Título descriptivo del argumento" 
+                                value={nuevoArgumento.titulo}
+                                onChange={e => setNuevoArgumento({...nuevoArgumento, titulo: e.target.value})}
+                                required
+                            />
+                            <textarea 
+                                className="w-full border border-gray-300 p-3 rounded text-xs min-h-[120px]" 
+                                placeholder="Redacta aquí el contenido detallado del argumento legal..." 
+                                value={nuevoArgumento.contenido}
+                                onChange={e => setNuevoArgumento({...nuevoArgumento, contenido: e.target.value})}
+                                required
+                            />
+                            <button type="submit" className="w-full bg-purple-600 text-white py-2 rounded text-xs font-bold hover:bg-purple-700 transition-colors">Guardar Argumento</button>
+                        </form>
+                      </div>
                   </div>
-                ))}
+              </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div className="p-4 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <History size={18} className="text-gray-400" /> Trazabilidad del Caso
+                </h3>
+              </div>
+              <div className="p-6">
+                <div className="space-y-6 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-100">
+                  {historial.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic pl-8">No hay registros de gestión aún.</p>
+                  ) : historial.map((log) => (
+                    <div key={log.id} className="relative pl-10">
+                      <div className="absolute left-0 top-1 w-7 h-7 bg-white border-2 border-blue-500 rounded-full flex items-center justify-center z-10">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      </div>
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-xs font-bold text-[#002E6D] uppercase">
+                          {log.area_involucrada || 'Gestión'} • {log.responsable_nombre}
+                        </span>
+                        <span className="text-[10px] text-gray-400 font-medium">
+                          {new Date(log.created_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="relative">
+                        <div className="flex flex-col h-auto w-full text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg border border-gray-100 whitespace-pre-wrap break-words">
+                          {log.accion}
+                        </div>
+                        {log.fecha_seguimiento && (
+                          <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-orange-600 bg-orange-50 w-fit px-2 py-1 rounded-md border border-orange-100">
+                            <AlertCircle size={10} />
+                            REVISAR EL: {new Date(log.fecha_seguimiento).toLocaleDateString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
@@ -1046,39 +1226,7 @@ export default function DetalleTutela() {
             </div>
         </div>
       )}
-      {/* Modal de Checklist de Calidad */}
-      {checklistModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[180] flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl w-full max-w-sm p-8 shadow-2xl animate-scale-in">
-                <h3 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <CheckCircle className="text-blue-600" size={20} /> Validación de Calidad
-                </h3>
-                <div className="space-y-4 mb-8">
-                    {[{key: 'contestacion', label: '¿Contestación final adjunta?'}, {key: 'requerimientos', label: '¿Requerimientos respondidos?'}, {key: 'notificacion', label: '¿Prueba de envío cargada?'}].map(item => (
-                        <label key={item.key} className="flex items-center gap-3 cursor-pointer group">
-                            <input 
-                                type="checkbox" 
-                                checked={checklist[item.key]}
-                                onChange={() => setChecklist({...checklist, [item.key]: !checklist[item.key]})}
-                                className="w-5 h-5 accent-blue-600"
-                            />
-                            <span className="text-sm text-gray-700 font-medium group-hover:text-blue-700">{item.label}</span>
-                        </label>
-                    ))}
-                </div>
-                <div className="flex gap-3">
-                    <button onClick={() => setChecklistModalOpen(false)} className="flex-1 py-3 text-gray-500 font-bold text-sm hover:text-gray-700 uppercase tracking-widest">Cancelar</button>
-                    <button 
-                        onClick={() => proceedUpdateStatus(targetStatus)}
-                        disabled={!checklist.contestacion || !checklist.requerimientos || !checklist.notificacion}
-                        className="flex-1 py-3 bg-[#002E6D] text-white rounded-xl font-bold text-sm hover:bg-[#001d4a] disabled:bg-gray-300 transition-all uppercase tracking-widest"
-                    >
-                        Confirmar Cierre
-                    </button>
-                </div>
-            </div>
-        </div>
-      )}
+      {/* Fin de los Modales */}
     </div>
   );
 }
