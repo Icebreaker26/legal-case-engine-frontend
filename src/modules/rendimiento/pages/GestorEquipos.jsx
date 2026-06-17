@@ -20,7 +20,7 @@ export default function GestorEquipos() {
 
   const fetchEquipos = async () => {
     try {
-      const { data } = await apiService.get('/rendimiento/equipos');
+      const { data } = await apiService.get('/core/areas');
       setEquipos(data);
     } catch (error) { toast.error('Error al cargar equipos'); }
   };
@@ -29,7 +29,7 @@ export default function GestorEquipos() {
     e.preventDefault();
     if (!nuevoEquipoNombre.trim()) return;
     try {
-        await apiService.post('/rendimiento/equipos', { nombre: nuevoEquipoNombre });
+        await apiService.post('/core/areas', { nombre: nuevoEquipoNombre });
         setNuevoEquipoNombre('');
         fetchEquipos();
         toast.success('Equipo creado');
@@ -39,7 +39,7 @@ export default function GestorEquipos() {
   const handleUpdateEquipo = async (id) => {
     if (!editingNombre.trim()) return;
     try {
-        await apiService.patch(`/rendimiento/equipos/${id}`, { nombre: editingNombre });
+        await apiService.patch(`/core/areas/${id}`, { nombre: editingNombre });
         setEditingId(null);
         setEditingNombre('');
         fetchEquipos();
@@ -50,10 +50,13 @@ export default function GestorEquipos() {
   const handleDeleteEquipo = async (id) => {
     if (!window.confirm('¿Estás seguro de eliminar este equipo?')) return;
     try {
-        await apiService.delete(`/rendimiento/equipos/${id}`);
+        await apiService.delete(`/core/areas/${id}`);
         fetchEquipos();
         toast.success('Equipo eliminado');
-    } catch (error) { toast.error('Error al eliminar equipo'); }
+    } catch (error) { 
+        const mensajeError = error.response?.data?.error || 'Error al eliminar equipo';
+        toast.error(mensajeError); 
+    }
   };
 
   const handleExportar = async (id, nombre) => {
@@ -144,7 +147,7 @@ export default function GestorEquipos() {
                         </div>
                     ) : (
                         <>
-                            <span className="tracking-wider">{e.nombre} ({e.total_miembros} miembros)</span>
+                            <span className="tracking-wider">{e.nombre} ({e.total_miembros || 0} miembros)</span>
                             <div className="flex gap-4">
                                 <button onClick={() => handleExportar(e.id, e.nombre)} className="text-[#33FF33] hover:text-white"><Download size={16} /></button>
                                 <button onClick={() => setEquipoAAsignar(e.id)} className="text-[#33FF33] hover:text-white"><UserPlus size={16} /></button>

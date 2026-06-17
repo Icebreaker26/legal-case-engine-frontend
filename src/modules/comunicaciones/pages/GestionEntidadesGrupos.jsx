@@ -22,14 +22,21 @@ export default function GestionEntidadesGrupos() {
 
     const fetchDatos = async () => {
         try {
-            const [e, g, ei, gi] = await Promise.all([
-                apiService.get('/comunicaciones/entidades'),
-                apiService.get('/comunicaciones/grupos'),
-                apiService.get('/comunicaciones/entidades/inactivas'),
-                apiService.get('/comunicaciones/grupos/inactivos')
+            const [e, g] = await Promise.all([
+                apiService.get('/core/entidades'),
+                apiService.get('/core/grupos')
             ]);
-            setEntidades(e.data);
-            setGrupos(g.data);
+            // El backend del core devuelve activos e inactivos filtrados por el controller, 
+            // pero si necesitas separarlos para la papelera, ajusta la lógica según lo que devuelva el endpoint
+            setEntidades(e.data.filter(i => i.is_active));
+            setGrupos(g.data.filter(i => i.is_active));
+            
+            // Asumimos un endpoint para inactivos o que filtramos del total
+            // Para mantener la lógica simple:
+            const [ei, gi] = await Promise.all([
+                apiService.get('/core/entidades/inactivas'),
+                apiService.get('/core/grupos/inactivas')
+            ]);
             setInactivas({ entidades: ei.data, grupos: gi.data });
         } catch (error) { toast.error('Error al cargar datos'); }
     };
@@ -37,7 +44,7 @@ export default function GestionEntidadesGrupos() {
     const handleCrear = async (tipo, nombre) => {
         if (!nombre.trim()) return;
         try {
-            await apiService.post(`/comunicaciones/${tipo}`, { nombre });
+            await apiService.post(`/core/${tipo}`, { nombre });
             toast.success(`${tipo === 'entidades' ? 'Entidad' : 'Grupo'} creado`);
             fetchDatos();
             tipo === 'entidades' ? setNuevaEntidad('') : setNuevoGrupo('');
@@ -53,7 +60,7 @@ export default function GestionEntidadesGrupos() {
     const guardarEdicion = async () => {
         if (!valorEditado.trim()) return;
         try {
-            await apiService.patch(`/comunicaciones/${tipoEditando}/${editandoId}`, { nombre: valorEditado });
+            await apiService.patch(`/core/${tipoEditando}/${editandoId}`, { nombre: valorEditado });
             toast.success('Actualizado');
             setEditandoId(null);
             setTipoEditando(null);
@@ -64,7 +71,7 @@ export default function GestionEntidadesGrupos() {
     const handleEliminar = async (tipo, id) => {
         if (!confirm('¿Archivar este elemento?')) return;
         try {
-            await apiService.delete(`/comunicaciones/${tipo}/${id}`);
+            await apiService.delete(`/core/${tipo}/${id}`);
             toast.success('Elemento archivado');
             fetchDatos();
         } catch (error) { toast.error('Error al archivar'); }
@@ -72,7 +79,7 @@ export default function GestionEntidadesGrupos() {
 
     const handleRecuperar = async (tipo, id) => {
         try {
-            await apiService.patch(`/comunicaciones/${tipo}/${id}/recuperar`);
+            await apiService.patch(`/core/${tipo}/${id}/recuperar`);
             toast.success('Elemento recuperado');
             fetchDatos();
         } catch (error) { toast.error('Error al recuperar'); }

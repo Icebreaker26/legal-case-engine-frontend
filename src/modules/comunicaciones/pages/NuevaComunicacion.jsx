@@ -30,8 +30,8 @@ export default function NuevaComunicacion() {
         try {
             const [abogadosRes, entidadesRes, gruposRes] = await Promise.all([
                 apiService.get('/admin/usuarios'),
-                apiService.get('/comunicaciones/entidades'),
-                apiService.get('/comunicaciones/grupos')
+                apiService.get('/core/entidades'),
+                apiService.get('/core/grupos')
             ]);
             setAbogados(abogadosRes.data);
             setEntidades(entidadesRes.data);
@@ -42,7 +42,7 @@ export default function NuevaComunicacion() {
     const handleCrearEntidad = async () => {
         if (!nuevaEntidad.trim()) return;
         try {
-            const { data } = await apiService.post('/comunicaciones/entidades', { nombre: nuevaEntidad });
+            const { data } = await apiService.post('/core/entidades', { nombre: nuevaEntidad });
             setEntidades([...entidades, data]);
             setFormData({...formData, entidad_id: data.id});
             setSearchEntidad(data.nombre);
@@ -72,7 +72,7 @@ export default function NuevaComunicacion() {
         try {
             const { data } = await apiService.post('/comunicaciones', {
                 ...formData,
-                responsable_id: formData.responsable_id ? parseInt(formData.responsable_id) : null,
+                responsable_uuid: formData.responsable_id || null,
                 entidad_id: parseInt(formData.entidad_id)
             });
             for (const grupoId of formData.grupos) {

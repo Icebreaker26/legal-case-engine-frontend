@@ -11,6 +11,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('areas');
   const [areas, setAreas] = useState([]);
   const [categorias, setCategorias] = useState([]);
+  const [categoriasArchivadas, setCategoriasArchivadas] = useState([]);
   const [patterns, setPatterns] = useState([]);
   const [logs, setLogs] = useState([]);
   const [systemConfig, setSystemConfig] = useState({});
@@ -109,7 +110,7 @@ export default function AdminDashboard() {
 
   const fetchAreas = async () => {
     try {
-      const { data } = await apiService.get('/admin/areas');
+      const { data } = await apiService.get('/core/areas');
       setAreas(data);
     } catch (err) {
       toast.error('Error al cargar áreas');
@@ -118,9 +119,13 @@ export default function AdminDashboard() {
 
   const fetchCategorias = async () => {
     try {
-      const { data } = await apiService.get('/admin/categorias');
+      const { data } = await apiService.get('/core/categorias');
       setCategorias(data);
+      
+      const { data: inactivas } = await apiService.get('/core/categorias/inactivas');
+      setCategoriasArchivadas(inactivas);
     } catch (err) {
+      console.error('Error al cargar categorías:', err);
       toast.error('Error al cargar categorías');
     }
   };
@@ -178,7 +183,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!nuevaArea.trim()) return;
     try {
-        await apiService.post('/admin/areas', { nombre: nuevaArea });
+        await apiService.post('/core/areas', { nombre: nuevaArea });
         setNuevaArea('');
         fetchAreas();
         toast.success('Área creada');
@@ -187,7 +192,7 @@ export default function AdminDashboard() {
 
   const handleUpdateArea = async (id) => {
     try {
-        await apiService.patch(`/admin/areas/${id}`, { nombre: editAreaNombre });
+        await apiService.patch(`/core/areas/${id}`, { nombre: editAreaNombre });
         setEditAreaId(null);
         fetchAreas();
         toast.success('Área renombrada');
@@ -196,7 +201,7 @@ export default function AdminDashboard() {
 
   const toggleAreaStatus = async (id, currentStatus) => {
     try {
-        await apiService.patch(`/admin/areas/${id}`, { activo: !currentStatus });
+        await apiService.patch(`/core/areas/${id}`, { is_active: !currentStatus });
         fetchAreas();
         toast.success('Área actualizada');
     } catch (err) { toast.error('Error al actualizar área'); }
@@ -206,7 +211,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!nuevaCat.trim()) return;
     try {
-        await apiService.post('/admin/categorias', { nombre: nuevaCat, palabras_clave: [] });
+        await apiService.post('/core/categorias', { nombre: nuevaCat });
         setNuevaCat('');
         fetchCategorias();
         toast.success('Categoría creada');
@@ -216,7 +221,7 @@ export default function AdminDashboard() {
   const handleUpdateCategoria = async (id) => {
     try {
         const keywordsArray = editCatKeywords.split(',').map(k => k.trim()).filter(k => k);
-        await apiService.patch(`/admin/categorias/${id}`, { nombre: editCatNombre, palabras_clave: keywordsArray });
+        await apiService.patch(`/core/categorias/${id}`, { nombre: editCatNombre, palabras_clave: keywordsArray });
         setEditCatId(null);
         fetchCategorias();
         toast.success('Categoría actualizada');
@@ -225,10 +230,26 @@ export default function AdminDashboard() {
 
   const toggleCategoriaStatus = async (id, currentStatus) => {
     try {
-        await apiService.patch(`/admin/categorias/${id}`, { activo: !currentStatus });
+        await apiService.patch(`/core/categorias/${id}`, { is_active: !currentStatus });
         fetchCategorias();
-        toast.success('Categoría actualizada');
+        toast.success('Estado actualizado');
     } catch (err) { toast.error('Error al actualizar'); }
+  };
+
+  const handleEliminarCategoria = async (id) => {
+    try {
+        await apiService.delete(`/core/categorias/${id}`);
+        fetchCategorias();
+        toast.success('Categoría archivada');
+    } catch (err) { toast.error('Error al archivar'); }
+  };
+
+  const handleRecuperarCategoria = async (id) => {
+    try {
+        await apiService.patch(`/core/categorias/${id}/recuperar`);
+        fetchCategorias();
+        toast.success('Categoría recuperada');
+    } catch (err) { toast.error('Error al recuperar'); }
   };
 
   const handleCrearPatron = async (e) => {
@@ -398,11 +419,11 @@ export default function AdminDashboard() {
                                     autoFocus
                                 />
                             ) : (
-                                <span className={`text-sm ${a.activo ? 'text-green-400' : 'text-gray-600 line-through'}`}>{a.nombre}</span>
+                                <span className={`text-sm ${a.is_active ? 'text-green-400' : 'text-gray-600 line-through'}`}>{a.nombre}</span>
                             )}
                             <div className="flex gap-2">
                                 <button onClick={() => { setEditAreaId(a.id); setEditAreaNombre(a.nombre); }} className="text-gray-500 hover:text-green-400"><Edit size={16}/></button>
-                                <button onClick={() => toggleAreaStatus(a.id, a.activo)} className="text-red-900 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
+                                <button onClick={() => toggleAreaStatus(a.id, a.is_active)} className="text-red-900 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
                             </div>
                         </div>
                     ))}
@@ -439,11 +460,11 @@ export default function AdminDashboard() {
                                         onChange={e => setEditCatNombre(e.target.value)}
                                     />
                                 ) : (
-                                    <span className={`text-sm font-bold ${c.activo ? 'text-green-400' : 'text-gray-600 line-through'}`}>{c.nombre}</span>
+                                    <span className={`text-sm font-bold ${c.is_active ? 'text-green-400' : 'text-gray-600 line-through'}`}>{c.nombre}</span>
                                 )}
                                 <div className="flex gap-2">
                                     <button onClick={() => { setEditCatId(c.id); setEditCatNombre(c.nombre); setEditCatKeywords(c.palabras_clave ? c.palabras_clave.join(', ') : ''); }} className="text-gray-500 hover:text-green-400"><Edit size={16}/></button>
-                                    <button onClick={() => toggleCategoriaStatus(c.id, c.activo)} className="text-red-900 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
+                                    <button onClick={() => handleEliminarCategoria(c.id)} className="text-red-900 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
                                 </div>
                             </div>
                             {editCatId === c.id ? (
@@ -461,6 +482,18 @@ export default function AdminDashboard() {
                             )}
                         </div>
                     ))}
+                    
+                    {categoriasArchivadas.length > 0 && (
+                        <div className="mt-8 border-t border-red-900 pt-4">
+                            <h3 className="text-red-500 font-bold mb-4">Categorías Archivadas</h3>
+                            {categoriasArchivadas.map(c => (
+                                <div key={c.id} className="bg-gray-950 p-4 border border-red-900 flex justify-between items-center">
+                                    <span className="text-gray-500 line-through">{c.nombre}</span>
+                                    <button onClick={() => handleRecuperarCategoria(c.id)} className="bg-green-900 text-white px-2 py-1 text-xs">Recuperar</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
           )}

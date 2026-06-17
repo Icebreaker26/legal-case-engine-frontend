@@ -25,7 +25,7 @@ function ModuloCard({ titulo, icono, items, renderItem, isCompact = false }) {
 
 export default function MiPerfil() {
     const { user, permissions, hasPermission } = useAuth();
-    const [tareas, setTareas] = useState({ tutelas: [], comunicaciones: [], pagos: [], objetivos: [], logs: [] });
+    const [tareas, setTareas] = useState({ tutelas: [], comunicaciones: [], pagos: [], conformidades: [], objetivos: [], logs: [] });
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [mostrarTodo, setMostrarTodo] = useState(false);
@@ -33,16 +33,18 @@ export default function MiPerfil() {
     const QUICK_ACTIONS = [
         { label: 'Nueva Tutela', path: '/procesar', permission: ['tutelas', 'WRITE'], icon: <Plus size={16}/> },
         { label: 'Nueva Comunicación', path: '/comunicaciones/nueva', permission: ['comunicaciones', 'WRITE_COM'], icon: <Plus size={16}/> },
-        { label: 'Nuevo Pago', path: '/pagos/nueva', permission: ['pagos', 'WRITE_PAGO'], icon: <Plus size={16}/> }
+        { label: 'Nuevo Pago', path: '/pagos/nueva', permission: ['pagos', 'WRITE_PAGO'], icon: <Plus size={16}/> },
+        { label: 'Nueva Conformidad', path: '/conformidades/nueva', permission: ['conformidades', 'WRITE'], icon: <Plus size={16}/> }
     ];
 
     useEffect(() => {
         const fetchDatos = async () => {
             try {
-                const [tutRes, comRes, pagRes, objRes, logRes] = await Promise.all([
+                const [tutRes, comRes, pagRes, conRes, objRes, logRes] = await Promise.all([
                     apiService.get('/tutelas/mis-tutelas'),
                     apiService.get('/comunicaciones/mis-comunicaciones'),
                     apiService.get('/pagos/mis-pagos'),
+                    apiService.get('/conformidades/mis-conformidades'),
                     apiService.get('/rendimiento/mis-objetivos'),
                     apiService.get('/admin/logs/mis-logs')
                 ]);
@@ -50,6 +52,7 @@ export default function MiPerfil() {
                     tutelas: tutRes.data, 
                     comunicaciones: comRes.data, 
                     pagos: pagRes.data,
+                    conformidades: conRes.data,
                     objetivos: objRes.data,
                     logs: logRes.data 
                 });
@@ -74,8 +77,12 @@ export default function MiPerfil() {
                 (p.concepto.toLowerCase().includes(term) || p.nit.toLowerCase().includes(term)) &&
                 (mostrarTodo || !['completado', 'pagado', 'rechazado'].includes(p.estado.toLowerCase()))
             ),
+            conformidades: tareas.conformidades.filter(c => 
+                (c.concepto.toLowerCase().includes(term)) &&
+                (!soloPendientes || c.estado !== 'CONFORMADO')
+            ),
             objetivos: tareas.objetivos.filter(o => 
-                o.meta_acciones.toLowerCase().includes(term)
+                String(o.meta_acciones || '').toLowerCase().includes(term)
             )
         };
     }, [tareas, searchTerm, mostrarTodo]);
@@ -96,6 +103,7 @@ export default function MiPerfil() {
         return filteredTareas.tutelas.length + 
                filteredTareas.comunicaciones.length + 
                filteredTareas.pagos.length + 
+               filteredTareas.conformidades.length +
                filteredTareas.objetivos.length;
     };
 
@@ -201,6 +209,17 @@ export default function MiPerfil() {
                                 <span className="text-[9px] bg-[#2d4a3e]/10 px-1">{p.estado}</span>
                                 <span className="text-[10px] font-bold">${parseFloat(p.monto).toLocaleString('es-CO')}</span>
                             </div>
+                        </Link>
+                    )}
+                />
+                <ModuloCard 
+                    titulo="Conformidades" 
+                    icono={<FileText size={18} className="text-blue-700"/>} 
+                    items={filteredTareas.conformidades} 
+                    renderItem={(c) => (
+                        <Link to={`/conformidades/${c.id}`} className="flex justify-between w-full">
+                            <span className="font-bold">{c.concepto}</span>
+                            <span className="text-[9px] bg-[#2d4a3e]/10 px-1">{c.estado}</span>
                         </Link>
                     )}
                 />

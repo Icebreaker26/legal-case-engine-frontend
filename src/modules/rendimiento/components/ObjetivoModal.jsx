@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 export default function ObjetivoModal({ equipoId, onClose, onRefresh }) {
   const [abogados, setAbogados] = useState([]);
   const [formData, setFormData] = useState({
-    usuario_id: '',
+    usuario_uuid: '',
     meta_acciones: '',
     mes: new Date().getMonth() + 1,
     anio: new Date().getFullYear(),
@@ -21,18 +21,13 @@ export default function ObjetivoModal({ equipoId, onClose, onRefresh }) {
   const fetchAbogados = async () => {
     try {
       const { data } = await apiService.get('/admin/usuarios');
-      console.log('Todos los abogados recibidos:', data);
-      console.log('equipoId en ObjetivoModal:', equipoId);
       
       // Filtramos de forma más segura
       const filtrados = data.filter(u => String(u.equipo_id) === String(equipoId));
       
-      console.log('Abogados filtrados por equipo:', filtrados);
-      
       if (filtrados.length > 0) {
           setAbogados(filtrados);
       } else {
-          console.warn('El filtro devolvió 0 resultados, mostrando todos los abogados para depurar.');
           setAbogados(data);
       }
     } catch (error) { toast.error('Error al cargar profesionales'); }
@@ -43,7 +38,6 @@ export default function ObjetivoModal({ equipoId, onClose, onRefresh }) {
     try {
       await apiService.post('/rendimiento/objetivos', {
         ...formData,
-        usuario_id: parseInt(formData.usuario_id),
         meta_acciones: parseInt(formData.meta_acciones),
         mes: parseInt(formData.mes),
         anio: parseInt(formData.anio)
@@ -66,7 +60,7 @@ export default function ObjetivoModal({ equipoId, onClose, onRefresh }) {
           <div>
             <label className="block text-gray-500 mb-1">Profesional:</label>
             <select className="w-full bg-black border border-green-700 p-2 text-white" 
-              onChange={e => setFormData({...formData, usuario_id: e.target.value})} required>
+              onChange={e => setFormData({...formData, usuario_uuid: e.target.value})} required>
                 <option value="">Seleccionar profesional...</option>
                 {abogados.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
             </select>

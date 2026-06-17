@@ -36,7 +36,7 @@ export default function ListaPagos() {
 
     const fetchGrupos = async () => {
         try {
-            const { data } = await apiService.get('/pagos/grupos');
+            const { data } = await apiService.get('/core/grupos');
             setGrupos(data);
         } catch (error) { toast.error('Error al cargar grupos'); }
     };
@@ -44,7 +44,10 @@ export default function ListaPagos() {
     const filteredPagos = useMemo(() => {
         return pagos.filter(pago => {
             const matchesSearch = pago.concepto.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                  pago.nit.toLowerCase().includes(searchTerm.toLowerCase());
+                                  (pago.nit && pago.nit.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                                  (pago.acreedor_nombre && pago.acreedor_nombre.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                                  (pago.codigo_sig && pago.codigo_sig.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                                  (pago.pdp_sap_id && pago.pdp_sap_id.toLowerCase().includes(searchTerm.toLowerCase()));
             const matchesEstado = filtroEstado === '' || pago.estado === filtroEstado;
             const matchesGrupo = filtroGrupo === '' || (pago.grupos && pago.grupos.includes(filtroGrupo));
             return matchesSearch && matchesEstado && matchesGrupo;
@@ -75,7 +78,7 @@ export default function ListaPagos() {
             <div className="bg-[#e0dcc8] p-4 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e] flex flex-wrap gap-4 items-center">
                 <Search className="text-[#2d4a3e]" size={20} />
                 <input 
-                    type="text" placeholder="Buscar concepto o NIT..."
+                    type="text" placeholder="Buscar concepto, NIT, Código SIG o SAP ID..."
                     className="bg-transparent border-b border-[#2d4a3e] outline-none text-[#1a1a1a] flex-1 text-xs uppercase placeholder-[#2d4a3e]/50"
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -105,8 +108,28 @@ export default function ListaPagos() {
                         exit={{ opacity: 0, scale: 0.9 }}
                         className={"relative bg-[#e0dcc8] p-4 border " + getEstadoColor(pago.estado)}
                     >
-                        <h3 className="font-bold uppercase tracking-wider text-[#2d4a3e] text-sm mb-1">{pago.concepto}</h3>
-                        <p className="text-xs uppercase mb-1"><strong>NIT:</strong> {pago.nit} | <strong>Monto:</strong> ${parseFloat(pago.monto).toLocaleString('es-CO')}</p>
+                        <div className="flex justify-between items-start mb-1">
+                            <h3 className="font-bold uppercase tracking-wider text-[#2d4a3e] text-sm mb-1">{pago.concepto}</h3>
+                            {pago.tipo_pago === 'PREDIAL' && <span className="bg-orange-700 text-white text-[8px] px-1 font-black">PREDIAL</span>}
+                        </div>
+                        
+                        <p className="text-xs uppercase mb-1"><strong>ACREEDOR:</strong> {pago.acreedor_nombre || 'N/A'}</p>
+                        <p className="text-xs uppercase mb-1"><strong>NIT:</strong> {pago.nit || 'N/A'} </p>
+                        
+                        {pago.codigo_sig && (
+                            <p className="text-xs uppercase mb-1 text-orange-800"><strong>SIG:</strong> {pago.codigo_sig}</p>
+                        )}
+                        
+                        {pago.pdp_sap_id && (
+                            <p className="text-xs uppercase mb-1 text-blue-800"><strong>SAP ID:</strong> {pago.pdp_sap_id}</p>
+                        )}
+
+                        <div className="mb-2">
+                            <p className="text-xl font-black text-[#2d4a3e] tracking-tighter">
+                                ${parseFloat(pago.monto).toLocaleString('es-CO')}
+                            </p>
+                        </div>
+
                         <p className="text-xs italic mb-1">Solicitado: {new Date(pago.fecha_solicitud).toLocaleDateString()}</p>
                         {(() => {
                             const isFinalizado = pago.estado === 'pagado' || pago.estado === 'completado';

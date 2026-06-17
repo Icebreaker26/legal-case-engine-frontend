@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import apiService from '../../../services/apiService';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { Search } from 'lucide-react';
 
 export default function DetallePago() {
     const { id } = useParams();
@@ -12,6 +13,12 @@ export default function DetallePago() {
     const [nuevoComentario, setNuevoComentario] = useState('');
     const [grupos, setGrupos] = useState([]);
     const [searchGrupo, setSearchGrupo] = useState('');
+    const [acreedores, setAcreedores] = useState([]);
+    const [proyectos, setProyectos] = useState([]);
+    const [searchAcreedor, setSearchAcreedor] = useState('');
+    const [searchProyecto, setSearchProyecto] = useState('');
+    const [mostrarBusquedaAcreedor, setMostrarBusquedaAcreedor] = useState(false);
+    const [mostrarBusquedaProyecto, setMostrarBusquedaProyecto] = useState(false);
     
     // Hooks moved to top level
     const [editando, setEditando] = useState(false);
@@ -21,6 +28,8 @@ export default function DetallePago() {
         fetchPago();
         fetchTrazabilidad();
         fetchGrupos();
+        fetchAcreedores();
+        fetchProyectos();
     }, [id]);
 
     const fetchPago = async () => {
@@ -43,6 +52,20 @@ export default function DetallePago() {
             const { data } = await apiService.get('/pagos/grupos');
             setGrupos(data);
         } catch (error) { toast.error('Error al cargar grupos'); }
+    };
+
+    const fetchAcreedores = async () => {
+        try {
+            const { data } = await apiService.get('/core/acreedores');
+            setAcreedores(data);
+        } catch (error) { console.error('Error al cargar acreedores'); }
+    };
+
+    const fetchProyectos = async () => {
+        try {
+            const { data } = await apiService.get('/core/proyectos');
+            setProyectos(data);
+        } catch (error) { console.error('Error al cargar proyectos'); }
     };
 
     const handleToggleGrupo = async (grupo) => {
@@ -87,6 +110,8 @@ export default function DetallePago() {
     const toggleEdit = () => {
         if (editando) {
             setPagoEditado(null);
+            setMostrarBusquedaAcreedor(false);
+            setMostrarBusquedaProyecto(false);
         } else {
             setPagoEditado({ ...pago });
         }
@@ -103,6 +128,7 @@ export default function DetallePago() {
             setPago(pagoEditado);
             setEditando(false);
             toast.success('Pago actualizado');
+            fetchPago(); // Recargar para obtener nombres de FKs actualizados
         } catch (error) { toast.error('Error al actualizar'); }
     };
 
@@ -110,6 +136,8 @@ export default function DetallePago() {
 
     const gruposFiltrados = grupos.filter(g => g.nombre.toLowerCase().includes(searchGrupo.toLowerCase()));
     const estadosFlujo = ['solicitado', 'subido_sap_espera_liberacion', 'liberado', 'espera_firmas', 'firmado', 'radicado', 'completado', 'pagado', 'rechazado'];
+    const selectedAcreedor = acreedores.find(a => a.id === pagoEditado?.acreedor_id);
+    const selectedProyecto = proyectos.find(p => p.id === parseInt(pagoEditado?.proyecto_id));
 
     return (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto space-y-6">
@@ -122,38 +150,161 @@ export default function DetallePago() {
                 </div>
 
                 {editando ? (
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                        <input className="border-b border-[#2d4a3e] p-1 bg-transparent" value={pagoEditado.concepto} onChange={e => setPagoEditado({...pagoEditado, concepto: e.target.value})} />
-                        <input className="border-b border-[#2d4a3e] p-1 bg-transparent" value={pagoEditado.nit} onChange={e => setPagoEditado({...pagoEditado, nit: e.target.value})} />
-                        <input className="border-b border-[#2d4a3e] p-1 bg-transparent" type="number" value={pagoEditado.monto} onChange={e => setPagoEditado({...pagoEditado, monto: e.target.value})} />
-                        <input className="border-b border-[#2d4a3e] p-1 bg-transparent" value={pagoEditado.soportes_link} onChange={e => setPagoEditado({...pagoEditado, soportes_link: e.target.value})} />
-                        <button onClick={handleSave} className="col-span-2 bg-[#10b981] text-white py-2 font-bold uppercase">Guardar Cambios</button>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">Tipo de Pago</label>
+                                <select 
+                                    className="border-b border-[#2d4a3e] p-1 bg-transparent uppercase"
+                                    value={pagoEditado.tipo_pago}
+                                    onChange={e => setPagoEditado({...pagoEditado, tipo_pago: e.target.value})}
+                                >
+                                    <option value="ESTANDAR">ESTÁNDAR / GENERAL</option>
+                                    <option value="PREDIAL">PREDIAL</option>
+                                </select>
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">Concepto</label>
+                                <input className="border-b border-[#2d4a3e] p-1 bg-transparent uppercase" value={pagoEditado.concepto} onChange={e => setPagoEditado({...pagoEditado, concepto: e.target.value})} />
+                            </div>
+                            
+                            <div className="flex flex-col relative">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">Acreedor</label>
+                                <button type="button" onClick={() => setMostrarBusquedaAcreedor(!mostrarBusquedaAcreedor)} className="border-b border-[#2d4a3e] p-1 bg-transparent text-left flex justify-between items-center uppercase">
+                                    {selectedAcreedor ? `${selectedAcreedor.nombre} - ${selectedAcreedor.nit}` : (pago.acreedor_nombre || "Seleccionar Acreedor...")}
+                                    <Search size={14} />
+                                </button>
+                                {mostrarBusquedaAcreedor && (
+                                    <div className="absolute z-10 w-full bg-[#e0dcc8] border border-[#2d4a3e] max-h-40 overflow-y-auto mt-12 shadow-lg">
+                                        <input className="w-full bg-transparent p-2 border-b border-[#2d4a3e] text-[10px] uppercase" placeholder="Buscar por nombre o NIT..." value={searchAcreedor} onChange={e => setSearchAcreedor(e.target.value)} />
+                                        {acreedores.filter(a => a.nombre.toLowerCase().includes(searchAcreedor.toLowerCase()) || a.nit.includes(searchAcreedor)).map(a => (
+                                            <div key={a.id} className="p-2 hover:bg-[#2d4a3e] hover:text-[#e0dcc8] cursor-pointer text-[10px] uppercase" onClick={() => { setPagoEditado({...pagoEditado, acreedor_id: a.id}); setMostrarBusquedaAcreedor(false); }}>
+                                                {a.nombre} - NIT: {a.nit}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col relative">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">Proyecto</label>
+                                <button type="button" onClick={() => setMostrarBusquedaProyecto(!mostrarBusquedaProyecto)} className="border-b border-[#2d4a3e] p-1 bg-transparent text-left flex justify-between items-center uppercase">
+                                    {selectedProyecto ? selectedProyecto.nombre : (pago.proyecto_nombre || "Seleccionar Proyecto...")}
+                                    <Search size={14} />
+                                </button>
+                                {mostrarBusquedaProyecto && (
+                                    <div className="absolute z-10 w-full bg-[#e0dcc8] border border-[#2d4a3e] max-h-40 overflow-y-auto mt-12 shadow-lg">
+                                        <input className="w-full bg-transparent p-2 border-b border-[#2d4a3e] text-[10px] uppercase" placeholder="Buscar proyecto..." value={searchProyecto} onChange={e => setSearchProyecto(e.target.value)} />
+                                        {proyectos.filter(p => p.nombre.toLowerCase().includes(searchProyecto.toLowerCase())).map(p => (
+                                            <div key={p.id} className="p-2 hover:bg-[#2d4a3e] hover:text-[#e0dcc8] cursor-pointer text-[10px] uppercase" onClick={() => { setPagoEditado({...pagoEditado, proyecto_id: p.id}); setMostrarBusquedaProyecto(false); }}>
+                                                {p.nombre}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">Monto</label>
+                                <input className="border-b border-[#2d4a3e] p-1 bg-transparent" type="number" value={pagoEditado.monto} onChange={e => setPagoEditado({...pagoEditado, monto: e.target.value})} />
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">WBE</label>
+                                <input className="border-b border-[#2d4a3e] p-1 bg-transparent uppercase" value={pagoEditado.wbe || ''} onChange={e => setPagoEditado({...pagoEditado, wbe: e.target.value})} />
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">Método de Pago</label>
+                                <select 
+                                    className="border-b border-[#2d4a3e] p-1 bg-transparent uppercase"
+                                    value={pagoEditado.metodo_pago}
+                                    onChange={e => setPagoEditado({...pagoEditado, metodo_pago: e.target.value})}
+                                >
+                                    <option value="TRANSFERENCIA">TRANSFERENCIA</option>
+                                    <option value="CHEQUE">CHEQUE</option>
+                                </select>
+                            </div>
+
+                            <div className="flex flex-col">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">PDP SAP ID</label>
+                                <input className="border-b border-[#2d4a3e] p-1 bg-transparent uppercase" value={pagoEditado.pdp_sap_id || ''} onChange={e => setPagoEditado({...pagoEditado, pdp_sap_id: e.target.value})} />
+                            </div>
+
+                            {pagoEditado.tipo_pago === 'PREDIAL' && (
+                                <div className="flex flex-col">
+                                    <label className="text-[10px] uppercase font-bold text-orange-700">Código SIG (Predial)</label>
+                                    <input className="border-b border-orange-700 p-1 bg-transparent uppercase" value={pagoEditado.codigo_sig || ''} onChange={e => setPagoEditado({...pagoEditado, codigo_sig: e.target.value})} />
+                                </div>
+                            )}
+
+                            <div className="flex flex-col col-span-2">
+                                <label className="text-[10px] uppercase font-bold text-[#2d4a3e]">Soportes Link</label>
+                                <input className="border-b border-[#2d4a3e] p-1 bg-transparent" value={pagoEditado.soportes_link || ''} onChange={e => setPagoEditado({...pagoEditado, soportes_link: e.target.value})} />
+                            </div>
+                        </div>
+                        <button onClick={handleSave} className="w-full mt-4 bg-[#2d4a3e] text-[#e0dcc8] py-2 font-bold uppercase hover:bg-[#1a2e26]">Guardar Cambios</button>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 gap-4">
                         <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
-                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Concepto</p>
-                            <p className="text-sm font-semibold">{pago.concepto}</p>
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Tipo de Pago</p>
+                            <p className={`text-sm font-semibold uppercase ${pago.tipo_pago === 'PREDIAL' ? 'text-orange-800' : ''}`}>{pago.tipo_pago}</p>
                         </div>
                         <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
-                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">NIT</p>
-                            <p className="text-sm font-semibold">{pago.nit}</p>
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Concepto</p>
+                            <p className="text-sm font-semibold uppercase">{pago.concepto}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Acreedor / NIT</p>
+                            <p className="text-sm font-semibold uppercase">{pago.acreedor_nombre || pago.nit || 'N/A'}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Proyecto</p>
+                            <p className="text-sm font-semibold uppercase">{pago.proyecto_nombre || 'N/A'}</p>
                         </div>
                         <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
                             <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Monto</p>
                             <p className="text-sm font-semibold">${parseFloat(pago.monto).toLocaleString('es-CO')}</p>
                         </div>
                         <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">WBE / Método</p>
+                            <p className="text-sm font-semibold uppercase">{pago.wbe || 'N/A'} - {pago.metodo_pago || 'TRANSFERENCIA'}</p>
+                        </div>
+                        {pago.tipo_pago === 'PREDIAL' && (
+                            <div className="border border-orange-700 p-2 bg-orange-100 col-span-2">
+                                <p className="text-[10px] uppercase font-bold text-orange-700">Código SIG (Exclusivo Predial)</p>
+                                <p className="text-sm font-bold uppercase">{pago.codigo_sig || 'PENDIENTE'}</p>
+                            </div>
+                        )}
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                            <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">PDP SAP ID</p>
+                            <p className="text-sm font-semibold uppercase">{pago.pdp_sap_id || 'N/A'}</p>
+                        </div>
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
                             <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Estado Actual</p>
-                            <p className="text-sm font-semibold text-[#2d4a3e]">{pago.estado}</p>
+                            <p className="text-sm font-semibold text-[#2d4a3e] uppercase">{pago.estado}</p>
+                            {(() => {
+                                const isFinalizado = pago.estado === 'pagado' || pago.estado === 'completado';
+                                const diffTime = isFinalizado 
+                                    ? (new Date(pago.fecha_finalizacion || new Date()) - new Date(pago.fecha_solicitud))
+                                    : (new Date() - new Date(pago.fecha_solicitud));
+                                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                                return (
+                                    <p className={`text-[10px] font-bold mt-1 ${isFinalizado ? 'text-green-800' : 'text-[#2d4a3e]'}`}>
+                                        {isFinalizado ? `Finalizado en ${diffDays} día${diffDays !== 1 ? 's' : ''}` : `${diffDays} día${diffDays !== 1 ? 's' : ''} desde solicitud`}
+                                    </p>
+                                );
+                            })()}
                         </div>
                         <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
                             <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Solicitante</p>
-                            <p className="text-sm font-semibold">{pago.solicitante_nombre}</p>
+                            <p className="text-sm font-semibold uppercase">{pago.solicitante_nombre}</p>
                         </div>
-                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2]">
+                        <div className="border border-[#2d4a3e] p-2 bg-[#d8d4c2] col-span-2">
                             <p className="text-[10px] uppercase font-bold text-[#2d4a3e]">Soportes</p>
-                            <p className="text-sm font-semibold">{pago.soportes_link ? <a href={pago.soportes_link} target="_blank" rel="noreferrer" className="text-blue-800 underline">Link</a> : 'N/A'}</p>
+                            <p className="text-sm font-semibold">{pago.soportes_link ? <a href={pago.soportes_link} target="_blank" rel="noreferrer" className="text-blue-800 underline">Link Soportes Externos</a> : 'N/A'}</p>
                         </div>
                     </div>
                 )}

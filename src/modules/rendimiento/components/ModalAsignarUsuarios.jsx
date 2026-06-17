@@ -15,10 +15,18 @@ export default function ModalAsignarUsuarios({ equipoId, onClose, onRefresh }) {
   const fetchUsuarios = async () => {
     try {
       const { data: todosAbogados } = await apiService.get('/admin/abogados-activos');
-      const miembrosEquipo = todosAbogados.filter(u => Number(u.equipo_id) === Number(equipoId));
+
+      
+      // Filtrar y verificar datos
+      const miembrosEquipo = todosAbogados.filter(u => {
+          const match = String(u.equipo_id) === String(equipoId);
+          return match;
+      });
+      
       setUsuarios(todosAbogados);
-      setUsuariosSeleccionados(miembrosEquipo.map(m => Number(m.id)));
+      setUsuariosSeleccionados(miembrosEquipo.map(m => m.id));
     } catch (error) { 
+        console.error('Error al cargar datos:', error);
         toast.error('Error al cargar datos'); 
     }
   };
@@ -27,8 +35,8 @@ export default function ModalAsignarUsuarios({ equipoId, onClose, onRefresh }) {
     try {
         const { data: todosAbogados } = await apiService.get('/admin/abogados-activos');
         const idsIniciales = todosAbogados
-            .filter(u => Number(u.equipo_id) === Number(equipoId))
-            .map(m => Number(m.id));
+            .filter(u => String(u.equipo_id) === String(equipoId))
+            .map(m => m.id);
 
         const aRemover = idsIniciales.filter(id => !usuariosSeleccionados.includes(id));
         const aAsignar = usuariosSeleccionados.filter(id => !idsIniciales.includes(id));
@@ -37,7 +45,7 @@ export default function ModalAsignarUsuarios({ equipoId, onClose, onRefresh }) {
 
         for (const usuarioId of aRemover) {
             try {
-                await apiService.patch('/rendimiento/equipos/remover-usuario', { usuario_id: usuarioId, equipo_id: equipoId });
+                await apiService.patch('/rendimiento/equipos/remover-usuario', { usuario_uuid: usuarioId });
             } catch (error) {
                 errores++;
             }
@@ -45,7 +53,7 @@ export default function ModalAsignarUsuarios({ equipoId, onClose, onRefresh }) {
 
         for (const usuarioId of aAsignar) {
             try {
-                await apiService.post('/rendimiento/equipos/asignar', { equipo_id: equipoId, usuario_id: usuarioId });
+                await apiService.post('/rendimiento/equipos/asignar', { equipo_id: equipoId, usuario_uuid: usuarioId });
             } catch (error) {
                 const mensajeError = error.response?.data?.error || 'Error al asignar usuario.';
                 toast.error(mensajeError);
@@ -62,9 +70,8 @@ export default function ModalAsignarUsuarios({ equipoId, onClose, onRefresh }) {
   };
 
   const toggleUsuario = (id) => {
-    const numericId = Number(id);
     setUsuariosSeleccionados(prev => 
-        prev.includes(numericId) ? prev.filter(uId => uId !== numericId) : [...prev, numericId]
+        prev.includes(id) ? prev.filter(uId => uId !== id) : [...prev, id]
     );
   };
 
@@ -92,7 +99,7 @@ export default function ModalAsignarUsuarios({ equipoId, onClose, onRefresh }) {
                     <span>{u.nombre}</span>
                     <input 
                         type="checkbox" 
-                        checked={usuariosSeleccionados.includes(u.id)}
+                        checked={usuariosSeleccionados.some(id => String(id) === String(u.id))}
                         onChange={() => toggleUsuario(u.id)}
                         className="accent-green-500"
                     />

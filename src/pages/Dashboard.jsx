@@ -19,15 +19,14 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState('Todos');
   const [prioridadFilter, setPrioridadFilter] = useState('Todas');
-  const [areaFilter, setAreaFilter] = useState('Todas');
-  const [areas, setAreas] = useState([]); // State for areas
+  const [grupoFilter, setGrupoFilter] = useState('Todas');
+  const [grupos, setGrupos] = useState([]);
 
-  // Fetch areas from backend
-  const fetchAreas = async () => {
+  const fetchGrupos = async () => {
     try {
-      const { data } = await apiService.get('/admin/areas');
-      setAreas(data.filter(a => a.activo).map(a => a.nombre));
-    } catch (err) { toast.error('Error al cargar áreas'); }
+      const { data } = await apiService.get('/core/grupos');
+      setGrupos(data.filter(g => g.is_active));
+    } catch (err) { toast.error('Error al cargar grupos'); }
   };
 
   const fetchEstadisticas = async () => {
@@ -62,7 +61,7 @@ export default function Dashboard() {
     fetchTutelas();
     fetchEstadisticas();
     fetchROI();
-    fetchAreas(); // Add fetchAreas call
+    fetchGrupos(); 
   }, []);
 
   const filteredTutelas = useMemo(() => {
@@ -71,10 +70,10 @@ export default function Dashboard() {
                             t.accionante.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesEstado = estadoFilter === 'Todos' || t.estado === estadoFilter;
       const matchesPrioridad = prioridadFilter === 'Todas' || t.prioridad === prioridadFilter;
-      const matchesArea = areaFilter === 'Todas' || t.area_responsable === areaFilter;
-      return matchesSearch && matchesEstado && matchesPrioridad && matchesArea;
+      const matchesGrupo = grupoFilter === 'Todas' || t.grupo_nombre === grupoFilter;
+      return matchesSearch && matchesEstado && matchesPrioridad && matchesGrupo;
     });
-  }, [tutelas, searchTerm, estadoFilter, prioridadFilter, areaFilter]);
+  }, [tutelas, searchTerm, estadoFilter, prioridadFilter, grupoFilter]);
 
   const dataDerechos = useMemo(() => {
     const counts = tutelas.reduce((acc, t) => {
@@ -136,7 +135,6 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Agenda Jurídica */}
       <div className="mb-8">
         <h3 className={`text-lg font-bold mb-4 flex items-center gap-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
             <Calendar size={18} className="text-blue-600"/> Agenda Jurídica (Próximas Tareas)
@@ -159,7 +157,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ROI Header */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-gradient-to-br from-blue-900 to-blue-700 p-6 rounded-xl text-white shadow-lg">
             <p className="text-blue-100 text-xs uppercase font-bold mb-1">Total Procesadas</p>
@@ -209,9 +206,9 @@ export default function Dashboard() {
           <option value="Todas">Todas las Prioridades</option>
           {Object.values(PRIORIDADES).map(p => <option key={p} value={p}>{p}</option>)}
         </select>
-        <select className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#020617] border-slate-700 text-white' : 'bg-white border-gray-300'}`} onChange={(e) => setAreaFilter(e.target.value)}>
-          <option value="Todas">Todas las Áreas</option>
-          {areas.map(a => <option key={a} value={a}>{a}</option>)}
+        <select className={`px-3 py-2 border rounded-lg text-sm ${isDark ? 'bg-[#020617] border-slate-700 text-white' : 'bg-white border-gray-300'}`} onChange={(e) => setGrupoFilter(e.target.value)}>
+          <option value="Todas">Todos los Grupos</option>
+          {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
         </select>
       </div>
 
@@ -252,7 +249,6 @@ export default function Dashboard() {
         </table>
       </div>
 
-      {/* Gráfica de Tendencia */}
       <div className={`p-6 rounded-xl border shadow-sm mb-8 ${isDark ? 'bg-[#0F172A] border-slate-800' : 'bg-white border-gray-200'}`}>
           <h3 className={`font-bold mb-6 text-sm ${isDark ? 'text-white' : 'text-gray-800'}`}>Evolución de Tutelas (Últimos 6 meses)</h3>
           <ResponsiveContainer width="100%" height={300}>
