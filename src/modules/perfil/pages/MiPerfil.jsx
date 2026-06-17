@@ -29,6 +29,7 @@ export default function MiPerfil() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [mostrarTodo, setMostrarTodo] = useState(false);
+    const [soloPendientes, setSoloPendientes] = useState(false);
 
     const QUICK_ACTIONS = [
         { label: 'Nueva Tutela', path: '/procesar', permission: ['tutelas', 'WRITE'], icon: <Plus size={16}/> },
@@ -148,6 +149,10 @@ export default function MiPerfil() {
                     <label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
                         <input type="checkbox" checked={mostrarTodo} onChange={e => setMostrarTodo(e.target.checked)} />
                         Mostrar todo
+                    </label>
+                    <label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
+                        <input type="checkbox" checked={soloPendientes} onChange={e => setSoloPendientes(e.target.checked)} />
+                        Solo pendientes
                     </label>
                     <input 
                         type="text" 
