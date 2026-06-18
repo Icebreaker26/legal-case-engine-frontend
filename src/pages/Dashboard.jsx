@@ -7,6 +7,7 @@ import { ESTADOS, PRIORIDADES } from '../constants';
 import toast from 'react-hot-toast';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { useTheme } from '../context/ThemeContext';
+import SolicitudesPorArea from '../components/dashboard/SolicitudesPorArea';
 
 export default function Dashboard() {
   const { theme } = useTheme();
@@ -261,6 +262,8 @@ export default function Dashboard() {
               </LineChart>
           </ResponsiveContainer>
       </div>
+
+      <SolicitudesPorArea />
     </div>
   );
 }
