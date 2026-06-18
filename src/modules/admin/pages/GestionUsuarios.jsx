@@ -77,6 +77,11 @@ const PERMISSION_PRESETS = {
       { modulo: 'conformidades', accion: 'WRITE' },
       { modulo: 'conformidades', accion: 'DELETE' }
   ],
+  contratos_operativo: [
+      { modulo: 'contratos', accion: 'READ' },
+      { modulo: 'contratos', accion: 'WRITE' },
+      { modulo: 'contratos', accion: 'DELETE' }
+  ],
   admin_total: [
       { modulo: 'tutelas', accion: 'READ' }, 
       { modulo: 'tutelas', accion: 'WRITE' }, 
@@ -96,7 +101,10 @@ const PERMISSION_PRESETS = {
       { modulo: 'pagos', accion: 'DELETE_PAGO' },
       { modulo: 'conformidades', accion: 'READ' },
       { modulo: 'conformidades', accion: 'WRITE' },
-      { modulo: 'conformidades', accion: 'DELETE' }
+      { modulo: 'conformidades', accion: 'DELETE' },
+      { modulo: 'contratos', accion: 'READ' },
+      { modulo: 'contratos', accion: 'WRITE' },
+      { modulo: 'contratos', accion: 'DELETE' }
   ]
 };
 
