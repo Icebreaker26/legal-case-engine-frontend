@@ -56,3 +56,8 @@ Los usuarios con privilegios de administrador tienen acceso a un panel dedicado 
 - **Flujo de Aprobación:** Interfaz administrativa para validar nuevos usuarios. Las cuentas nuevas requieren aprobación explícita de un administrador antes de ingresar.
 - **Seguridad:** Reseteo forzado de contraseñas de cualquier usuario mediante la interfaz administrativa.
 - **Acceso Restringido:** El menú de "Administración" solo es visible para usuarios con el flag `is_admin` activo.
+
+## 📚 Documentación Técnica
+- **Directorio de Módulos:** Para conocer en detalle las páginas y componentes de cada módulo visual, consulte el [Directorio de Módulos del Frontend](docs/DOCUMENTACION_MODULOS.md).
+- **Guía para Agentes de IA:** Si eres un agente de desarrollo de IA trabajando en este proyecto, consulta las [Instrucciones de Contexto de IA del Frontend](AI_INSTRUCTIONS.md).
+
