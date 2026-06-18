@@ -40,6 +40,17 @@ import NuevaSolicitudPago from './modules/pagos/pages/NuevaSolicitudPago';
 import DashboardPagos from './modules/pagos/pages/DashboardPagos';
 import DetallePago from './modules/pagos/pages/DetallePago';
 import GestionEstadosYGrupos from './modules/pagos/pages/GestionEstadosYGrupos';
+import ConformidadesLayout from './modules/conformidades/components/ConformidadesLayout';
+import ListaConformidades from './modules/conformidades/pages/ListaConformidades';
+import DashboardConformidades from './modules/conformidades/pages/DashboardConformidades';
+import DetalleConformidad from './modules/conformidades/pages/DetalleConformidad';
+import NuevaSolicitudConformidad from './modules/conformidades/pages/NuevaSolicitudConformidad';
+import GestionEstadosYGruposConformidades from './modules/conformidades/pages/GestionEstadosYGruposConformidades';
+import ContratosLayout from './modules/contratos/components/ContratosLayout';
+import Auditoria from './modules/contratos/pages/Auditoria';
+import AuditoriaDetalle from './modules/contratos/pages/AuditoriaDetalle';
+import GestionMinutas from './modules/contratos/pages/GestionMinutas';
+import ContratosDashboard from './modules/contratos/pages/ContratosDashboard';
 
 function App() {
   return (
@@ -158,20 +169,23 @@ function App() {
               <Route path="gestion" element={<GestionEstadosYGruposConformidades />} />
               <Route path=":id" element={<DetalleConformidad />} />
             </Route>
+
+            {/* Nuevo módulo de contratos */}
+            <Route path="/contratos" element={
+              <ProtectedRoute>
+                <ContratosLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<ContratosDashboard />} />
+              <Route path="nueva" element={<Auditoria />} />
+              <Route path="auditoria/:id" element={<AuditoriaDetalle />} />
+              <Route path="minutas" element={<GestionMinutas />} />
+            </Route>
           </Routes>
         </ThemeProvider>
       </BrowserRouter>
     </AuthProvider>
   );
 }
-
-// ... imports ...
-
-import ConformidadesLayout from './modules/conformidades/components/ConformidadesLayout';
-import ListaConformidades from './modules/conformidades/pages/ListaConformidades';
-import DashboardConformidades from './modules/conformidades/pages/DashboardConformidades';
-import DetalleConformidad from './modules/conformidades/pages/DetalleConformidad';
-import NuevaSolicitudConformidad from './modules/conformidades/pages/NuevaSolicitudConformidad';
-import GestionEstadosYGruposConformidades from './modules/conformidades/pages/GestionEstadosYGruposConformidades';
 
 export default App;

@@ -53,6 +53,15 @@ export default function ModuleSelector() {
       hoverGlow: 'hover:border-emerald-500 hover:shadow-[0_0_25px_-5px_rgba(16,185,129,0.5)]'
     },
     {
+      id: 'contratos',
+      name: 'Módulo Contratos',
+      description: 'Gestión de minutas y auditoría contractual',
+      path: '/contratos',
+      icon: <FileText size={40} className="text-pink-400" />,
+      permission: ['contratos', 'READ'],
+      hoverGlow: 'hover:border-pink-500 hover:shadow-[0_0_25px_-5px_rgba(244,114,182,0.5)]'
+    },
+    {
       id: 'perfil',
       name: 'Mi Perfil',
       description: 'Ver mis tareas y actividades asignadas',
@@ -70,7 +79,7 @@ export default function ModuleSelector() {
       permission: ['admin', 'READ'],
       hoverGlow: 'hover:border-purple-500 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.5)]'
     }
-  ];
+    ];
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 p-8 flex flex-col items-center relative overflow-hidden">
