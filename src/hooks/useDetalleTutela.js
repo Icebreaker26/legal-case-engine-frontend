@@ -17,7 +17,7 @@ export function useDetalleTutela() {
   const [areasDinamicas, setAreasDinamicas] = useState([]);
   const [allAbogados, setAllAbogados] = useState([]);
   const [argumentos, setArgumentos] = useState([]);
-  const [aiConfig, setAiConfig] = useState({ ai_draft_enabled: false });
+  const [aiConfig, setAiConfig] = useState({});
   const [aiDraftContent, setAiDraftContent] = useState('');
 
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ export function useDetalleTutela() {
       const [sugs, logs, config, reqs, areas, abogados] = await Promise.all([
         tutelaService.obtenerSugerencias(id).catch(() => []),
         tutelaService.obtenerHistorial(id).catch(() => []),
-        tutelaService.obtenerConfiguracion().catch(() => ({ ai_draft_enabled: false })),
+        tutelaService.obtenerConfiguracion().catch(() => ({})),
         tutelaService.listarRequerimientos(id).catch(() => []),
         tutelaService.listarAreas().catch(() => []),
         apiService.get('/admin/abogados-activos').catch(() => ({ data: [] }))
@@ -85,19 +85,14 @@ export function useDetalleTutela() {
     setHistorial(prev => [log, ...prev]);
   };
 
-  const handleUpdateStatus = async (nuevoEstado, responsableNombre, actionMessage) => {
+  const handleUpdateStatus = async (nuevoEstado, responsableNombre, actionMessage, extraFields = {}) => {
     setUpdating(true);
     try {
-      await tutelaService.actualizar(id, { estado: nuevoEstado });
-      
-      const log = await tutelaService.agregarAccion(id, {
-        accion: actionMessage || `Estado cambiado a: ${nuevoEstado}`,
-        area_involucrada: 'Jurídica',
-        responsable_nombre: responsableNombre || 'Sistema'
-      });
+      await tutelaService.actualizar(id, { estado: nuevoEstado, ...extraFields });
 
       updateTutelaState({ estado: nuevoEstado });
-      addHistorialLog(log);
+      const logs = await tutelaService.obtenerHistorial(id).catch(() => null);
+      if (logs) setHistorial(logs);
       toast.success(`Estado actualizado a ${nuevoEstado}`);
       return true;
     } catch (error) {

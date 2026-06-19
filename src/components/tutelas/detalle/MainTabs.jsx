@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { History, ShieldCheck, Bookmark, ChevronRight, Edit, Trash2, AlertCircle, FileText, Maximize2, Send, Clock, Mail, Plus, Download } from 'lucide-react';
+import { History, ShieldCheck, Bookmark, ChevronRight, Edit, Trash2, AlertCircle, FileText, Maximize2, Send, Clock, Mail, Plus, Download, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { generarBorradorPDF } from '../../../utils/generarBorradorPDF';
 import toast from 'react-hot-toast';
 import apiService from '../../../services/apiService';
 import { tutelaService } from '../../../services/tutelaService';
@@ -204,7 +205,7 @@ INSTRUCCIONES DE REDACCIÓN:
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <input 
                                     type="text"
-                                    placeholder="Área (ej: Comercial)"
+                                    placeholder="Área (ej: Permitting)"
                                     className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#002E6D] transition-shadow"
                                     value={nuevaAccion.area_involucrada}
                                     onChange={(e) => setNuevaAccion({...nuevaAccion, area_involucrada: e.target.value})}
@@ -252,7 +253,7 @@ INSTRUCCIONES DE REDACCIÓN:
                                 </div>
                                 <div className="flex justify-between items-start mb-1.5">
                                     <span className="text-xs font-bold text-gray-800 uppercase tracking-tight">
-                                    {log.area_involucrada || 'Gestión'} <span className="text-gray-400 font-normal">por</span> <span className="text-[#002E6D]">{log.responsable_nombre}</span>
+                                    <span className="text-[#002E6D]">{log.responsable_nombre}</span>{log.area_involucrada && <><span className="text-gray-400 font-normal"> · </span>{log.area_involucrada}</>}
                                     </span>
                                     <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
                                     {new Date(log.created_at).toLocaleString()}
@@ -308,11 +309,11 @@ INSTRUCCIONES DE REDACCIÓN:
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-gray-800">Borrador de Contestación Manual</h3>
                             <div className="flex gap-2">
-                            <button 
-                                onClick={copiarPromptParaIA}
-                                className="px-4 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold hover:bg-purple-100 transition-colors"
+                            <button
+                                onClick={() => generarBorradorPDF({ tutela, contenido: aiDraftContent })}
+                                className="px-4 py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors flex items-center gap-1.5"
                             >
-                                Copiar Prompt para IA Externa
+                                <Download size={13} /> Exportar PDF
                             </button>
                             {!isLockedByMe ? (
                                 <button onClick={lock} className="px-4 py-2 bg-[#002E6D] text-white rounded-lg text-xs font-bold hover:bg-[#001d4a]">Editar Borrador</button>
@@ -348,25 +349,53 @@ INSTRUCCIONES DE REDACCIÓN:
                             </h4>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-                            {argumentos.map(arg => {
-                                console.log('DEBUG: Argumento:', arg);
-                                return (
+                            {argumentos.map(arg => (
                                 <div key={arg.id} className="bg-white border border-purple-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow group flex flex-col">
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="flex flex-col">
-                                            <span className="text-xs font-bold text-purple-900 leading-tight">{arg.titulo}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-bold text-purple-900 leading-tight">{arg.titulo}</span>
+                                                {arg.promovido_a_memoria && (
+                                                    <span className="text-[8px] font-black uppercase tracking-widest bg-green-100 text-green-700 px-1.5 py-0.5 rounded">
+                                                        En Memoria
+                                                    </span>
+                                                )}
+                                            </div>
                                             <span className="text-[10px] text-gray-400 mt-1">Creado por: {arg.creado_por_nombre || 'Desconocido'}</span>
                                         </div>
                                         <div className="flex gap-1 shrink-0">
-                                            <button onClick={() => setAiDraftContent(aiDraftContent + `\n\n${arg.contenido}\n\n`)} className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold hover:bg-purple-200 transition-colors">Insertar</button>
+                                            <button
+                                                onClick={() => setAiDraftContent(aiDraftContent + `\n\n${arg.contenido}\n\n`)}
+                                                className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold hover:bg-purple-200 transition-colors"
+                                            >
+                                                Insertar
+                                            </button>
+                                            {!arg.promovido_a_memoria && (
+                                                <button
+                                                    onClick={async () => {
+                                                        try {
+                                                            await tutelaService.promoverArgumento(id, arg.id);
+                                                            setArgumentos(prev => prev.map(a =>
+                                                                a.id === arg.id ? { ...a, promovido_a_memoria: true } : a
+                                                            ));
+                                                            toast.success('Argumento promovido a la memoria legal del sistema');
+                                                        } catch {
+                                                            toast.error('Error al promover el argumento');
+                                                        }
+                                                    }}
+                                                    title="Promover a Memoria Legal — estará disponible como precedente en casos futuros"
+                                                    className="text-[10px] bg-green-50 text-green-700 px-2 py-1 rounded font-bold hover:bg-green-100 transition-colors"
+                                                >
+                                                    Promover
+                                                </button>
+                                            )}
                                             <button onClick={() => setArgEnEdicion(arg)} className="text-[10px] bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200 transition-colors"><Edit size={12} /></button>
                                             <button onClick={() => handleEliminarArgumento(arg.id)} className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded hover:bg-red-100 transition-colors"><Trash2 size={12} /></button>
                                         </div>
                                     </div>
                                     <p className="text-xs text-gray-600 line-clamp-3 bg-gray-50/50 p-3 rounded-lg flex-1 leading-relaxed border border-gray-100">{arg.contenido}</p>
                                 </div>
-                            );
-                            })}
+                            ))}
                             </div>
                             
                             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
@@ -421,42 +450,84 @@ INSTRUCCIONES DE REDACCIÓN:
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {requerimientos.map(req => (
-                                    <div key={req.id} className="bg-gray-50 border border-gray-100 p-5 rounded-xl hover:border-gray-200 hover:shadow-sm transition-all">
+                                {requerimientos.map(req => {
+                                    const estaVencido = req.fecha_limite && new Date(req.fecha_limite) < new Date() && req.estado !== 'Respondido';
+                                    const diasRestantes = req.fecha_limite
+                                        ? Math.ceil((new Date(req.fecha_limite) - new Date()) / (1000 * 60 * 60 * 24))
+                                        : null;
+
+                                    const prioridadStyle = {
+                                        Alta:  'bg-red-100 text-red-700',
+                                        Media: 'bg-orange-100 text-orange-700',
+                                        Baja:  'bg-gray-100 text-gray-600',
+                                    }[req.prioridad] || 'bg-gray-100 text-gray-600';
+
+                                    const estadoStyle = {
+                                        'Respondido':  'bg-green-100 text-green-700',
+                                        'En Gestión':  'bg-blue-100 text-blue-700',
+                                        'Vencido':     'bg-red-100 text-red-700',
+                                        'Pendiente':   'bg-orange-100 text-orange-700',
+                                    }[req.estado] || 'bg-orange-100 text-orange-700';
+
+                                    return (
+                                    <div key={req.id} className={`bg-white border p-5 rounded-xl hover:shadow-sm transition-all ${estaVencido ? 'border-red-200 bg-red-50/30' : 'border-gray-100'}`}>
+                                        {/* Header */}
                                         <div className="flex justify-between items-start mb-3">
-                                            <span className="text-[10px] font-black text-[#002E6D] uppercase bg-blue-50 px-2.5 py-1 rounded-md">{req.area_nombre || 'Sin Grupo'}</span>
+                                            <div className="flex flex-col gap-1.5">
+                                                <span className="text-[10px] font-black text-[#002E6D] uppercase bg-blue-50 px-2.5 py-1 rounded-md w-fit">{req.area_nombre || 'Sin Grupo'}</span>
+                                                {req.prioridad && (
+                                                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded w-fit ${prioridadStyle}`}>
+                                                        {req.prioridad === 'Alta' ? '⚡ ' : ''}{req.prioridad}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="flex gap-1.5">
                                                 <button onClick={() => setViewOficio(req)} className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-[#002E6D] hover:border-[#002E6D] transition-colors" title="Ver oficio"><Maximize2 size={13}/></button>
                                                 <button onClick={() => handleDownloadOficio(req)} className="p-1.5 bg-white border border-gray-200 rounded-lg text-gray-400 hover:text-[#002E6D] hover:border-[#002E6D] transition-colors" title="Descargar oficio"><Download size={13}/></button>
                                             </div>
                                         </div>
+
+                                        {/* Descripción */}
                                         <p className="text-sm text-gray-600 line-clamp-3 mb-4 leading-relaxed">{req.descripcion}</p>
-                                        <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                                            <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{new Date(req.fecha_solicitud).toLocaleDateString()}</span>
-                                            <div className="flex items-center gap-3">
+
+                                        {/* Fecha límite */}
+                                        {req.fecha_limite && (
+                                            <div className={`flex items-center gap-1.5 text-[10px] font-bold mb-3 ${estaVencido ? 'text-red-600' : diasRestantes <= 1 ? 'text-orange-600' : 'text-gray-400'}`}>
+                                                <span>{estaVencido ? '🔴 Vencido el' : diasRestantes === 0 ? '🟠 Vence hoy —' : diasRestantes === 1 ? '🟠 Vence mañana —' : '📅 Límite:'}</span>
+                                                <span>{new Date(req.fecha_limite).toLocaleDateString('es-CO')}</span>
+                                                {!estaVencido && diasRestantes > 1 && <span className="text-gray-300">({diasRestantes}d)</span>}
+                                            </div>
+                                        )}
+
+                                        {/* Footer */}
+                                        <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                                            <span className="text-[10px] text-gray-300 uppercase font-bold tracking-wider">
+                                                {new Date(req.fecha_solicitud).toLocaleDateString('es-CO')}
+                                            </span>
+                                            <div className="flex items-center gap-2">
                                                 {req.estado !== 'Respondido' && (
-                                                    <button 
+                                                    <button
                                                         onClick={() => openRespReqModal(req.id)}
                                                         className="text-[10px] font-black uppercase text-[#002E6D] hover:underline"
                                                     >
                                                         Responder
                                                     </button>
                                                 )}
-                                                <select 
-                                                    value={req.estado} 
+                                                <select
+                                                    value={req.estado}
                                                     onChange={(e) => handleActualizarEstadoReq(req.id, e.target.value)}
-                                                    className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-md border-none outline-none cursor-pointer shadow-sm ${
-                                                        req.estado === 'Respondido' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                                                    }`}
+                                                    className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-md border-none outline-none cursor-pointer shadow-sm ${estadoStyle}`}
                                                 >
                                                     <option value="Pendiente">Pendiente</option>
-                                                    <option value="Respondido">Recibido</option>
+                                                    <option value="En Gestión">En Gestión</option>
+                                                    <option value="Respondido">Respondido</option>
                                                     <option value="Vencido">Vencido</option>
                                                 </select>
                                             </div>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -529,22 +600,54 @@ INSTRUCCIONES DE REDACCIÓN:
                                         <p className="text-sm text-gray-600 italic leading-relaxed">"{sug.contenido_legal}"</p>
                                     </div>
                                     <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                                        <button 
-                                            onClick={() => {
-                                            navigator.clipboard.writeText(sug.contenido_legal);
-                                            toast.success('Copiado');
-                                            }}
-                                            className="text-[#002E6D] text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                                        >
-                                            Copiar <ChevronRight size={12} />
-                                        </button>
-                                        {sug.documento_id && (
-                                            <button 
-                                                onClick={() => handleVerDocumentoCompleto(sug)}
-                                                className="text-gray-500 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:text-[#002E6D] hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(sug.contenido_legal);
+                                                    toast.success('Copiado');
+                                                }}
+                                                className="text-[#002E6D] text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
                                             >
-                                                <Maximize2 size={12} /> Ver Expediente
+                                                Copiar <ChevronRight size={12} />
                                             </button>
+                                            {sug.documento_id && (
+                                                <button
+                                                    onClick={() => handleVerDocumentoCompleto(sug)}
+                                                    className="text-gray-500 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:text-[#002E6D] hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"
+                                                >
+                                                    <Maximize2 size={12} /> Ver Expediente
+                                                </button>
+                                            )}
+                                        </div>
+                                        {sug.documento_id && (
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-[9px] text-gray-400 uppercase tracking-widest mr-1">¿Útil?</span>
+                                                <button
+                                                    onClick={async () => {
+                                                        await tutelaService.registrarFeedback(sug.documento_id, true);
+                                                        toast.success('Gracias por tu valoración');
+                                                    }}
+                                                    title="Este precedente fue útil"
+                                                    className="p-1.5 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors"
+                                                >
+                                                    <ThumbsUp size={13} />
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        await tutelaService.registrarFeedback(sug.documento_id, false);
+                                                        toast('Valoración registrada', { icon: '👎' });
+                                                    }}
+                                                    title="Este precedente no fue relevante"
+                                                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <ThumbsDown size={13} />
+                                                </button>
+                                                {sug.relevancia_score !== undefined && sug.relevancia_score !== 0 && (
+                                                    <span className={`text-[9px] font-black ml-1 ${sug.relevancia_score > 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                                        {sug.relevancia_score > 0 ? `+${sug.relevancia_score}` : sug.relevancia_score}
+                                                    </span>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
                                 </div>

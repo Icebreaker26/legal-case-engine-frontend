@@ -1,13 +1,28 @@
 import { useState } from 'react';
-import { ArrowLeft, Edit, X, User, Clock, ShieldCheck, FileText, Building, ExternalLink, Save } from 'lucide-react';
+import { ArrowLeft, Edit, X, User, Clock, ShieldCheck, FileText, Building, ExternalLink, Save, Download, Gavel } from 'lucide-react';
+
+const DERECHOS_VULNERADOS = [
+  'Acceso al servicio público de energía',
+  'Servidumbre de energía',
+  'Derecho de petición',
+  'Facturación / Cobros indebidos',
+  'Corte o suspensión del servicio',
+  'Daños por instalaciones eléctricas',
+  'Medio ambiente / Impacto ambiental',
+  'Propiedad / Predial',
+  'Seguridad / Accidente eléctrico',
+  'Contrato de condiciones uniformes',
+  'Otro',
+];
 import { tutelaService } from '../../../services/tutelaService';
 import toast from 'react-hot-toast';
 
-export default function DetalleHeader({ 
-  tutela, 
-  updating, 
-  navigate, 
+export default function DetalleHeader({
+  tutela,
+  updating,
+  navigate,
   handleUpdateStatus,
+  onExportPDF,
   // Props migrados de SidebarInfo
   id,
   allAbogados,
@@ -19,6 +34,7 @@ export default function DetalleHeader({
   const [checklistModalOpen, setChecklistModalOpen] = useState(false);
   const [targetStatus, setTargetStatus] = useState('');
   const [checklist, setChecklist] = useState({ contestacion: false, requerimientos: false, notificacion: false });
+  const [resultadoFallo, setResultadoFallo] = useState('');
 
   // Editing state (migrado de SidebarInfo)
   const [isEditing, setIsEditing] = useState(false);
@@ -38,24 +54,27 @@ export default function DetalleHeader({
 
   const proceedUpdateStatus = async () => {
     const success = await handleUpdateStatus(
-      targetStatus, 
-      null, 
-      `Estado cambiado a: ${targetStatus} (Checklist de integridad verificado)`
+      targetStatus,
+      null,
+      `Estado cambiado a: ${targetStatus} (Checklist de integridad verificado)`,
+      resultadoFallo ? { resultado_fallo: resultadoFallo } : {}
     );
-    
+
     if (success) {
       setChecklistModalOpen(false);
       setChecklist({ contestacion: false, requerimientos: false, notificacion: false });
+      setResultadoFallo('');
     }
   };
 
   const startEditing = () => {
     setIsEditing(true);
     setEditForm({ 
-        radicado: tutela.radicado, 
-        accionante: tutela.accionante, 
+        radicado: tutela.radicado,
+        accionante: tutela.accionante,
         sharepoint_link: tutela.sharepoint_link || '',
         derecho_vulnerado: tutela.derecho_vulnerado || '',
+        resultado_fallo: tutela.resultado_fallo || '',
         grupo_id: tutela.grupo_id || '',
         responsable_id: tutela.responsable_uuid || '',
         prioridad: tutela.prioridad,
@@ -68,7 +87,8 @@ export default function DetalleHeader({
     try {
         const payload = {
             ...editForm,
-            responsable_uuid: editForm.responsable_id
+            responsable_uuid: editForm.responsable_id,
+            resultado_fallo: editForm.resultado_fallo || null
         };
         await tutelaService.actualizarDatos(id, payload);
         toast.success('Datos actualizados');
@@ -96,7 +116,15 @@ export default function DetalleHeader({
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-gray-500 hover:text-[#002E6D] font-medium transition-colors">
           <ArrowLeft size={20} /> Volver a la Bandeja
         </button>
-        <div className="flex bg-gray-100 p-1 rounded-xl gap-1 shadow-inner">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onExportPDF}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-gray-200 bg-white hover:bg-blue-50 hover:text-[#002E6D] hover:border-[#002E6D] rounded-xl transition-colors"
+            title="Exportar expediente como PDF"
+          >
+            <Download size={14} /> Exportar PDF
+          </button>
+          <div className="flex bg-gray-100 p-1 rounded-xl gap-1 shadow-inner">
           {['Pendiente', 'En Proceso', 'Respondida'].map((estado) => (
             <button 
               key={estado} 
@@ -111,6 +139,7 @@ export default function DetalleHeader({
               {estado}
             </button>
           ))}
+          </div>
         </div>
       </div>
 
@@ -140,7 +169,16 @@ export default function DetalleHeader({
                 <input className="border border-gray-200 bg-gray-50 p-2.5 rounded-lg text-sm w-full outline-none focus:ring-2 focus:ring-[#002E6D]" value={editForm.radicado} onChange={e => setEditForm({...editForm, radicado: e.target.value})} placeholder="Radicado" />
                 <input className="border border-gray-200 bg-gray-50 p-2.5 rounded-lg text-sm w-full outline-none focus:ring-2 focus:ring-[#002E6D]" value={editForm.accionante} onChange={e => setEditForm({...editForm, accionante: e.target.value})} placeholder="Accionante" />
                 <input className="border border-gray-200 bg-gray-50 p-2.5 rounded-lg text-sm w-full outline-none focus:ring-2 focus:ring-[#002E6D]" value={editForm.sharepoint_link} onChange={e => setEditForm({...editForm, sharepoint_link: e.target.value})} placeholder="Link de SharePoint" />
-                <input className="border border-gray-200 bg-gray-50 p-2.5 rounded-lg text-sm w-full outline-none focus:ring-2 focus:ring-[#002E6D]" value={editForm.derecho_vulnerado} onChange={e => setEditForm({...editForm, derecho_vulnerado: e.target.value})} placeholder="Derecho Vulnerado" />
+                <select className="border border-gray-200 bg-gray-50 p-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#002E6D]" value={editForm.derecho_vulnerado} onChange={e => setEditForm({...editForm, derecho_vulnerado: e.target.value})}>
+                  <option value="">Seleccionar Derecho Vulnerado</option>
+                  {DERECHOS_VULNERADOS.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <select className="border border-gray-200 bg-gray-50 p-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#002E6D]" value={editForm.resultado_fallo || ''} onChange={e => setEditForm({...editForm, resultado_fallo: e.target.value})}>
+                  <option value="">Resultado del Fallo (opcional)</option>
+                  <option value="Favorable">Favorable</option>
+                  <option value="Desfavorable">Desfavorable</option>
+                  <option value="En apelación">En apelación</option>
+                </select>
                 <select className="border border-gray-200 bg-gray-50 p-2.5 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#002E6D]" value={editForm.grupo_id} onChange={e => setEditForm({...editForm, grupo_id: e.target.value})}>
                   <option value="">Seleccionar Grupo</option>
                   {areasDinamicas.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
@@ -193,23 +231,49 @@ export default function DetalleHeader({
               </div>
 
               {/* Row 2: Metadata chips — distribución horizontal */}
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 pt-5 border-t border-gray-100">
+              <div className={`grid grid-cols-2 md:grid-cols-3 ${tutela.resultado_fallo ? 'lg:grid-cols-6' : 'lg:grid-cols-5'} gap-4 pt-5 border-t border-gray-100`}>
                 <MetaChip icon={<User size={15} />} label="Responsable" value={responsableNombre} />
                 <MetaChip icon={<FileText size={15} />} label="Derecho" value={tutela.derecho_vulnerado || 'General'} />
-                <MetaChip 
-                  icon={<Clock size={15} />} 
-                  label="Vencimiento" 
-                  value={new Date(tutela.fecha_vencimiento).toLocaleDateString()} 
+                <MetaChip
+                  icon={<Clock size={15} />}
+                  label="Vencimiento"
+                  value={new Date(tutela.fecha_vencimiento).toLocaleDateString()}
                   accent={urgente ? 'red' : null}
                   badge={diasRestantes !== null ? `${diasRestantes}d` : null}
                 />
                 <MetaChip icon={<ShieldCheck size={15} />} label="Estado" value={tutela.estado} />
                 <MetaChip icon={<Building size={15} />} label="Área" value={tutela.grupo_nombre || 'General'} />
+                {tutela.resultado_fallo && (
+                  <MetaChip
+                    icon={<Gavel size={15} />}
+                    label="Fallo"
+                    value={tutela.resultado_fallo}
+                    accent={tutela.resultado_fallo === 'Favorable' ? 'green' : tutela.resultado_fallo === 'Desfavorable' ? 'red' : null}
+                  />
+                )}
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Banner: invitar a registrar resultado del fallo */}
+      {tutela.estado === 'Respondida' && !tutela.resultado_fallo && (
+        <div className="flex items-center justify-between gap-4 mb-6 px-5 py-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+          <div className="flex items-center gap-3 min-w-0">
+            <Gavel size={16} className="text-amber-600 shrink-0" />
+            <p className="text-sm text-amber-800 font-medium">
+              ¿Ya conoces el fallo del juzgado? Registra el resultado para enriquecer los análisis.
+            </p>
+          </div>
+          <button
+            onClick={startEditing}
+            className="shrink-0 px-3 py-1.5 text-xs font-bold text-amber-700 border border-amber-300 bg-white rounded-lg hover:bg-amber-100 transition-colors"
+          >
+            Registrar resultado
+          </button>
+        </div>
+      )}
 
       {/* Checklist Modal */}
       {checklistModalOpen && (
@@ -233,8 +297,8 @@ export default function DetalleHeader({
             </div>
             <div className="flex gap-3">
               <button onClick={() => setChecklistModalOpen(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 py-2.5 rounded-xl text-sm font-bold transition-colors">Cancelar</button>
-              <button 
-                onClick={proceedUpdateStatus} 
+              <button
+                onClick={proceedUpdateStatus}
                 disabled={!checklist.contestacion || !checklist.requerimientos || !checklist.notificacion || updating}
                 className="flex-1 bg-[#002E6D] hover:bg-[#001d4a] disabled:bg-gray-300 text-white py-2.5 rounded-xl text-sm font-bold transition-colors"
               >
@@ -250,18 +314,22 @@ export default function DetalleHeader({
 
 /** Chip compacto para metadatos horizontales */
 function MetaChip({ icon, label, value, accent, badge }) {
+  const iconCls =
+    accent === 'red'   ? 'bg-red-50 text-red-500 group-hover:bg-red-100' :
+    accent === 'green' ? 'bg-green-50 text-green-600 group-hover:bg-green-100' :
+                         'bg-gray-50 text-gray-400 group-hover:bg-blue-50 group-hover:text-[#002E6D]';
+  const textCls =
+    accent === 'red'   ? 'text-red-600' :
+    accent === 'green' ? 'text-green-700' :
+                         'text-gray-800';
   return (
     <div className="flex items-center gap-3 group">
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
-        accent === 'red' 
-          ? 'bg-red-50 text-red-500 group-hover:bg-red-100' 
-          : 'bg-gray-50 text-gray-400 group-hover:bg-blue-50 group-hover:text-[#002E6D]'
-      }`}>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-colors ${iconCls}`}>
         {icon}
       </div>
       <div className="min-w-0">
         <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mb-0.5">{label}</p>
-        <p className={`font-semibold text-xs truncate ${accent === 'red' ? 'text-red-600' : 'text-gray-800'}`}>
+        <p className={`font-semibold text-xs truncate ${textCls}`}>
           {value}
           {badge && (
             <span className={`ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black ${
