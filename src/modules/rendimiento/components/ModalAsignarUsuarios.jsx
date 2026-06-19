@@ -14,7 +14,7 @@ export default function ModalAsignarUsuarios({ equipoId, onClose, onRefresh }) {
 
   const fetchUsuarios = async () => {
     try {
-      const { data: todosAbogados } = await apiService.get('/admin/abogados-activos');
+      const { data: todosAbogados } = await apiService.get('/core/usuarios-activos');
 
       
       // Filtrar y verificar datos
@@ -33,7 +33,7 @@ export default function ModalAsignarUsuarios({ equipoId, onClose, onRefresh }) {
 
   const handleGuardar = async () => {
     try {
-        const { data: todosAbogados } = await apiService.get('/admin/abogados-activos');
+        const { data: todosAbogados } = await apiService.get('/core/usuarios-activos');
         const idsIniciales = todosAbogados
             .filter(u => String(u.equipo_id) === String(equipoId))
             .map(m => m.id);

@@ -14,7 +14,6 @@ export default function PagosLayout() {
   const navLinks = [
     { to: "/pagos/dashboard", label: "Dashboard" },
     { to: "/pagos", label: "Lista" },
-    { to: "/pagos/gestion", label: "Gestión" },
     { to: "/pagos/nueva", label: "Nueva Solicitud" }
   ];
 

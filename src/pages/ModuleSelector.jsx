@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, Settings, Shield, Mail, LogOut, Wallet, User } from 'lucide-react';
+import { FileText, BarChart3, Settings, Shield, Mail, LogOut, Wallet, User, Database } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 export default function ModuleSelector() {
@@ -71,9 +71,18 @@ export default function ModuleSelector() {
       hoverGlow: 'hover:border-slate-500 hover:shadow-[0_0_25px_-5px_rgba(148,163,184,0.5)]'
     },
     {
+      id: 'catalogos',
+      name: 'Catálogos',
+      description: 'Gestión de entidades, grupos, áreas y catálogos operativos',
+      path: '/catalogos',
+      icon: <Database size={40} className="text-orange-400" />,
+      permission: ['supervisor', 'READ'],
+      hoverGlow: 'hover:border-orange-500 hover:shadow-[0_0_25px_-5px_rgba(251,146,60,0.5)]'
+    },
+    {
       id: 'admin',
       name: 'Administración',
-      description: 'Configuración, usuarios y permisos del sistema',
+      description: 'Gestión de usuarios, roles y permisos del sistema',
       path: '/usuarios',
       icon: <Settings size={40} className="text-purple-400" />,
       permission: ['admin', 'READ'],

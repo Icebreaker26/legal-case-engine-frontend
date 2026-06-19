@@ -15,7 +15,6 @@ export default function ComunicacionesLayout() {
   const navLinks = [
     { to: "/comunicaciones/dashboard", label: "Dashboard" },
     { to: "/comunicaciones", label: "Lista" },
-    { to: "/comunicaciones/gestion", label: "Gestión" },
     { to: "/comunicaciones/nueva", label: "Nueva" }
   ];
 

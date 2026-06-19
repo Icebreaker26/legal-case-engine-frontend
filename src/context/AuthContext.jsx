@@ -20,16 +20,16 @@ export const AuthProvider = ({ children }) => {
     if (storedUser) {
       const userData = JSON.parse(storedUser);
       setUser(userData);
-      loadPermissions(userData.id);
+      loadPermissions();
     } else {
       setLoading(false);
     }
   }, []);
 
-  const loadPermissions = async (userId) => {
+  const loadPermissions = async () => {
     try {
       setLoading(true);
-      const res = await apiService.get(`/permisos/usuario/${userId}`);
+      const res = await apiService.get('/permisos/mis-permisos');
       setPermissions(res.data); // [{modulo, accion}, ...]
     } catch (err) {
       console.error("Error al cargar permisos", err);
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (userData) => {
     localStorage.setItem('user', JSON.stringify(userData));
     setUser(userData);
-    await loadPermissions(userData.id);
+    await loadPermissions();
   };
 
   const logout = async () => {
@@ -57,6 +57,7 @@ export const AuthProvider = ({ children }) => {
 
   // Función auxiliar para verificar permisos
   const hasPermission = (modulo, accion) => {
+    if (user?.is_admin) return true;
     return permissions.some(p => p.modulo === modulo && p.accion === accion);
   };
 

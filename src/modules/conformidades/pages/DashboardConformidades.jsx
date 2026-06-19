@@ -3,6 +3,7 @@ import conformidadesService from '../../../services/conformidadesService';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import SearchableSelect from '../components/SearchableSelect';
 
 export default function DashboardConformidades() {
     const [stats, setStats] = useState(null);
@@ -39,14 +40,15 @@ export default function DashboardConformidades() {
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold uppercase tracking-widest text-[#e0dcc8]">Dashboard de Conformidades</h2>
                 
-                <select 
-                    className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-2 text-xs uppercase"
+                <SearchableSelect
+                    options={entidades}
                     value={selectedEntidad}
-                    onChange={(e) => setSelectedEntidad(e.target.value)}
-                >
-                    <option value="">Todas las entidades</option>
-                    {entidades.map(ent => <option key={ent.id} value={ent.id}>{ent.nombre}</option>)}
-                </select>
+                    onChange={setSelectedEntidad}
+                    placeholder="Todas las entidades"
+                    valueField="id"
+                    labelField="nombre"
+                    className="min-w-[180px]"
+                />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

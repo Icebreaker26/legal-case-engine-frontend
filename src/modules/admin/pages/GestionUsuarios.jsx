@@ -82,6 +82,11 @@ const PERMISSION_PRESETS = {
       { modulo: 'contratos', accion: 'WRITE' },
       { modulo: 'contratos', accion: 'DELETE' }
   ],
+  supervisor: [
+      { modulo: 'supervisor', accion: 'READ' },
+      { modulo: 'supervisor', accion: 'WRITE' },
+      { modulo: 'supervisor', accion: 'DELETE' },
+  ],
   admin_total: [
       { modulo: 'tutelas', accion: 'READ' }, 
       { modulo: 'tutelas', accion: 'WRITE' }, 

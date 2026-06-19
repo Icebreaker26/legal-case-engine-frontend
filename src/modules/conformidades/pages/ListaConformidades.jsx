@@ -4,6 +4,7 @@ import conformidadesService from '../../../services/conformidadesService';
 import toast from 'react-hot-toast';
 import { Search, ArrowUp, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import SearchableSelect from '../components/SearchableSelect';
 import { calcularTiempoTranscurrido } from '../../../utils/dateUtils';
 
 export default function ListaConformidades() {
@@ -89,20 +90,33 @@ export default function ListaConformidades() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 
-                <select className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-1 text-xs uppercase" onChange={(e) => setFiltroEstado(e.target.value)} value={filtroEstado}>
-                    <option value="">Todos los estados</option>
-                    {estados.map(estado => <option key={estado.id} value={estado.nombre}>{estado.nombre}</option>)}
-                </select>
-
-                <select className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-1 text-xs uppercase" onChange={(e) => setFiltroGrupo(e.target.value)} value={filtroGrupo}>
-                    <option value="">Todos los grupos</option>
-                    {grupos.map(grupo => <option key={grupo.id} value={grupo.nombre}>{grupo.nombre}</option>)}
-                </select>
-
-                <select className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-1 text-xs uppercase" onChange={(e) => setFiltroEntidad(e.target.value)} value={filtroEntidad}>
-                    <option value="">Todas las entidades</option>
-                    {entidades.map(ent => <option key={ent.id} value={ent.id}>{ent.nombre}</option>)}
-                </select>
+                <SearchableSelect
+                    options={estados}
+                    value={filtroEstado}
+                    onChange={setFiltroEstado}
+                    placeholder="Todos los estados"
+                    valueField="nombre"
+                    labelField="nombre"
+                    className="min-w-[150px]"
+                />
+                <SearchableSelect
+                    options={grupos}
+                    value={filtroGrupo}
+                    onChange={setFiltroGrupo}
+                    placeholder="Todos los grupos"
+                    valueField="nombre"
+                    labelField="nombre"
+                    className="min-w-[140px]"
+                />
+                <SearchableSelect
+                    options={entidades}
+                    value={filtroEntidad}
+                    onChange={setFiltroEntidad}
+                    placeholder="Todas las entidades"
+                    valueField="id"
+                    labelField="nombre"
+                    className="min-w-[160px]"
+                />
 
                 <button onClick={() => setOrdenFecha(ordenFecha === 'asc' ? 'desc' : 'asc')} className="text-[#2d4a3e] flex items-center gap-1 text-xs font-bold uppercase hover:underline">
                     {ordenFecha === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>} Fecha
