@@ -51,6 +51,12 @@ import Auditoria from './modules/contratos/pages/Auditoria';
 import AuditoriaDetalle from './modules/contratos/pages/AuditoriaDetalle';
 import GestionMinutas from './modules/contratos/pages/GestionMinutas';
 import ContratosDashboard from './modules/contratos/pages/ContratosDashboard';
+import AmbientalLayout from './modules/ambiental/components/AmbientalLayout';
+import ListaExpedientes from './modules/ambiental/pages/ListaExpedientes';
+import NuevoExpediente from './modules/ambiental/pages/NuevoExpediente';
+import DetalleExpediente from './modules/ambiental/pages/DetalleExpediente';
+import CalendarioAmbiental from './modules/ambiental/pages/CalendarioAmbiental';
+import DashboardAmbiental from './modules/ambiental/pages/DashboardAmbiental';
 
 function App() {
   return (
@@ -180,6 +186,19 @@ function App() {
               <Route path="nueva" element={<NuevaSolicitudConformidad />} />
               <Route path="dashboard" element={<DashboardConformidades />} />
               <Route path=":id" element={<DetalleConformidad />} />
+            </Route>
+
+            {/* Módulo Derecho Ambiental */}
+            <Route path="/ambiental" element={
+              <ProtectedRoute>
+                <AmbientalLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<ListaExpedientes />} />
+              <Route path="nuevo" element={<NuevoExpediente />} />
+              <Route path="dashboard" element={<DashboardAmbiental />} />
+              <Route path="calendario" element={<CalendarioAmbiental />} />
+              <Route path="expediente/:id" element={<DetalleExpediente />} />
             </Route>
 
             {/* Nuevo módulo de contratos */}
