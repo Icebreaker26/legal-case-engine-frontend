@@ -6,6 +6,7 @@ import { Plus, History } from 'lucide-react';
 import ModalHistorialAcciones from '../components/ModalHistorialAcciones';
 import MilitaryProfileCard from '../components/MilitaryProfileCard';
 import UserKPIs from '../components/UserKPIs';
+import HelpButton from '../../../components/HelpButton';
 
 export default function DashboardRendimiento() {
   const { user } = useAuth();
@@ -70,7 +71,77 @@ export default function DashboardRendimiento() {
 
   return (
     <div className="terminal-border bg-[#050A05] border-2 border-[#1A441A] p-6 text-[#33FF33] font-mono shadow-[0_0_10px_rgba(51,255,51,0.1)]">
-      <h2 className="text-xl font-bold uppercase tracking-widest text-[#33FF33] border-b border-[#1A441A] pb-2">[ MI PR0GRES0 ]</h2>
+      <div className="flex items-center gap-3 border-b border-[#1A441A] pb-2">
+        <h2 className="text-xl font-bold uppercase tracking-widest text-[#33FF33]">[ MI PR0GRES0 ]</h2>
+        <HelpButton
+          title="Cómo usar el módulo de Rendimiento"
+          color="text-[#33FF33]"
+          accentColor="#33FF33"
+          theme="dark"
+          tips={[
+            'Este panel muestra tus objetivos activos del mes y tu porcentaje de cumplimiento.',
+            'Registra avances cada vez que completes una acción relacionada con un objetivo.',
+            'El peso (1-10) que asignas a cada acción determina cuánto suma al % del objetivo.',
+            'Los managers pueden ver el progreso de todo el equipo desde el Dashboard del Manager.',
+          ]}
+          sections={[
+            {
+              title: '¿Qué hace este módulo?',
+              content: (
+                <p>
+                  Este módulo hace seguimiento al cumplimiento de objetivos mensuales por cada miembro del equipo jurídico.
+                  Cada abogado tiene objetivos asignados por su manager, y registra avances a medida que completa actividades.
+                  El sistema calcula automáticamente el porcentaje de cumplimiento y permite que managers y coordinadores
+                  vean el desempeño del equipo en tiempo real.
+                </p>
+              )
+            },
+            {
+              title: 'Cómo registrar un avance',
+              content: (
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>En la lista de objetivos, ubica el objetivo al que quieres registrar un avance.</li>
+                  <li>Haz clic en el botón <b>Registrar Avance</b> (ícono de suma).</li>
+                  <li>Ingresa el <b>peso</b> de la acción en una escala de 1 a 10 — usa valores más altos para actividades más relevantes o complejas.</li>
+                  <li>Escribe un <b>comentario</b> describiendo qué hiciste concretamente (ej. "Radicación de contestación tutela #2024-123").</li>
+                  <li>Guarda — el sistema suma el peso al acumulado del objetivo y actualiza tu % de cumplimiento al instante.</li>
+                </ol>
+              )
+            },
+            {
+              title: 'Entender el porcentaje de cumplimiento',
+              content: (
+                <p>
+                  Cada objetivo tiene una <b>meta de puntos</b> definida por el manager. El % de cumplimiento es la suma de
+                  los pesos de todas tus acciones registradas dividida entre esa meta. Por ejemplo, si la meta es 50 puntos
+                  y has registrado acciones por 35 puntos, tu cumplimiento es del 70%. Puedes ver el historial de todas
+                  tus acciones haciendo clic en el ícono de historial del objetivo.
+                </p>
+              )
+            },
+            {
+              title: 'Estados de los objetivos',
+              content: (
+                <ul className="list-disc list-inside space-y-2">
+                  <li><b>Activo:</b> el objetivo está vigente y puedes seguir registrando avances.</li>
+                  <li><b>Completado:</b> alcanzaste o superaste el 100% de la meta — felicidades.</li>
+                  <li><b>Vencido:</b> el mes terminó y el objetivo no se completó — queda en el historial para análisis.</li>
+                </ul>
+              )
+            },
+            {
+              title: 'Para managers: vista del equipo',
+              content: (
+                <p>
+                  Si tienes rol de manager, accede al <b>Dashboard del Manager</b> desde el menú para ver el progreso
+                  de todo tu equipo en un solo lugar. Desde el <b>Gestor de Equipos</b> puedes asignar nuevos objetivos
+                  mensuales, ajustar metas existentes y consultar el historial de cumplimiento de períodos anteriores.
+                </p>
+              )
+            }
+          ]}
+        />
+      </div>
 
       <MilitaryProfileCard user={user} />
       <UserKPIs objetivos={objetivosFiltrados} />

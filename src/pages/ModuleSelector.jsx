@@ -18,7 +18,7 @@ export default function ModuleSelector() {
     },
     {
       id: 'rendimiento',
-      name: 'Módulo Rendimiento',
+      name: 'Rendimiento',
       description: 'Analítica avanzada y seguimiento de objetivos',
       path: '/rendimiento',
       icon: <BarChart3 size={40} className="text-emerald-400" />,
@@ -36,7 +36,7 @@ export default function ModuleSelector() {
     },
     {
       id: 'pagos',
-      name: 'Módulo Pagos (PDP)',
+      name: 'Pagos (PDP)',
       description: 'Gestión y trazabilidad de pagos SAP',
       path: '/pagos',
       icon: <Wallet size={40} className="text-sky-400" />,
@@ -45,7 +45,7 @@ export default function ModuleSelector() {
     },
     {
       id: 'conformidades',
-      name: 'Módulo Conformidades',
+      name: 'Conformidades',
       description: 'Gestión y trazabilidad de conformidades',
       path: '/conformidades',
       icon: <Shield size={40} className="text-emerald-400" />,
@@ -63,7 +63,7 @@ export default function ModuleSelector() {
     },
     {
       id: 'contratos',
-      name: 'Módulo Contratos',
+      name: 'Contratos',
       description: 'Gestión de minutas y auditoría contractual',
       path: '/contratos',
       icon: <FileText size={40} className="text-pink-400" />,
