@@ -62,6 +62,17 @@ const MODULOS_CONFIG = [
     ],
   },
   {
+    key: 'ambiental',
+    label: 'Derecho Ambiental',
+    color: 'text-green-400',
+    accent: 'border-green-800 bg-green-950/20',
+    acciones: [
+      { accion: 'READ',   label: 'Ver expedientes' },
+      { accion: 'WRITE',  label: 'Crear / analizar' },
+      { accion: 'DELETE', label: 'Archivar' },
+    ],
+  },
+  {
     key: 'rendimiento',
     label: 'Rendimiento',
     color: 'text-violet-400',
@@ -109,6 +120,7 @@ const PRESET_LABELS = {
   conformidades_operativo: 'Conformidades Operativo',
   conformidades_admin:     'Conformidades Admin',
   contratos_operativo:     'Contratos Operativo',
+  ambiental_operativo:     'Ambiental Operativo',
   supervisor:              'Supervisor',
   admin_total:             'Administrador Total',
 };

@@ -82,6 +82,11 @@ const PERMISSION_PRESETS = {
       { modulo: 'contratos', accion: 'WRITE' },
       { modulo: 'contratos', accion: 'DELETE' }
   ],
+  ambiental_operativo: [
+      { modulo: 'ambiental', accion: 'READ' },
+      { modulo: 'ambiental', accion: 'WRITE' },
+      { modulo: 'ambiental', accion: 'DELETE' }
+  ],
   supervisor: [
       { modulo: 'supervisor', accion: 'READ' },
       { modulo: 'supervisor', accion: 'WRITE' },
@@ -109,7 +114,10 @@ const PERMISSION_PRESETS = {
       { modulo: 'conformidades', accion: 'DELETE' },
       { modulo: 'contratos', accion: 'READ' },
       { modulo: 'contratos', accion: 'WRITE' },
-      { modulo: 'contratos', accion: 'DELETE' }
+      { modulo: 'contratos', accion: 'DELETE' },
+      { modulo: 'ambiental', accion: 'READ' },
+      { modulo: 'ambiental', accion: 'WRITE' },
+      { modulo: 'ambiental', accion: 'DELETE' }
   ]
 };
 
@@ -134,9 +142,13 @@ export default function GestionUsuarios() {
   };
 
   const asignarPermiso = async (userId, modulo, accion) => {
+    if (!modulo || !accion) {
+      fetchUserPermissions(userId);
+      return;
+    }
     try {
-      const response = await apiService.post('/permisos/asignar', { 
-          usuario_uuid: userId, modulo, accion 
+      const response = await apiService.post('/permisos/asignar', {
+          usuario_uuid: userId, modulo, accion
       }, {
           validateStatus: (status) => status >= 200 && status < 300 || status === 409
       });

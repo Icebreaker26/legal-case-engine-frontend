@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, Settings, Shield, Mail, LogOut, Wallet, User, Database } from 'lucide-react';
+import { FileText, BarChart3, Settings, Shield, Mail, LogOut, Wallet, User, Database, Leaf } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 export default function ModuleSelector() {
@@ -51,6 +51,15 @@ export default function ModuleSelector() {
       icon: <Shield size={40} className="text-emerald-400" />,
       permission: ['conformidades', 'READ'],
       hoverGlow: 'hover:border-emerald-500 hover:shadow-[0_0_25px_-5px_rgba(16,185,129,0.5)]'
+    },
+    {
+      id: 'ambiental',
+      name: 'Derecho Ambiental',
+      description: 'Expedientes, autos y resoluciones — Ley 99/93 y Decreto 1076/2015',
+      path: '/ambiental',
+      icon: <Leaf size={40} className="text-green-400" />,
+      permission: ['ambiental', 'READ'],
+      hoverGlow: 'hover:border-green-500 hover:shadow-[0_0_25px_-5px_rgba(22,163,74,0.5)]'
     },
     {
       id: 'contratos',
