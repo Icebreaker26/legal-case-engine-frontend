@@ -70,6 +70,7 @@ function App() {
         <ThemeProvider>
           <Toaster position="top-right" toastOptions={{ duration: 2000 }} />
           <Routes>
+            <Route path="*" element={<NotFound />} />
             <Route path="/landing" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
             <Route path="/login" element={
               <PublicOnlyRoute>
@@ -101,6 +102,7 @@ function App() {
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="informes" element={<Informes />} />
               <Route path="tutela/:id" element={<DetalleTutela />} />
+              <Route path="*" element={<NotFound />} />
             </Route>
 
             <Route path="/usuarios" element={
@@ -227,7 +229,6 @@ function App() {
               <Route path="auditoria/:id" element={<AuditoriaDetalle />} />
               <Route path="minutas" element={<GestionMinutas />} />
             </Route>
-            <Route path="*" element={<NotFound />} />
           </Routes>
         </ThemeProvider>
       </BrowserRouter>
