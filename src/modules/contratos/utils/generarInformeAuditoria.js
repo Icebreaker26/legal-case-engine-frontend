@@ -100,14 +100,12 @@ const dibujarPortada = (doc, auditoria) => {
     });
 };
 
-// ── Sección de Resultado LLM ─────────────────────────────────────────────────
-const dibujarResultado = (doc, resultado) => {
-    if (!resultado?.trim()) return;
+// ── Sección de análisis JSON ──────────────────────────────────────────────────
+const dibujarResultadoJson = (doc, json) => {
+    const W = doc.internal.pageSize.width;
+    const startY = (doc.lastAutoTable?.finalY || 55) + 14;
 
-    const W  = doc.internal.pageSize.width;
-    const startY = doc.lastAutoTable?.finalY + 14 || 55;
-
-    // Encabezado de sección
+    // Encabezado nivel de riesgo
     doc.setFillColor(...COLOR.pink);
     doc.rect(14, startY, W - 28, 8, 'F');
     doc.setFontSize(10);
@@ -115,65 +113,113 @@ const dibujarResultado = (doc, resultado) => {
     doc.setTextColor(...COLOR.white);
     doc.text('ANÁLISIS DEL SISTEMA DE IA', 18, startY + 5.5);
 
-    const textY = startY + 14;
+    const riesgoColor = {
+        'Alto':  [220, 38,  38],
+        'Medio': [217, 119, 6],
+        'Bajo':  [22,  163, 74],
+    };
+    const rColor = riesgoColor[json.nivel_riesgo] || COLOR.mid;
+
+    let y = startY + 18;
+
+    // Badge nivel de riesgo
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...COLOR.dark);
+    doc.text('Nivel de riesgo general:', 14, y);
+    doc.setTextColor(...rColor);
+    doc.text(json.nivel_riesgo || '—', 60, y);
+    y += 6;
+
+    // Justificación
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...COLOR.mid);
+    const justLines = doc.splitTextToSize(json.justificacion_riesgo || '', W - 28);
+    doc.text(justLines, 14, y);
+    y += justLines.length * 5 + 10;
+
+    // Tabla de cambios
+    if (json.cambios?.length) {
+        const recomColor = { 'Aceptar': [22, 163, 74], 'Rechazar': [220, 38, 38], 'Negociar': [217, 119, 6] };
+
+        autoTable(doc, {
+            startY: y,
+            head: [['#', 'Cláusula / Sección', 'Tipo', 'Impacto y Riesgo Legal', 'Recomendación']],
+            body: json.cambios.map(c => [
+                c.numero,
+                c.clausula || '—',
+                c.tipo || '—',
+                c.impacto || '—',
+                c.recomendacion || '—',
+            ]),
+            theme: 'striped',
+            headStyles: { fillColor: COLOR.pink, textColor: COLOR.white, fontSize: 8, fontStyle: 'bold' },
+            bodyStyles: { fontSize: 7.5, textColor: COLOR.dark },
+            columnStyles: {
+                0: { cellWidth: 8,  halign: 'center' },
+                1: { cellWidth: 38 },
+                2: { cellWidth: 22 },
+                3: { cellWidth: 'auto' },
+                4: { cellWidth: 22 },
+            },
+            didParseCell(data) {
+                if (data.column.index === 4 && data.section === 'body') {
+                    const val = data.cell.raw;
+                    data.cell.styles.textColor = recomColor[val] || COLOR.dark;
+                    data.cell.styles.fontStyle = 'bold';
+                }
+            },
+            margin: { left: 14, right: 14 },
+        });
+    }
+};
+
+// ── Sección de Resultado LLM (texto libre legacy) ────────────────────────────
+const dibujarResultadoTexto = (doc, resultado) => {
+    if (!resultado?.trim()) return;
+
+    const W  = doc.internal.pageSize.width;
+    const startY = (doc.lastAutoTable?.finalY || 55) + 14;
+
+    doc.setFillColor(...COLOR.pink);
+    doc.rect(14, startY, W - 28, 8, 'F');
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...COLOR.white);
+    doc.text('ANÁLISIS DEL SISTEMA DE IA', 18, startY + 5.5);
+
+    let y = startY + 14;
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...COLOR.dark);
-
-    // Intentar detectar y formatear tabla Markdown dentro del resultado
-    const lineas = resultado.split('\n');
-    let y = textY;
     const maxW = W - 28;
 
-    for (const linea of lineas) {
-        if (y > doc.internal.pageSize.height - 20) {
-            doc.addPage();
-            y = 20;
-        }
-
+    for (const linea of resultado.split('\n')) {
+        if (y > doc.internal.pageSize.height - 20) { doc.addPage(); y = 20; }
         const l = linea.trimEnd();
-
-        if (!l) {
-            y += 3;
-            continue;
-        }
-
-        // Líneas de separador de tabla Markdown (|---|---|)
+        if (!l) { y += 3; continue; }
         if (/^\|[-| :]+\|$/.test(l)) continue;
-
-        // Filas de tabla Markdown (|col1|col2|)
         if (l.startsWith('|') && l.endsWith('|')) {
-            const celdas = l.split('|').slice(1, -1).map(c => c.trim());
             autoTable(doc, {
                 startY: y,
-                body: [celdas],
+                body: [l.split('|').slice(1, -1).map(c => c.trim())],
                 theme: 'grid',
                 bodyStyles: { fontSize: 7.5, textColor: COLOR.dark, cellPadding: 2 },
                 margin: { left: 14, right: 14 },
-                tableWidth: 'auto',
             });
             y = doc.lastAutoTable.finalY + 2;
             continue;
         }
-
-        // Encabezados (##, ###, **)
         if (/^#{1,3} /.test(l)) {
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9.5);
-            doc.setTextColor(...COLOR.pink);
-            const texto = l.replace(/^#+\s*/, '').replace(/\*\*/g, '');
-            const lines = doc.splitTextToSize(texto, maxW);
+            doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(...COLOR.pink);
+            const lines = doc.splitTextToSize(l.replace(/^#+\s*/, '').replace(/\*\*/g, ''), maxW);
             doc.text(lines, 14, y);
             y += lines.length * 5 + 2;
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            doc.setTextColor(...COLOR.dark);
+            doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(...COLOR.dark);
             continue;
         }
-
-        // Texto con negritas inline (**texto**)
-        const textoLimpio = l.replace(/\*\*(.*?)\*\*/g, '$1');
-        const lines = doc.splitTextToSize(textoLimpio, maxW);
+        const lines = doc.splitTextToSize(l.replace(/\*\*(.*?)\*\*/g, '$1'), maxW);
         doc.text(lines, 14, y);
         y += lines.length * 5;
     }
@@ -189,9 +235,11 @@ export const generarInformeAuditoria = (auditoria) => {
     // 1. Portada + metadatos
     dibujarPortada(doc, auditoria);
 
-    // 2. Resultado del análisis IA
-    if (auditoria.resultado_llm_texto) {
-        dibujarResultado(doc, auditoria.resultado_llm_texto);
+    // 2. Resultado del análisis IA (JSON preferido, texto como fallback)
+    if (auditoria.resultado_llm_json) {
+        dibujarResultadoJson(doc, auditoria.resultado_llm_json);
+    } else if (auditoria.resultado_llm_texto) {
+        dibujarResultadoTexto(doc, auditoria.resultado_llm_texto);
     } else {
         const W = doc.internal.pageSize.width;
         const y = (doc.lastAutoTable?.finalY || 55) + 20;

@@ -37,6 +37,9 @@ export default function AuditoriaDetalle() {
 
     // Tab 2 — Resultados
     const [resultadoLlm, setResultadoLlm] = useState('');
+    const [jsonLlm, setJsonLlm] = useState('');
+    const [resultadoJson, setResultadoJson] = useState(null);
+    const [guardandoJson, setGuardandoJson] = useState(false);
 
     // Tab 3 — Seguimiento
     const [estado, setEstado] = useState('Pendiente');
@@ -53,6 +56,7 @@ export default function AuditoriaDetalle() {
                 setMinutas(mins);
                 setPromptGenerado(aud.prompt_generado || '');
                 setResultadoLlm(aud.resultado_llm_texto || '');
+                if (aud.resultado_llm_json) setResultadoJson(aud.resultado_llm_json);
                 setEstado(aud.estado_seguimiento || 'Pendiente');
                 setFechaSeguimiento(aud.fecha_seguimiento ? aud.fecha_seguimiento.split('T')[0] : '');
                 if (aud.minuta_estandar_id) setMinutaSeleccionada(aud.minuta_estandar_id);
@@ -99,6 +103,29 @@ export default function AuditoriaDetalle() {
             toast.error('Error al guardar');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleGuardarJson = async () => {
+        let parsed;
+        try {
+            parsed = JSON.parse(jsonLlm);
+        } catch {
+            toast.error('JSON inválido — verifica la respuesta del LLM');
+            return;
+        }
+        setGuardandoJson(true);
+        try {
+            await apiService.patch(`/contratos/auditorias/${id}`, {
+                resultado_llm_json: parsed,
+            });
+            setResultadoJson(parsed);
+            setJsonLlm('');
+            toast.success('Análisis guardado correctamente');
+        } catch {
+            toast.error('Error al guardar el análisis');
+        } finally {
+            setGuardandoJson(false);
         }
     };
 
@@ -174,6 +201,92 @@ export default function AuditoriaDetalle() {
             {/* ═══ TAB 1: COMPARACIÓN ═══ */}
             {activeTab === 'comparacion' && (
                 <div className="space-y-4 animate-fade-in">
+                    {/* Banner de resultado si ya fue analizado */}
+                    {resultadoJson && (
+                        <div className={`rounded-2xl border-2 p-5 ${
+                            resultadoJson.nivel_riesgo === 'Alto'  ? 'border-red-300 bg-red-50' :
+                            resultadoJson.nivel_riesgo === 'Medio' ? 'border-amber-300 bg-amber-50' :
+                            'border-green-300 bg-green-50'
+                        }`}>
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div className="flex items-center gap-3">
+                                    <span className={`text-2xl font-black ${
+                                        resultadoJson.nivel_riesgo === 'Alto'  ? 'text-red-600' :
+                                        resultadoJson.nivel_riesgo === 'Medio' ? 'text-amber-600' :
+                                        'text-green-600'
+                                    }`}>
+                                        {resultadoJson.nivel_riesgo === 'Alto' ? '⚠' : resultadoJson.nivel_riesgo === 'Medio' ? '◆' : '✓'}
+                                    </span>
+                                    <div>
+                                        <p className={`text-xs font-bold uppercase tracking-widest ${
+                                            resultadoJson.nivel_riesgo === 'Alto'  ? 'text-red-500' :
+                                            resultadoJson.nivel_riesgo === 'Medio' ? 'text-amber-500' :
+                                            'text-green-500'
+                                        }`}>Nivel de Riesgo</p>
+                                        <p className={`text-xl font-black ${
+                                            resultadoJson.nivel_riesgo === 'Alto'  ? 'text-red-700' :
+                                            resultadoJson.nivel_riesgo === 'Medio' ? 'text-amber-700' :
+                                            'text-green-700'
+                                        }`}>{resultadoJson.nivel_riesgo}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs text-gray-500 font-semibold">
+                                        {resultadoJson.cambios?.length || 0} cambio{resultadoJson.cambios?.length !== 1 ? 's' : ''} detectado{resultadoJson.cambios?.length !== 1 ? 's' : ''}
+                                    </span>
+                                    <button
+                                        onClick={() => generarInformeAuditoria({ ...auditoria, resultado_llm_json: resultadoJson })}
+                                        className="flex items-center gap-2 bg-pink-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-pink-700 transition-colors"
+                                    >
+                                        <Download size={14} /> Exportar PDF
+                                    </button>
+                                </div>
+                            </div>
+                            {resultadoJson.justificacion_riesgo && (
+                                <p className="text-sm text-gray-600 mt-3 border-t border-black/10 pt-3">{resultadoJson.justificacion_riesgo}</p>
+                            )}
+                            {/* Mini tabla resumen */}
+                            {resultadoJson.cambios?.length > 0 && (
+                                <div className="mt-3 overflow-x-auto">
+                                    <table className="w-full text-xs border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-black/10">
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">#</th>
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Cláusula / Impacto</th>
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Tipo</th>
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Recomendación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {resultadoJson.cambios.map((c, i) => (
+                                                <tr key={i} className="border-b border-black/5">
+                                                    <td className="py-2 px-2 text-gray-400 font-bold align-top">{c.numero}</td>
+                                                    <td className="py-2 px-2 align-top">
+                                                        <p className="text-gray-700 font-semibold">{c.clausula}</p>
+                                                        {c.impacto && <p className="text-gray-500 mt-0.5 leading-snug">{c.impacto}</p>}
+                                                    </td>
+                                                    <td className="py-2 px-2 text-gray-500 align-top whitespace-nowrap">{c.tipo}</td>
+                                                    <td className={`py-2 px-2 font-bold align-top whitespace-nowrap ${
+                                                        c.recomendacion === 'Rechazar' ? 'text-red-600' :
+                                                        c.recomendacion === 'Aceptar'  ? 'text-green-600' :
+                                                        'text-amber-600'
+                                                    }`}>{c.recomendacion}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <DiffViewer auditoriaId={id} />
+                </div>
+            )}
+
+            {/* ═══ TAB 2: RESULTADOS ═══ */}
+            {activeTab === 'resultados' && (
+                <div className="space-y-4 animate-fade-in">
+                    {/* Generar prompt */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
                         <h3 className="font-bold text-gray-800 flex items-center gap-2">
                             <GitCompare size={18} className="text-pink-600" /> Generar Prompt de Comparación
@@ -184,16 +297,16 @@ export default function AuditoriaDetalle() {
                                 Minuta Estándar de Referencia
                             </label>
                             <SearchableSelect
-                            options={minutas.map(m => ({
-                                value: m.id,
-                                label: m.titulo,
-                                sub: m.tipo_contrato,
-                            }))}
-                            value={minutaSeleccionada}
-                            onChange={setMinutaSeleccionada}
-                            placeholder="Selecciona una minuta..."
-                            noResultsText="No hay minutas con ese nombre"
-                        />
+                                options={minutas.map(m => ({
+                                    value: m.id,
+                                    label: m.titulo,
+                                    sub: m.tipo_contrato,
+                                }))}
+                                value={minutaSeleccionada}
+                                onChange={setMinutaSeleccionada}
+                                placeholder="Selecciona una minuta..."
+                                noResultsText="No hay minutas con ese nombre"
+                            />
                         </div>
 
                         <button
@@ -204,81 +317,120 @@ export default function AuditoriaDetalle() {
                             <GitCompare size={16} />
                             {generando ? 'Generando...' : 'Generar / Regenerar Prompt'}
                         </button>
+
+                        {promptGenerado && (
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                        <FileText size={13} className="text-pink-600" /> Prompt generado
+                                    </p>
+                                    <button
+                                        onClick={handleCopiarPrompt}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                            copiado ? 'bg-green-100 text-green-700' : 'bg-pink-600 text-white hover:bg-pink-700'
+                                        }`}
+                                    >
+                                        {copiado ? <CheckCircle size={16} /> : <Copy size={16} />}
+                                        {copiado ? 'Copiado' : 'Copiar Prompt'}
+                                    </button>
+                                </div>
+                                <pre className="text-xs bg-gray-50 border border-gray-200 p-5 rounded-xl h-48 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">
+                                    {promptGenerado}
+                                </pre>
+                            </div>
+                        )}
                     </div>
 
-                    <DiffViewer auditoriaId={id} />
-
-                    {promptGenerado && (
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                    <FileText size={18} className="text-pink-600" /> Prompt Generado
-                                </h3>
-                                <button
-                                    onClick={handleCopiarPrompt}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                                        copiado
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-pink-600 text-white hover:bg-pink-700'
-                                    }`}
-                                >
-                                    {copiado ? <CheckCircle size={16} /> : <Copy size={16} />}
-                                    {copiado ? 'Copiado' : 'Copiar Prompt'}
-                                </button>
-                            </div>
-                            <div className="bg-gradient-to-br from-pink-50 to-gray-50 border border-pink-100 rounded-xl p-4">
-                                <p className="text-[11px] font-bold text-pink-600 uppercase tracking-widest mb-2">
-                                    Copia este prompt y pégalo en tu herramienta de IA corporativa
-                                </p>
-                            </div>
-                            <pre className="text-xs bg-gray-50 border border-gray-200 p-5 rounded-xl h-72 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">
-                                {promptGenerado}
-                            </pre>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* ═══ TAB 2: RESULTADOS ═══ */}
-            {activeTab === 'resultados' && (
-                <div className="space-y-4 animate-fade-in">
+                    {/* Panel pegar JSON */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
                         <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                            <ClipboardPaste size={18} className="text-pink-600" /> Resultado del Análisis
+                            <ClipboardPaste size={18} className="text-pink-600" /> Pegar respuesta del LLM (JSON)
                         </h3>
 
-                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
-                            <AlertCircle size={16} className="text-blue-500 mt-0.5 shrink-0" />
-                            <p className="text-xs text-blue-700">
-                                Pega aquí la respuesta que obtuviste de tu herramienta de IA corporativa después de usar el prompt de comparación.
+                        <div className="bg-pink-50 border border-pink-100 rounded-xl p-4 flex items-start gap-3">
+                            <AlertCircle size={16} className="text-pink-500 mt-0.5 shrink-0" />
+                            <p className="text-xs text-pink-700">
+                                Genera el prompt arriba, pégalo en Copilot y pega aquí el JSON que responda.
                             </p>
                         </div>
 
                         <textarea
-                            className="w-full h-72 p-4 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-pink-500 resize-y leading-relaxed"
-                            placeholder="Pega aquí el resultado del análisis de la IA..."
-                            value={resultadoLlm}
-                            onChange={e => setResultadoLlm(e.target.value)}
+                            className="w-full h-48 p-4 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-pink-500 resize-y leading-relaxed font-mono"
+                            placeholder='{"nivel_riesgo": "Alto", "cambios": [...]}'
+                            value={jsonLlm}
+                            onChange={e => setJsonLlm(e.target.value)}
                         />
 
-                        <div className="flex gap-3">
-                            <button
-                                onClick={handleGuardarResultado}
-                                disabled={saving}
-                                className="flex items-center gap-2 bg-pink-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-pink-700 disabled:opacity-50 transition-colors"
-                            >
-                                <CheckCircle size={16} />
-                                {saving ? 'Guardando...' : 'Guardar Resultado'}
-                            </button>
-                            <button
-                                onClick={() => generarInformeAuditoria({ ...auditoria, resultado_llm_texto: resultadoLlm })}
-                                disabled={!resultadoLlm.trim()}
-                                className="flex items-center gap-2 border border-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-bold hover:border-pink-300 hover:text-pink-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                            >
-                                <Download size={16} /> Exportar PDF
-                            </button>
-                        </div>
+                        <button
+                            onClick={handleGuardarJson}
+                            disabled={guardandoJson || !jsonLlm.trim()}
+                            className="flex items-center gap-2 bg-pink-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-pink-700 disabled:opacity-50 transition-colors"
+                        >
+                            <CheckCircle size={16} />
+                            {guardandoJson ? 'Guardando...' : 'Guardar análisis'}
+                        </button>
                     </div>
+
+                    {/* Resultado guardado */}
+                    {resultadoJson && (
+                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                                    <CheckCircle size={18} className="text-green-600" /> Análisis guardado
+                                </h3>
+                                <button
+                                    onClick={() => generarInformeAuditoria({ ...auditoria, resultado_llm_json: resultadoJson })}
+                                    className="flex items-center gap-2 border border-gray-200 text-gray-600 px-4 py-2 rounded-lg text-sm font-bold hover:border-pink-300 hover:text-pink-600 transition-colors"
+                                >
+                                    <Download size={15} /> Exportar PDF
+                                </button>
+                            </div>
+
+                            {/* Resumen nivel riesgo */}
+                            <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold ${
+                                resultadoJson.nivel_riesgo === 'Alto'  ? 'bg-red-100 text-red-700' :
+                                resultadoJson.nivel_riesgo === 'Medio' ? 'bg-amber-100 text-amber-700' :
+                                'bg-green-100 text-green-700'
+                            }`}>
+                                Riesgo {resultadoJson.nivel_riesgo}
+                            </div>
+                            {resultadoJson.justificacion_riesgo && (
+                                <p className="text-sm text-gray-600">{resultadoJson.justificacion_riesgo}</p>
+                            )}
+
+                            {/* Tabla de cambios */}
+                            {resultadoJson.cambios?.length > 0 && (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs border-collapse">
+                                        <thead>
+                                            <tr className="bg-pink-600 text-white">
+                                                <th className="px-3 py-2 text-left w-8">#</th>
+                                                <th className="px-3 py-2 text-left">Cláusula</th>
+                                                <th className="px-3 py-2 text-left w-24">Tipo</th>
+                                                <th className="px-3 py-2 text-left">Impacto</th>
+                                                <th className="px-3 py-2 text-left w-24">Recomendación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {resultadoJson.cambios.map((c, i) => (
+                                                <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                    <td className="px-3 py-2 text-center font-bold text-gray-500">{c.numero}</td>
+                                                    <td className="px-3 py-2 font-semibold text-gray-800">{c.clausula}</td>
+                                                    <td className="px-3 py-2 text-gray-600">{c.tipo}</td>
+                                                    <td className="px-3 py-2 text-gray-600">{c.impacto}</td>
+                                                    <td className={`px-3 py-2 font-bold ${
+                                                        c.recomendacion === 'Rechazar' ? 'text-red-600' :
+                                                        c.recomendacion === 'Aceptar'  ? 'text-green-600' :
+                                                        'text-amber-600'
+                                                    }`}>{c.recomendacion}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -329,9 +481,9 @@ export default function AuditoriaDetalle() {
                                 {saving ? 'Guardando...' : 'Actualizar Seguimiento'}
                             </button>
                             <button
-                                onClick={() => generarInformeAuditoria({ ...auditoria, resultado_llm_texto: resultadoLlm, estado_seguimiento: estado, fecha_seguimiento: fechaSeguimiento })}
-                                disabled={!resultadoLlm.trim()}
-                                title={!resultadoLlm.trim() ? 'Primero registra el resultado del análisis en la pestaña Resultados' : ''}
+                                onClick={() => generarInformeAuditoria({ ...auditoria, resultado_llm_json: resultadoJson, resultado_llm_texto: resultadoLlm, estado_seguimiento: estado, fecha_seguimiento: fechaSeguimiento })}
+                                disabled={!resultadoJson && !resultadoLlm.trim()}
+                                title={!resultadoJson && !resultadoLlm.trim() ? 'Primero registra el resultado del análisis en la pestaña Resultados' : ''}
                                 className="flex items-center gap-2 border border-gray-200 text-gray-600 px-5 py-2.5 rounded-lg text-sm font-bold hover:border-pink-300 hover:text-pink-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
                                 <Download size={16} /> Exportar PDF
