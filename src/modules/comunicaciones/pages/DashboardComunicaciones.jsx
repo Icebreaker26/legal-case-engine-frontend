@@ -3,6 +3,7 @@ import apiService from '../../../services/apiService';
 import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import { Search, X } from 'lucide-react';
+import SearchableSelect from '../components/SearchableSelect';
 
 export default function DashboardComunicaciones() {
     const [stats, setStats] = useState({ 
@@ -58,15 +59,20 @@ export default function DashboardComunicaciones() {
                 <input type="date" className="bg-transparent border-b border-[#2d4a3e] p-1 text-xs" onChange={e => setFilters({...filters, fecha_inicio: e.target.value})} />
                 <input type="date" className="bg-transparent border-b border-[#2d4a3e] p-1 text-xs" onChange={e => setFilters({...filters, fecha_fin: e.target.value})} />
                 
-                <select className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-1 text-xs uppercase" onChange={e => setFilters({...filters, entidad_id: e.target.value})} value={filters.entidad_id}>
-                    <option value="">Todas las entidades</option>
-                    {entidades.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-                </select>
-
-                <select className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-1 text-xs uppercase" onChange={e => setFilters({...filters, grupo_id: e.target.value})} value={filters.grupo_id}>
-                    <option value="">Todos los grupos</option>
-                    {grupos.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
-                </select>
+                <SearchableSelect
+                    options={entidades.map(e => ({ value: e.id, label: e.nombre }))}
+                    value={filters.entidad_id}
+                    onChange={v => setFilters({...filters, entidad_id: v})}
+                    placeholder="Todas las entidades"
+                    className="min-w-[160px]"
+                />
+                <SearchableSelect
+                    options={grupos.map(g => ({ value: g.id, label: g.nombre }))}
+                    value={filters.grupo_id}
+                    onChange={v => setFilters({...filters, grupo_id: v})}
+                    placeholder="Todos los grupos"
+                    className="min-w-[140px]"
+                />
                 
                 <button onClick={() => setFilters({fecha_inicio: '', fecha_fin: '', entidad_id: '', grupo_id: '', responsable_id: ''})} className="bg-[#2d4a3e] text-[#e0dcc8] px-3 py-1 text-xs font-bold uppercase">Limpiar</button>
             </div>

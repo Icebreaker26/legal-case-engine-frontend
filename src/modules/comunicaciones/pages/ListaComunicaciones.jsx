@@ -4,8 +4,12 @@ import apiService from '../../../services/apiService';
 import toast from 'react-hot-toast';
 import { Search, ArrowUp, ArrowDown, X, CheckCircle, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../../../context/AuthContext';
+import SearchableSelect from '../components/SearchableSelect';
 
 export default function ListaComunicaciones() {
+    const { hasPermission } = useAuth();
+    const puedeCriarCatalogos = hasPermission('supervisor', 'WRITE') || hasPermission('admin', 'WRITE');
     const [comunicaciones, setComunicaciones] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filtroEstado, setFiltroEstado] = useState('activas');
@@ -61,11 +65,11 @@ export default function ListaComunicaciones() {
     const handleCrearGrupo = async () => {
         if (!nuevaGrupo.trim()) return;
         try {
-            const { data } = await apiService.post('/comunicaciones/grupos', { nombre: nuevaGrupo });
-            setGrupos([...grupos, data]);
+            await apiService.post('/core/grupos', { nombre: nuevaGrupo });
             setNuevaGrupo('');
             setMostrarNuevoGrupo(false);
             toast.success('Grupo creado');
+            fetchGrupos();
         } catch (error) { toast.error('Error al crear grupo'); }
     };
 
@@ -125,21 +129,29 @@ export default function ListaComunicaciones() {
                     <option value="archivadas">Archivadas</option>
                 </select>
                 
-                <select className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-1 text-xs uppercase" onChange={(e) => setFiltroEntidad(e.target.value)} value={filtroEntidad}>
-                    <option value="">Todas las entidades</option>
-                    {entidades.map(ent => <option key={ent.id} value={ent.nombre}>{ent.nombre}</option>)}
-                </select>
-                
-                <div className="flex gap-2">
-                    <select className="bg-[#e0dcc8] border border-[#2d4a3e] text-[#2d4a3e] p-1 text-xs uppercase" onChange={(e) => setFiltroGrupo(e.target.value)} value={filtroGrupo}>
-                        <option value="">Todos los grupos</option>
-                        {grupos.map(g => <option key={g.id} value={g.nombre}>{g.nombre}</option>)}
-                    </select>
-                    <button type="button" onClick={() => setMostrarNuevoGrupo(!mostrarNuevoGrupo)} className="text-[#2d4a3e]">
-                         {mostrarNuevoGrupo ? <X size={16} /> : <Plus size={16} />}
-                    </button>
+                <SearchableSelect
+                    options={entidades.map(e => ({ value: e.nombre, label: e.nombre }))}
+                    value={filtroEntidad}
+                    onChange={setFiltroEntidad}
+                    placeholder="Todas las entidades"
+                    className="min-w-[160px]"
+                />
+
+                <div className="flex gap-2 items-center">
+                    <SearchableSelect
+                        options={grupos.map(g => ({ value: g.nombre, label: g.nombre }))}
+                        value={filtroGrupo}
+                        onChange={setFiltroGrupo}
+                        placeholder="Todos los grupos"
+                        className="min-w-[140px]"
+                    />
+                    {puedeCriarCatalogos && (
+                        <button type="button" onClick={() => setMostrarNuevoGrupo(!mostrarNuevoGrupo)} className="text-[#2d4a3e]">
+                            {mostrarNuevoGrupo ? <X size={16} /> : <Plus size={16} />}
+                        </button>
+                    )}
                 </div>
-                {mostrarNuevoGrupo && (
+                {mostrarNuevoGrupo && puedeCriarCatalogos && (
                     <div className="flex gap-1 items-center bg-[#d6d2bd] p-1">
                         <input className="bg-transparent border-b border-[#2d4a3e] p-1 text-[10px] placeholder-[#2d4a3e]/50" placeholder="Nuevo grupo..." value={nuevaGrupo} onChange={e => setNuevaGrupo(e.target.value)} />
                         <button type="button" onClick={handleCrearGrupo} className="bg-[#2d4a3e] text-[#e0dcc8] px-2 text-[10px] font-bold">CREAR</button>

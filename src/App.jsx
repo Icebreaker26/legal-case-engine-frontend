@@ -4,53 +4,59 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import SupervisorRoute from './components/SupervisorRoute';
 import PublicOnlyRoute from './components/PublicOnlyRoute';
-import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
-import Procesar from './pages/Procesar';
-import Entrenar from './pages/Entrenar';
-import AdminDashboard from './pages/AdminDashboard';
-import Informes from './pages/Informes';
-import Notificaciones from './pages/Notificaciones';
+import TutelasLayout from './modules/tutelas/components/TutelasLayout';
+import Dashboard from './modules/tutelas/pages/Dashboard';
+import Procesar from './modules/tutelas/pages/Procesar';
+import Entrenar from './modules/tutelas/pages/Entrenar';
+import AdminDashboard from './modules/tutelas/pages/AdminDashboard';
+import Informes from './modules/tutelas/pages/Informes';
+import Notificaciones from './modules/tutelas/pages/Notificaciones';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import RegistrationPending from './pages/RegistrationPending';
 import ChangePassword from './pages/ChangePassword';
 import PerfilLayout from './modules/perfil/components/PerfilLayout';
 import MiPerfil from './modules/perfil/pages/MiPerfil';
-import Papelera from './pages/Papelera';
-import Memoria from './pages/Memoria';
-import Calendario from './pages/Calendario';
-import DetalleTutela from './pages/DetalleTutela';
+import Papelera from './modules/tutelas/pages/Papelera';
+import Memoria from './modules/tutelas/pages/Memoria';
+import Calendario from './modules/tutelas/pages/Calendario';
+import DetalleTutela from './modules/tutelas/pages/DetalleTutela';
 import RendimientoLayout from './modules/rendimiento/components/RendimientoLayout';
 import DashboardRendimiento from './modules/rendimiento/pages/DashboardRendimiento';
 import ManagerDashboard from './modules/rendimiento/pages/ManagerDashboard';
 import GestorEquipos from './modules/rendimiento/pages/GestorEquipos';
 import GestionUsuarios from './modules/admin/pages/GestionUsuarios';
+import GestionCatalogos from './modules/admin/pages/GestionCatalogos';
+import GestionAreas from './modules/admin/pages/GestionAreas';
 import ModuleSelector from './pages/ModuleSelector';
 import ComunicacionesLayout from './modules/comunicaciones/components/ComunicacionesLayout';
 import ListaComunicaciones from './modules/comunicaciones/pages/ListaComunicaciones';
 import DetalleComunicacion from './modules/comunicaciones/pages/DetalleComunicacion';
 import NuevaComunicacion from './modules/comunicaciones/pages/NuevaComunicacion';
 import DashboardComunicaciones from './modules/comunicaciones/pages/DashboardComunicaciones';
-import GestionEntidadesGrupos from './modules/comunicaciones/pages/GestionEntidadesGrupos';
 import PagosLayout from './modules/pagos/components/PagosLayout';
 import ListaPagos from './modules/pagos/pages/ListaPagos';
 import NuevaSolicitudPago from './modules/pagos/pages/NuevaSolicitudPago';
 import DashboardPagos from './modules/pagos/pages/DashboardPagos';
 import DetallePago from './modules/pagos/pages/DetallePago';
-import GestionEstadosYGrupos from './modules/pagos/pages/GestionEstadosYGrupos';
 import ConformidadesLayout from './modules/conformidades/components/ConformidadesLayout';
 import ListaConformidades from './modules/conformidades/pages/ListaConformidades';
 import DashboardConformidades from './modules/conformidades/pages/DashboardConformidades';
 import DetalleConformidad from './modules/conformidades/pages/DetalleConformidad';
 import NuevaSolicitudConformidad from './modules/conformidades/pages/NuevaSolicitudConformidad';
-import GestionEstadosYGruposConformidades from './modules/conformidades/pages/GestionEstadosYGruposConformidades';
 import ContratosLayout from './modules/contratos/components/ContratosLayout';
 import Auditoria from './modules/contratos/pages/Auditoria';
 import AuditoriaDetalle from './modules/contratos/pages/AuditoriaDetalle';
 import GestionMinutas from './modules/contratos/pages/GestionMinutas';
 import ContratosDashboard from './modules/contratos/pages/ContratosDashboard';
+import AmbientalLayout from './modules/ambiental/components/AmbientalLayout';
+import ListaExpedientes from './modules/ambiental/pages/ListaExpedientes';
+import NuevoExpediente from './modules/ambiental/pages/NuevoExpediente';
+import DetalleExpediente from './modules/ambiental/pages/DetalleExpediente';
+import CalendarioAmbiental from './modules/ambiental/pages/CalendarioAmbiental';
+import DashboardAmbiental from './modules/ambiental/pages/DashboardAmbiental';
 
 function App() {
   return (
@@ -77,7 +83,7 @@ function App() {
             
             <Route path="/" element={
               <ProtectedRoute>
-                <Layout />
+                <TutelasLayout />
               </ProtectedRoute>
             }>
               <Route index element={<Dashboard />} />
@@ -97,6 +103,21 @@ function App() {
                 <AdminRoute>
                   <GestionUsuarios />
                 </AdminRoute>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/catalogos" element={
+              <ProtectedRoute>
+                <SupervisorRoute>
+                  <GestionCatalogos />
+                </SupervisorRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/catalogos/areas" element={
+              <ProtectedRoute>
+                <SupervisorRoute>
+                  <GestionAreas />
+                </SupervisorRoute>
               </ProtectedRoute>
             } />
 
@@ -129,7 +150,6 @@ function App() {
               <Route index element={<ListaComunicaciones />} />
               <Route path="dashboard" element={<DashboardComunicaciones />} />
               <Route path="nueva" element={<NuevaComunicacion />} />
-              <Route path="gestion" element={<GestionEntidadesGrupos />} />
               <Route path=":id" element={<DetalleComunicacion />} />
             </Route>
 
@@ -142,7 +162,6 @@ function App() {
               <Route index element={<ListaPagos />} />
               <Route path="nueva" element={<NuevaSolicitudPago />} />
               <Route path="dashboard" element={<DashboardPagos />} />
-              <Route path="gestion" element={<GestionEstadosYGrupos />} />
               <Route path=":id" element={<DetallePago />} />
             </Route>
 
@@ -166,8 +185,20 @@ function App() {
               <Route index element={<ListaConformidades />} />
               <Route path="nueva" element={<NuevaSolicitudConformidad />} />
               <Route path="dashboard" element={<DashboardConformidades />} />
-              <Route path="gestion" element={<GestionEstadosYGruposConformidades />} />
               <Route path=":id" element={<DetalleConformidad />} />
+            </Route>
+
+            {/* Módulo Derecho Ambiental */}
+            <Route path="/ambiental" element={
+              <ProtectedRoute>
+                <AmbientalLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<ListaExpedientes />} />
+              <Route path="nuevo" element={<NuevoExpediente />} />
+              <Route path="dashboard" element={<DashboardAmbiental />} />
+              <Route path="calendario" element={<CalendarioAmbiental />} />
+              <Route path="expediente/:id" element={<DetalleExpediente />} />
             </Route>
 
             {/* Nuevo módulo de contratos */}

@@ -1,0 +1,96 @@
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, FileText, BrainCircuit, LogOut, User, UserCog, FileBarChart, Bell, BookOpen, Trash2, Calendar as CalendarIcon } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
+import { useTheme } from '../../../context/ThemeContext';
+import PermissionGuard from '../../../components/PermissionGuard';
+
+export default function Sidebar({ onClose }) {
+  const { user, logout } = useAuth();
+  const { theme } = useTheme();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    if (onClose) onClose();
+  };
+
+  const handleNav = () => {
+    if (onClose) onClose();
+  };
+
+  const linkClass = ({ isActive }) => 
+    `flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+      isActive 
+        ? (theme === 'dark-pro' ? 'bg-[#1E293B] text-sky-400 border border-slate-700' : 'bg-blue-600 text-white shadow-lg')
+        : (theme === 'dark-pro' ? 'text-slate-400 hover:bg-[#0F172A]' : 'text-gray-500 hover:bg-gray-100 hover:text-blue-600')
+    }`;
+
+  return (
+    <div className={`w-64 h-screen fixed left-0 top-0 z-50 flex flex-col ${theme === 'dark-pro' ? 'bg-[#020617] border-r border-slate-800' : 'bg-white border-r border-gray-200'}`}>
+      <div className={`p-6 border-b ${theme === 'dark-pro' ? 'border-slate-800' : 'border-gray-200'}`}>
+        <h2 className={`text-xl font-bold ${theme === 'dark-pro' ? 'text-white' : 'text-enel-blue'} flex items-center gap-2`}>
+           {import.meta.env.VITE_APP_NAME}
+        </h2>
+        <span className={`text-[10px] ${theme === 'dark-pro' ? 'text-slate-500' : 'text-gray-400'} font-bold uppercase tracking-widest`}>
+          LegalTech Suite
+        </span>
+      </div>
+
+      <nav className="flex-1 p-4 mt-4 space-y-2 overflow-y-auto" onClick={handleNav}>
+        <NavLink to="/" className={linkClass}>
+          <LayoutDashboard size={20} />
+          <span>Dashboard</span>
+        </NavLink>
+        <NavLink to="/procesar" className={linkClass}>
+          <FileText size={20} />
+          <span>Procesar</span>
+        </NavLink>
+        <NavLink to="/entrenar" className={linkClass}>
+          <BrainCircuit size={20} />
+          <span>Conocimiento</span>
+        </NavLink>
+        <NavLink to="/memoria" className={linkClass}>
+          <BookOpen size={20} />
+          <span>Memoria</span>
+        </NavLink>
+        <NavLink to="/calendario" className={linkClass}>
+          <CalendarIcon size={20} />
+          <span>Calendario</span>
+        </NavLink>
+        <PermissionGuard modulo="tutelas" accion="DELETE">
+          <NavLink to="/papelera" className={linkClass}>
+            <Trash2 size={20} />
+            <span>Papelera</span>
+          </NavLink>
+        </PermissionGuard>
+<NavLink to="/informes" className={linkClass}>
+          <FileBarChart size={20} />
+          <span>Informes</span>
+        </NavLink>
+        <NavLink to="/notificaciones" className={linkClass}>
+          <Bell size={20} />
+          <span>Notificaciones</span>
+        </NavLink>
+        <PermissionGuard modulo="tutelas" accion="READ">
+          <NavLink to="/admin" className={linkClass}>
+            <UserCog size={20} />
+            <span>Configuración</span>
+          </NavLink>
+        </PermissionGuard>
+      </nav>
+
+      <div className={`p-4 border-t ${theme === 'dark-pro' ? 'border-slate-800' : 'border-gray-100'}`}>
+        <div className={`flex items-center gap-3 p-2 rounded-lg ${theme === 'dark-pro' ? 'bg-[#0F172A]' : 'bg-gray-50'}`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${theme === 'dark-pro' ? 'bg-slate-800 text-sky-400' : 'bg-blue-100 text-blue-700'}`}>
+            <User size={16} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-xs font-bold ${theme === 'dark-pro' ? 'text-white' : 'text-gray-800'} truncate`}>{user?.nombre || 'Usuario'}</p>
+            <p className={`text-[10px] ${theme === 'dark-pro' ? 'text-slate-500' : 'text-gray-500'} truncate`}>{user?.email}</p>
+          </div>
+        </div>
+      </div>
+      </div>
+      );
+      }

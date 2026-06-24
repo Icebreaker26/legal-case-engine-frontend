@@ -14,7 +14,6 @@ export default function ConformidadesLayout() {
   const navLinks = [
     { to: "/conformidades/dashboard", label: "Dashboard" },
     { to: "/conformidades", label: "Lista" },
-    { to: "/conformidades/gestion", label: "Gestión" },
     { to: "/conformidades/nueva", label: "Nueva Conformidad" }
   ];
 

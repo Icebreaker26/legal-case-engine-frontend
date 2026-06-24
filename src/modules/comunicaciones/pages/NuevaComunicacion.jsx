@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import apiService from '../../../services/apiService';
 import toast from 'react-hot-toast';
 import { Search, Plus, X, Check } from 'lucide-react';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function NuevaComunicacion() {
     const navigate = useNavigate();
+    const { hasPermission } = useAuth();
+    const puedeCriarCatalogos = hasPermission('supervisor', 'WRITE') || hasPermission('admin', 'WRITE');
     const [abogados, setAbogados] = useState([]);
     const [entidades, setEntidades] = useState([]);
     const [grupos, setGrupos] = useState([]);
@@ -42,10 +45,15 @@ export default function NuevaComunicacion() {
     const handleCrearEntidad = async () => {
         if (!nuevaEntidad.trim()) return;
         try {
-            const { data } = await apiService.post('/core/entidades', { nombre: nuevaEntidad });
-            setEntidades([...entidades, data]);
-            setFormData({...formData, entidad_id: data.id});
-            setSearchEntidad(data.nombre);
+            const nombre = nuevaEntidad.trim();
+            await apiService.post('/core/entidades', { nombre });
+            const { data: updated } = await apiService.get('/core/entidades');
+            setEntidades(updated);
+            const creada = updated.find(e => e.nombre === nombre);
+            if (creada) {
+                setFormData(prev => ({...prev, entidad_id: creada.id}));
+                setSearchEntidad(creada.nombre);
+            }
             setNuevaEntidad('');
             setMostrarNuevaEntidad(false);
             toast.success('Entidad creada');
@@ -96,7 +104,9 @@ export default function NuevaComunicacion() {
                             <Search size={14} className="text-[#2d4a3e] mr-2" />
                             <span className="w-full">{searchEntidad || "Buscar entidad..."}</span>
                         </div>
-                        <button type="button" onClick={() => setMostrarNuevaEntidad(!mostrarNuevaEntidad)} className="text-[#2d4a3e]"><Plus size={16} /></button>
+                        {puedeCriarCatalogos && (
+                            <button type="button" onClick={() => setMostrarNuevaEntidad(!mostrarNuevaEntidad)} className="text-[#2d4a3e]"><Plus size={16} /></button>
+                        )}
                     </div>
                     {mostrarNuevaEntidad && (
                         <div className="flex gap-2 mt-2 p-2 bg-[#d6d2bd]">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../../../services/apiService';
+import { useAuth } from '../../../context/AuthContext';
 import toast from 'react-hot-toast';
 import {
     ArrowLeft, Upload, FileText, Building2, ClipboardList,
@@ -117,6 +118,8 @@ function StepDivider({ done }) {
 
 export default function Auditoria() {
     const navigate = useNavigate();
+    const { hasPermission } = useAuth();
+    const puedeCriarCatalogos = hasPermission('supervisor', 'WRITE') || hasPermission('admin', 'WRITE');
     const fileInputRef = useRef(null);
     const [minutas, setMinutas] = useState([]);
     const [entidades, setEntidades] = useState([]);
@@ -299,13 +302,15 @@ export default function Auditoria() {
                                 </div>
                                 <Label icon={<Building2 size={12} />} required>Entidad tercera</Label>
                             </div>
-                            <button
-                                type="button"
-                                onClick={() => setModalEntidad(true)}
-                                className="flex items-center gap-1.5 text-xs font-bold text-pink-600 hover:text-pink-700 hover:bg-pink-50 px-3 py-1.5 rounded-lg transition-colors border border-pink-200 hover:border-pink-300"
-                            >
-                                <Plus size={13} /> Nueva entidad
-                            </button>
+                            {puedeCriarCatalogos && (
+                                <button
+                                    type="button"
+                                    onClick={() => setModalEntidad(true)}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-pink-600 hover:text-pink-700 hover:bg-pink-50 px-3 py-1.5 rounded-lg transition-colors border border-pink-200 hover:border-pink-300"
+                                >
+                                    <Plus size={13} /> Nueva entidad
+                                </button>
+                            )}
                         </div>
 
                         <SearchableSelect
