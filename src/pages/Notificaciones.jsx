@@ -262,19 +262,20 @@ export default function Notificaciones() {
                     </span>
                   </div>
 
+                </div>
+
+                {/* Acciones */}
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
                   {destino && (
                     <Link
                       to={destino}
                       onClick={e => { e.stopPropagation(); if (!n.leida) marcarLeida(n.id); }}
-                      className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500 hover:text-emerald-300 transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-sky-400 border border-sky-800 hover:bg-sky-950 transition-colors"
                     >
-                      <ExternalLink size={10} /> [ VER EN {moduloCfg.label} ]
+                      <ExternalLink size={11} /> Abrir
                     </Link>
                   )}
-                </div>
-
-                {/* Acciones */}
-                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5">
                   <button
                     onClick={e => { e.stopPropagation(); if (!n.leida) marcarLeida(n.id); }}
                     disabled={n.leida}
@@ -297,6 +298,7 @@ export default function Notificaciones() {
                       ? <div className="w-3 h-3 border border-red-500 border-t-transparent rounded-full animate-spin" />
                       : <><X size={11} /> Borrar</>}
                   </button>
+                  </div>
                 </div>
               </div>
             );
