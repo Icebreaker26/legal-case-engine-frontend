@@ -76,7 +76,7 @@ export default function ModuleSelector() {
       description: 'Ver mis tareas y actividades asignadas',
       path: '/perfil',
       icon: <User size={40} className="text-slate-400" />,
-      permission: ['perfil', 'READ'], 
+      permission: null,
       hoverGlow: 'hover:border-slate-500 hover:shadow-[0_0_25px_-5px_rgba(148,163,184,0.5)]'
     },
     {
@@ -121,7 +121,7 @@ export default function ModuleSelector() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {modules
-                  .filter(mod => hasPermission(mod.permission[0], mod.permission[1]))
+                  .filter(mod => !mod.permission || hasPermission(mod.permission[0], mod.permission[1]))
                   .map((mod) => (
                         <Link 
                             key={mod.id} 
