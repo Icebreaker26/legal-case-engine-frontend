@@ -282,7 +282,7 @@ export default function Notificaciones() {
                     title={n.leida ? 'Ya leída' : 'Marcar como leída'}
                     className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest border transition-colors ${
                       n.leida
-                        ? 'text-slate-600 border-slate-800 cursor-default'
+                        ? 'text-slate-400 border-slate-600 cursor-default'
                         : 'text-emerald-400 border-emerald-800 hover:bg-emerald-900'
                     }`}
                   >
