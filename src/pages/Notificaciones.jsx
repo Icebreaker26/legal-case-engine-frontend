@@ -275,15 +275,18 @@ export default function Notificaciones() {
 
                 {/* Acciones */}
                 <div className="flex items-center gap-2 shrink-0">
-                  {!n.leida && (
-                    <button
-                      onClick={e => { e.stopPropagation(); marcarLeida(n.id); }}
-                      title="Marcar como leída"
-                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-800 hover:bg-emerald-900 transition-colors"
-                    >
-                      <Check size={11} /> Leída
-                    </button>
-                  )}
+                  <button
+                    onClick={e => { e.stopPropagation(); if (!n.leida) marcarLeida(n.id); }}
+                    disabled={n.leida}
+                    title={n.leida ? 'Ya leída' : 'Marcar como leída'}
+                    className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest border transition-colors ${
+                      n.leida
+                        ? 'text-slate-600 border-slate-800 cursor-default'
+                        : 'text-emerald-400 border-emerald-800 hover:bg-emerald-900'
+                    }`}
+                  >
+                    <Check size={11} /> Leída
+                  </button>
                   <button
                     onClick={e => { e.stopPropagation(); eliminar(n.id); }}
                     disabled={deletingId === n.id}
