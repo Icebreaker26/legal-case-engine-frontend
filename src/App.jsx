@@ -69,7 +69,7 @@ function App() {
         <ThemeProvider>
           <Toaster position="top-right" toastOptions={{ duration: 2000 }} />
           <Routes>
-            <Route path="/landing" element={<Landing />} />
+            <Route path="/landing" element={<PublicOnlyRoute><Landing /></PublicOnlyRoute>} />
             <Route path="/login" element={
               <PublicOnlyRoute>
                 <Login />
