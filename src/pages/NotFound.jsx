@@ -129,7 +129,7 @@ function MiniSnake() {
         style={{ padding: '2px' }}
       >
         <motion.div
-          animate={{ gap: started ? '1px' : '1px' }}
+          animate={{ gap: '1px' }}
           style={{
             display: 'grid',
             gridTemplateColumns: `repeat(${COLS}, ${CELL}px)`,
