@@ -62,6 +62,7 @@ export default function ListaExpedientes() {
   const [busqueda, setBusqueda] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [filtroTipo, setFiltroTipo] = useState('Todos');
+  const [filtroEntidad, setFiltroEntidad] = useState('Todas');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -86,6 +87,11 @@ export default function ListaExpedientes() {
     return { total, pendientes, analizados, criticos };
   }, [expedientes]);
 
+  const entidades = useMemo(() => {
+    const set = new Set(expedientes.map(e => e.entidad_nombre).filter(Boolean));
+    return ['Todas', ...Array.from(set).sort()];
+  }, [expedientes]);
+
   const filtrados = useMemo(() => {
     return expedientes.filter(e => {
       const matchBusqueda = !busqueda ||
@@ -94,13 +100,14 @@ export default function ListaExpedientes() {
         e.entidad_nombre?.toLowerCase().includes(busqueda.toLowerCase());
       const matchEstado = filtroEstado === 'Todos' || (e.estado || 'Pendiente') === filtroEstado;
       const matchTipo = filtroTipo === 'Todos' || e.tipo_instrumento === filtroTipo;
-      return matchBusqueda && matchEstado && matchTipo;
+      const matchEntidad = filtroEntidad === 'Todas' || e.entidad_nombre === filtroEntidad;
+      return matchBusqueda && matchEstado && matchTipo && matchEntidad;
     });
-  }, [expedientes, busqueda, filtroEstado, filtroTipo]);
+  }, [expedientes, busqueda, filtroEstado, filtroTipo, filtroEntidad]);
 
-  const hayFiltros = busqueda || filtroEstado !== 'Todos' || filtroTipo !== 'Todos';
+  const hayFiltros = busqueda || filtroEstado !== 'Todos' || filtroTipo !== 'Todos' || filtroEntidad !== 'Todas';
 
-  const limpiar = () => { setBusqueda(''); setFiltroEstado('Todos'); setFiltroTipo('Todos'); };
+  const limpiar = () => { setBusqueda(''); setFiltroEstado('Todos'); setFiltroTipo('Todos'); setFiltroEntidad('Todas'); };
 
   return (
     <div className="space-y-8">
@@ -178,6 +185,26 @@ export default function ListaExpedientes() {
             </button>
           ))}
         </div>
+
+        {entidades.length > 1 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Entidad:</span>
+            <select
+              value={filtroEntidad}
+              onChange={e => setFiltroEntidad(e.target.value)}
+              className="border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-shadow"
+            >
+              {entidades.map(en => (
+                <option key={en} value={en}>{en}</option>
+              ))}
+            </select>
+            {filtroEntidad !== 'Todas' && (
+              <button onClick={() => setFiltroEntidad('Todas')} className="text-green-700 hover:underline text-xs font-semibold">
+                ✕ Limpiar
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Lista */}
