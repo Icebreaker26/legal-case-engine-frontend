@@ -115,7 +115,7 @@ export default function Procesar() {
           <Scale size={20} className="text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 leading-tight">Registrar nueva tutela</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 leading-tight">Registrar nuevo derecho de petición</h1>
           <p className="text-sm text-gray-500 mt-1">Carga el documento judicial y asigna la gestión administrativa.</p>
         </div>
       </div>
