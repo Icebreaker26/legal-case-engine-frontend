@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { History, ShieldCheck, Bookmark, ChevronRight, Edit, Trash2, AlertCircle, FileText, Maximize2, Send, Clock, Mail, Plus, Download, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { History, ShieldCheck, Bookmark, ChevronRight, Edit, Trash2, AlertCircle, FileText, Maximize2, Send, Clock, Mail, Plus, Download, ThumbsUp, ThumbsDown, Loader2, Copy, Check, Layers } from 'lucide-react';
 import { generarBorradorPDF } from '../../utils/generarBorradorPDF';
 import toast from 'react-hot-toast';
 import apiService from '../../../../services/apiService';
@@ -37,6 +37,218 @@ export default function MainTabs({
     const [activeTab, setActiveTab] = useState('contexto');
     const [argEnEdicion, setArgEnEdicion] = useState(null);
     const [nuevoArgumento, setNuevoArgumento] = useState({ titulo: '', contenido: '' });
+    const [promptsGenerados, setPromptsGenerados] = useState([]);
+    const [generandoPrompts, setGenerandoPrompts] = useState(false);
+    const [copiadoIdx, setCopiadoIdx] = useState(null);
+    const [jsonLlm, setJsonLlm] = useState('');
+    const [parteActual, setParteActual] = useState(0);
+    const [guardandoRespuesta, setGuardandoRespuesta] = useState(false);
+    const [respuestaAcumulada, setRespuestaAcumulada] = useState(null);
+
+    const respuestaATexto = (resp) => {
+        if (!resp?.items?.length) return '';
+        const enc = resp.encabezado || {};
+        const lineas = [];
+
+        if (enc.ciudad_fecha) lineas.push(enc.ciudad_fecha);
+        if (enc.para)         lineas.push(`\nSeñor/a\n${enc.para}`);
+        if (enc.radicado_peticion) lineas.push(`Radicado: ${enc.radicado_peticion}`);
+        if (enc.asunto)       lineas.push(`Asunto: ${enc.asunto}`);
+
+        if (resp.introduccion) lineas.push(`\n${resp.introduccion}`);
+
+        for (const item of resp.items) {
+            lineas.push(`\n${item.numero}.- ${item.solicitud}\n\nRespuesta.\n${item.respuesta}`);
+            if (item.normas_citadas?.length) {
+                lineas.push(`Normas: ${item.normas_citadas.join(', ')}`);
+            }
+        }
+
+        const presc = resp.prescripcion;
+        if (presc?.aplica && presc?.fundamento) {
+            lineas.push(`\nPrescripción extintiva.\n${presc.fundamento}`);
+            if (presc.norma) lineas.push(presc.norma);
+        }
+
+        if (resp.cierre) lineas.push(`\n${resp.cierre}`);
+
+        return lineas.join('\n');
+    };
+
+    const cargarRespuesta = useCallback(async () => {
+        try {
+            const { data } = await apiService.get(`/tutelas/${id}/respuesta-peticion`);
+            setRespuestaAcumulada(data);
+            if (data?.items?.length) {
+                setAiDraftContent(respuestaATexto(data));
+            }
+        } catch { /* silencioso */ }
+    }, [id]);
+
+    useEffect(() => { cargarRespuesta(); }, [cargarRespuesta]);
+
+    const handleGuardarRespuesta = useCallback(async (modo = 'acumular') => {
+        if (!jsonLlm.trim()) return toast.error('Pega el JSON del LLM primero.');
+        setGuardandoRespuesta(true);
+        try {
+            await apiService.post(`/tutelas/${id}/respuesta-peticion`, {
+                resultado_llm_json: jsonLlm,
+                modo,
+                parte_index: parteActual,
+            });
+            toast.success(`Parte ${parteActual + 1} guardada correctamente.`);
+            setJsonLlm('');
+            setParteActual(p => p + 1);
+            await cargarRespuesta();
+        } catch (err) {
+            toast.error(err?.response?.data?.error || 'JSON inválido o estructura incorrecta.');
+        } finally {
+            setGuardandoRespuesta(false);
+        }
+    }, [id, jsonLlm, parteActual, cargarRespuesta]);
+
+    const handleLimpiarRespuesta = useCallback(async () => {
+        if (!window.confirm('¿Eliminar toda la respuesta acumulada y empezar de nuevo?')) return;
+        try {
+            await apiService.delete(`/tutelas/${id}/respuesta-peticion`);
+            setRespuestaAcumulada(null);
+            setParteActual(0);
+            setJsonLlm('');
+            toast.success('Respuesta eliminada.');
+        } catch { toast.error('Error al eliminar.'); }
+    }, [id]);
+
+    const handleExportarPDF = useCallback(async () => {
+        if (!respuestaAcumulada?.items?.length) return toast.error('No hay respuesta guardada para exportar.');
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
+        const doc = new jsPDF();
+        const azul = [0, 46, 109];
+        const gris = [75, 85, 99];
+        const enc = respuestaAcumulada.encabezado || {};
+
+        // Encabezado corporativo
+        doc.setFillColor(...azul);
+        doc.rect(0, 0, 210, 28, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('RESPUESTA A DERECHO DE PETICIÓN', 14, 11);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Enel Colombia S.A. E.S.P.', 14, 18);
+        doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 150, 18);
+
+        let y = 36;
+        const W = 182;
+
+        const escribir = (texto, fontSize = 9, bold = false, color = gris) => {
+            doc.setFontSize(fontSize);
+            doc.setFont('helvetica', bold ? 'bold' : 'normal');
+            doc.setTextColor(...color);
+            const lineas = doc.splitTextToSize(String(texto || '—'), W);
+            if (y + lineas.length * 5 > 280) { doc.addPage(); y = 16; }
+            doc.text(lineas, 14, y);
+            y += lineas.length * 5 + 2;
+        };
+
+        const titulo = (texto) => {
+            if (y > 260) { doc.addPage(); y = 16; }
+            y += 2;
+            doc.setFillColor(...azul);
+            doc.rect(14, y - 4, W, 7, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.text(texto.toUpperCase(), 16, y + 0.5);
+            y += 8;
+        };
+
+        // Datos del encabezado
+        titulo('Datos de la comunicación');
+        [
+            ['Radicado', enc.radicado_peticion || tutela.radicado],
+            ['Para', enc.para || tutela.accionante],
+            ['Fecha', enc.ciudad_fecha || new Date().toLocaleDateString('es-CO')],
+            ['Asunto', enc.asunto || tutela.derecho_vulnerado],
+        ].forEach(([k, v]) => {
+            doc.setFontSize(9); doc.setTextColor(...gris);
+            doc.setFont('helvetica', 'bold'); doc.text(`${k}:`, 14, y);
+            doc.setFont('helvetica', 'normal'); doc.text(String(v || '—'), 50, y);
+            y += 5.5;
+        });
+
+        // Saludo e introducción
+        if (respuestaAcumulada.introduccion) {
+            titulo('Introducción');
+            escribir(`Reciba un cordial saludo, Sr./Sra. ${enc.para || tutela.accionante}.`);
+            y += 1;
+            escribir(respuestaAcumulada.introduccion);
+        }
+
+        // Respuestas punto a punto
+        titulo('Respuesta de fondo');
+        for (const item of respuestaAcumulada.items) {
+            if (y > 255) { doc.addPage(); y = 16; }
+            escribir(`${item.numero}.- ${item.solicitud}`, 9, true, azul);
+            y += 1;
+            escribir('Respuesta.', 9, true, gris);
+            escribir(item.respuesta);
+            if (item.normas_citadas?.length) {
+                escribir(`Normas: ${item.normas_citadas.join(' · ')}`, 8, false, [120, 120, 120]);
+            }
+            y += 3;
+        }
+
+        // Prescripción
+        const presc = respuestaAcumulada.prescripcion;
+        if (presc?.aplica && presc?.fundamento) {
+            titulo('Prescripción extintiva');
+            escribir(presc.fundamento);
+            if (presc.norma) escribir(`Fundamento: ${presc.norma}`, 8, false, [120, 120, 120]);
+        }
+
+        // Cierre
+        if (respuestaAcumulada.cierre) {
+            titulo('Posición institucional y cierre');
+            escribir(respuestaAcumulada.cierre);
+        }
+
+        // Pie de página
+        const totalPags = doc.internal.getNumberOfPages();
+        for (let p = 1; p <= totalPags; p++) {
+            doc.setPage(p);
+            doc.setFontSize(7); doc.setTextColor(160, 160, 160);
+            doc.text(`Enel Colombia S.A. E.S.P. — Documento generado automáticamente — Pág. ${p} de ${totalPags}`, 14, 292);
+        }
+
+        doc.save(`respuesta_peticion_${tutela.radicado || id}.pdf`);
+    }, [respuestaAcumulada, tutela, id]);
+
+    const handleGenerarPrompts = useCallback(async () => {
+        setGenerandoPrompts(true);
+        setPromptsGenerados([]);
+        try {
+            const { data } = await apiService.post(`/tutelas/${id}/generar-prompts-peticion`);
+            setPromptsGenerados(data.prompts);
+            if (data.total_partes === 1) {
+                toast.success('Prompt listo — 1 parte');
+            } else {
+                toast.success(`Petición dividida en ${data.total_partes} partes (${data.total_solicitudes} solicitudes detectadas)`);
+            }
+        } catch {
+            toast.error('Error al generar los prompts');
+        } finally {
+            setGenerandoPrompts(false);
+        }
+    }, [id]);
+
+    const handleCopiarPrompt = useCallback((prompt, idx) => {
+        navigator.clipboard.writeText(prompt);
+        setCopiadoIdx(idx);
+        toast.success(`Parte ${idx + 1} copiada al portapapeles`);
+        setTimeout(() => setCopiadoIdx(null), 2000);
+    }, []);
 
     // Gestión log state (migrado de SidebarInfo)
     const [nuevaAccion, setNuevaAccion] = useState({
@@ -84,33 +296,6 @@ export default function MainTabs({
             setNuevoArgumento({ titulo: '', contenido: '' });
             toast.success('Argumento guardado');
         } catch (error) { toast.error('Error al guardar argumento'); }
-    };
-
-    const copiarPromptParaIA = () => {
-        const prompt = `Actúa como abogado experto en derecho constitucional y administrativo, representando los intereses de Enel como entidad accionada. Redacta una contestación de tutela formal, profesional y defensiva basada en el siguiente caso y contexto legal.
-
-CONTEXTO DEL CASO:
-- Radicado: ${tutela.radicado}
-- Accionante: ${tutela.accionante}
-- Derecho Vulnerado: ${tutela.derecho_vulnerado}
-- Hechos: ${tutela.contenido_original}
-
-ARGUMENTOS LEGALES FIJOS (Defensa de Enel):
-${aiConfig.legal_notes?.map(n => `- ${n.titulo}: ${n.contenido}`).join('\n') || 'Ninguno.'}
-
-PRECEDENTES/SUGERENCIAS (RAG):
-${sugerencias.map(s => `- ${s.titulo_referencia} (${s.categoria}): ${s.contenido_legal}`).join('\n') || 'Ninguno.'}
-
-ARGUMENTOS PERSONALIZADOS:
-${argumentos.map(a => `- ${a.titulo}: ${a.contenido}`).join('\n') || 'Ninguno.'}
-
-INSTRUCCIONES DE REDACCIÓN:
-1. Mantén un tono formal, claro y jurídico, defendiendo la posición de Enel.
-2. PRIORIDAD CRÍTICA: Presta especial atención a la sección "ARGUMENTOS PERSONALIZADOS". Estos contienen las claves fundamentales para refutar los hechos del accionante. Debes integrarlos como el núcleo central de la defensa y la refutación.
-3. Organiza la respuesta en: Encabezado, Hechos (desde la perspectiva de la entidad), Fundamentos de Derecho (usando los argumentos arriba para sustentar la defensa), Pretensiones (solicitando la improcedencia o denegación de las pretensiones del accionante) y Conclusión.
-4. Asegúrate de citar los precedentes proporcionados si aplican para fortalecer la defensa.`;
-        navigator.clipboard.writeText(prompt);
-        toast.success('Prompt completo copiado para IA externa');
     };
 
     // ——— Handlers migrados de SidebarInfo ———
@@ -283,34 +468,126 @@ INSTRUCCIONES DE REDACCIÓN:
             {/* ═══════════════════════════════════════════════════════ */}
             {activeTab === 'borrador' && (
                 <div className="animate-fade-in space-y-6">
-                    {/* Botón de Asistencia IA (migrado de SidebarInfo) */}
+                    {/* Panel de Asistencia IA */}
                     <div className="bg-gradient-to-r from-[#002E6D] to-[#001d4a] p-5 rounded-2xl shadow-lg relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -mr-20 -mt-20 pointer-events-none"></div>
                         <div className="flex items-center justify-between relative z-10">
                             <div className="flex items-center gap-3">
                                 <ShieldCheck size={20} className="text-blue-300" />
                                 <div>
-                                    <h3 className="font-bold text-white text-sm">Asistencia IA</h3>
-                                    <p className="text-blue-200 text-xs">Genera una contestación automática con IA</p>
+                                    <h3 className="font-bold text-white text-sm">Asistencia IA — Derecho de Petición</h3>
+                                    <p className="text-blue-200 text-xs">Detecta cada solicitud y genera un prompt por lote</p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={copiarPromptParaIA}
-                                className="px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all bg-white text-[#002E6D] hover:bg-blue-50 hover:shadow-lg"
+                            <button
+                                onClick={handleGenerarPrompts}
+                                disabled={generandoPrompts}
+                                className="px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all bg-white text-[#002E6D] hover:bg-blue-50 hover:shadow-lg disabled:opacity-60"
                             >
-                                <FileText size={16} /> Copiar Prompt para IA
+                                {generandoPrompts
+                                    ? <><Loader2 size={16} className="animate-spin" /> Analizando...</>
+                                    : <><Layers size={16} /> Generar Prompts</>
+                                }
                             </button>
                         </div>
 
+                        {/* Prompts generados */}
+                        {promptsGenerados.length > 0 && (
+                            <div className="mt-4 space-y-3">
+                                {promptsGenerados.map((p, idx) => (
+                                    <div key={idx} className="bg-white/10 rounded-xl p-4 flex items-center justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <p className="text-white text-xs font-bold">
+                                                Parte {p.parte} de {p.total}
+                                                {p.total > 1 && (
+                                                    <span className="ml-2 text-blue-200 font-normal">
+                                                        Solicitudes: {p.solicitudes.join(' · ')}
+                                                    </span>
+                                                )}
+                                            </p>
+                                            <p className="text-blue-300 text-[10px] mt-0.5">
+                                                {p.prompt.length.toLocaleString()} caracteres
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleCopiarPrompt(p.prompt, idx)}
+                                            className="flex-shrink-0 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all bg-white text-[#002E6D] hover:bg-blue-50"
+                                        >
+                                            {copiadoIdx === idx
+                                                ? <><Check size={13} className="text-green-600" /> Copiado</>
+                                                : <><Copy size={13} /> Copiar</>
+                                            }
+                                        </button>
+                                    </div>
+                                ))}
+                                <p className="text-blue-200 text-[10px] text-center pt-1">
+                                    Copia cada parte al LLM en orden · Pega cada respuesta en el panel de abajo
+                                </p>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Editor de borrador manual */}
+                    {/* ── Panel: pegar JSON del LLM ── */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="font-bold text-gray-800 text-sm">Pegar respuesta del LLM</h3>
+                                <p className="text-gray-400 text-xs mt-0.5">
+                                    {promptsGenerados.length > 1
+                                        ? `Guardando parte ${parteActual + 1} de ${promptsGenerados.length}`
+                                        : 'Pega aquí el JSON que devolvió el LLM'}
+                                </p>
+                            </div>
+                            {respuestaAcumulada && (
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-lg">
+                                        {respuestaAcumulada.items?.length || 0} solicitudes guardadas
+                                    </span>
+                                    <button onClick={handleLimpiarRespuesta} className="text-[10px] text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded hover:bg-red-50 transition-colors">
+                                        Limpiar
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        <textarea
+                            className="w-full h-40 p-4 border border-gray-200 rounded-xl text-xs font-mono leading-relaxed outline-none focus:ring-2 focus:ring-[#002E6D] bg-gray-50/50 resize-none"
+                            value={jsonLlm}
+                            onChange={e => setJsonLlm(e.target.value)}
+                            placeholder={'{\n  "respuestas": [\n    { "numero": 1, "solicitud": "...", "respuesta": "...", "normas_citadas": [] }\n  ],\n  "prescripcion": { "aplica": false }\n}'}
+                        />
+
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => handleGuardarRespuesta('acumular')}
+                                disabled={guardandoRespuesta || !jsonLlm.trim()}
+                                className="flex-1 py-2.5 bg-[#002E6D] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#001d4a] transition-colors disabled:opacity-50"
+                            >
+                                {guardandoRespuesta ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+                                {promptsGenerados.length > 1 ? `Guardar parte ${parteActual + 1} → poblar editor` : 'Guardar → poblar editor'}
+                            </button>
+                            {respuestaAcumulada?.items?.length > 0 && (
+                                <button
+                                    onClick={() => setAiDraftContent(respuestaATexto(respuestaAcumulada))}
+                                    className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-600 rounded-xl text-xs font-bold hover:bg-gray-50 transition-colors"
+                                    title="Repoblar el editor con la respuesta guardada"
+                                >
+                                    ↺ Repoblar
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Editor unificado */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
                         <div className="flex justify-between items-center mb-6">
-                            <h3 className="font-bold text-gray-800">Borrador de Contestación Manual</h3>
+                            <div>
+                                <h3 className="font-bold text-gray-800">Borrador de Respuesta</h3>
+                                <p className="text-gray-400 text-xs mt-0.5">Generado por IA · editable antes de exportar</p>
+                            </div>
                             <div className="flex gap-2">
                             <button
-                                onClick={() => generarBorradorPDF({ tutela, contenido: aiDraftContent })}
+                                onClick={() => generarBorradorPDF({ tutela, contenido: aiDraftContent, radicadoLlm: respuestaAcumulada?.encabezado?.radicado_peticion })}
                                 className="px-4 py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded-lg text-xs font-bold hover:bg-gray-100 transition-colors flex items-center gap-1.5"
                             >
                                 <Download size={13} /> Exportar PDF
@@ -340,7 +617,7 @@ INSTRUCCIONES DE REDACCIÓN:
                             value={aiDraftContent}
                             onChange={(e) => setAiDraftContent(e.target.value)}
                             disabled={!isLockedByMe}
-                            placeholder="Escribe aquí tu borrador..."
+                            placeholder="El texto aparecerá aquí automáticamente al guardar la respuesta del LLM. Puedes editarlo libremente antes de exportar el PDF."
                         />
 
                         <div className="mt-8 border-t border-gray-100 pt-8">
