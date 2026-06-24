@@ -258,7 +258,7 @@ export default function Dashboard() {
       <div className="flex justify-between items-end mb-6">
         <div>
           <h1 className="text-3xl font-bold mb-1 text-[#002E6D]">{import.meta.env.VITE_APP_NAME}</h1>
-          <p className="text-sm text-gray-500">Panel de gestión y análisis de tutelas.</p>
+          <p className="text-sm text-gray-500">Panel de gestión y análisis de derechos de petición.</p>
         </div>
         <button
           onClick={handleRefresh}
