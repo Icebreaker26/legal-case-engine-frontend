@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Bell, Clock, AlertTriangle, CheckCheck, Trash2, ExternalLink, BellOff, Check, X, FileText, Mail, Shield, Wallet, Leaf, BarChart3 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import apiService from '../services/apiService';
 import toast from 'react-hot-toast';
 
@@ -40,6 +40,7 @@ const getTipo = (tipo) => TIPO_CONFIG[tipo] || TIPO_CONFIG.default;
 const MODULOS_FILTRO = ['Todos', ...Object.keys(MODULO_CONFIG)];
 
 export default function Notificaciones() {
+  const navigate = useNavigate();
   const [notifs, setNotifs]         = useState([]);
   const [loading, setLoading]       = useState(true);
   const [tabTipo, setTabTipo]       = useState('Todos');
@@ -215,6 +216,12 @@ export default function Notificaciones() {
               ? fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
               : fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
+            const destino = n.referencia_uuid ? getLink(n.modulo, n.referencia_uuid) : null;
+            const handleCardClick = () => {
+              if (!n.leida) marcarLeida(n.id);
+              navigate(destino);
+            };
+
             return (
               <div
                 key={n.id}
@@ -222,7 +229,8 @@ export default function Notificaciones() {
                   n.leida
                     ? 'bg-slate-900/40 border-slate-800 opacity-60'
                     : 'bg-slate-800/70 border-slate-600 hover:border-slate-400'
-                }`}
+                } ${destino ? 'cursor-pointer' : ''}`}
+                onClick={destino ? handleCardClick : undefined}
               >
                 {/* Dot no leído */}
                 <div className="mt-2 shrink-0">
@@ -254,10 +262,10 @@ export default function Notificaciones() {
                     </span>
                   </div>
 
-                  {n.referencia_uuid && getLink(n.modulo, n.referencia_uuid) && (
+                  {destino && (
                     <Link
-                      to={getLink(n.modulo, n.referencia_uuid)}
-                      onClick={() => !n.leida && marcarLeida(n.id)}
+                      to={destino}
+                      onClick={e => { e.stopPropagation(); if (!n.leida) marcarLeida(n.id); }}
                       className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500 hover:text-emerald-300 transition-colors"
                     >
                       <ExternalLink size={10} /> [ VER EN {moduloCfg.label} ]
