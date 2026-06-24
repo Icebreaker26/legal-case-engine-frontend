@@ -28,7 +28,7 @@ const addPageNumbers = (doc) => {
 const formatFecha = (f) =>
     f ? new Date(f).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
 
-export const generarBorradorPDF = ({ tutela, contenido }) => {
+export const generarBorradorPDF = ({ tutela, contenido, radicadoLlm }) => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
     const W   = doc.internal.pageSize.width;
     doc.setFont('helvetica');
@@ -58,10 +58,10 @@ export const generarBorradorPDF = ({ tutela, contenido }) => {
         startY: 52,
         head: [['Campo', 'Valor']],
         body: [
-            ['Radicado',          tutela.radicado      || '—'],
+            ['Radicado',          radicadoLlm || tutela.radicado || '—'],
             ['Accionante',        tutela.accionante     || '—'],
             ['Responsable',       tutela.responsables_nombres?.join(', ') || tutela.responsable_nombre || '—'],
-            ['Derecho Vulnerado', tutela.derecho_vulnerado || '—'],
+            ['Categoría Petición', tutela.derecho_vulnerado || '—'],
             ['Área / Grupo',      tutela.grupo_nombre   || '—'],
             ['Fecha Vencimiento', formatFecha(tutela.fecha_vencimiento)],
         ],
