@@ -277,7 +277,7 @@ export default function Notificaciones() {
                 <div className="flex items-center gap-1 shrink-0">
                   {!n.leida && (
                     <button
-                      onClick={() => marcarLeida(n.id)}
+                      onClick={e => { e.stopPropagation(); marcarLeida(n.id); }}
                       title="Marcar como leída"
                       className="p-1.5 text-white hover:text-emerald-400 transition-colors"
                     >
@@ -285,7 +285,7 @@ export default function Notificaciones() {
                     </button>
                   )}
                   <button
-                    onClick={() => eliminar(n.id)}
+                    onClick={e => { e.stopPropagation(); eliminar(n.id); }}
                     disabled={deletingId === n.id}
                     title="Eliminar"
                     className="p-1.5 text-white hover:text-red-400 transition-colors"
