@@ -90,7 +90,7 @@ function MiniSnake() {
     return () => clearInterval(interval);
   }, [started]);
 
-  const CELL = started ? 14 : 10;
+  const CELL = started ? 22 : 10;
 
   return (
     <div className="flex flex-col items-center gap-1.5">
