@@ -1,63 +1,120 @@
-# TutelaIA - Frontend Documentation 🖥️✨
+```
+╔══════════════════════════════════════════════════════════════════╗
+║             CORE OPERATING SYSTEM — FRONTEND CLIENT             ║
+║                     ICEBREAKER // BUILD 2026                    ║
+╚══════════════════════════════════════════════════════════════════╝
+```
 
-Este es el cliente de usuario de TutelaIA, una interfaz moderna y eficiente construida con **React** y **Vite**, optimizada para la gestión jurídica de alto impacto.
+![React](https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat-square&logo=vite&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind-3-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)
+![License](https://img.shields.io/badge/License-ISC-slate?style=flat-square)
 
-## 🛠️ Stack Tecnológico
-- **Framework:** React 18 (Vite).
-- **Estilos:** Tailwind CSS (Diseño limpio, profesional y responsivo).
-- **Iconografía:** Lucide React (Consistente y minimalista).
-- **Enrutamiento:** React Router DOM v6.
-- **Comunicación:** Axios (Conexión con el Backend en el puerto 4000).
-- **Notificaciones:** React Hot Toast (Feedback en tiempo real).
+---
 
-## 📁 Estructura de la Aplicación (`src/`)
-- `main.jsx`: Punto de entrada y configuración de estilos globales.
-- `App.jsx`: Definición de rutas y estructura principal.
-- `components/`:
-    - `Layout.jsx`: Contenedor principal con navegación superior/lateral y branding de Enel.
-- `pages/`:
-    - `Dashboard.jsx`: **Bandeja de Entrada**. Resumen de KPIs, visualización de estados (Pendiente, En Proceso, Respondida) y tabla de gestión con filtros visuales.
-    - `Procesar.jsx`: **Carga de Documentos**. Interfaz de Dropzone para PDFs, asignación de metadatos y visualización de extracción inteligente inmediata.
-    - `DetalleTutela.jsx`: **Expediente Digital**. Línea de tiempo de trazabilidad, gestión de recordatorios (alertas), visor de texto original y panel de sugerencias RAG (IA Local).
-    - `Entrenar.jsx`: **Memoria Institucional**. Interfaz para alimentar la base de conocimiento mediante documentos PDF o texto legal.
-- `services/`:
-    - `tutelaService.js`: Capa de abstracción para todas las llamadas a la API (CRUD, Procesamiento, Descargas).
+## `> DESCRIPCIÓN`
 
-## 🎨 Guía de Estilos y UI
-### Estados y Colores:
-- **Pendiente:** Ámbar (`text-amber-600 bg-amber-50`).
-- **En Proceso:** Azul (`text-blue-600 bg-blue-50`).
-- **Respondida:** Verde (`text-green-600 bg-green-50`).
-- **Prioridad Alta:** Rojo con borde de alerta y animación pulse en el Dashboard.
+Interfaz del **Core Operating System** — plataforma transversal de gestión operativa para Enel Colombia. Accesible desde un selector central de módulos con identidad visual unificada, autenticación JWT y control de acceso granular en cada ruta.
 
-### Componentes de Gestión Clave:
-- **Badge de Derecho:** Etiqueta dinámica en el Dashboard que indica si la tutela es de "Salud", "Mínimo Vital", etc.
-- **Timeline de Trazabilidad:** Componente interactivo que muestra quién hizo qué y cuándo.
-- **Sistema de Alertas:** Indicador visual `REVISAR EL: [FECHA]` basado en la lógica de días de seguimiento.
+> Desarrollado por **Alejandro M. Torres** — Ingeniero de Sistemas y Telecomunicaciones  
+> Universidad Católica de Pereira · Internship Permitting & Detailed Design HV · Enel Colombia 2026-1
 
-## ⚙️ Configuración y Ejecución
-1.  Instalar dependencias: `npm install`
-2.  Iniciar en modo desarrollo: `npm run dev`
-3.  El frontend se comunica por defecto con `http://localhost:4000/api/tutelas`.
+---
 
-## 📝 Notas de Desarrollo Recientes
-- **Sistema RBAC (Roles):** Jerarquía de permisos (`super_admin`, `admin`, `juridico`, `auditor`). El sidebar es dinámico y oculta secciones restringidas según el rol del usuario.
-- **Gestión de Papelera:** Nueva vista `/papelera` para recuperar registros eliminados con previsualización de documentos.
-- **Visualización de Documentos:** Nuevo visor de documentos con formato legal profesional (tipografía serif, alineación justificada, jerarquía de encabezados).
-- **Seguridad (Auth):** Implementación de `AuthContext` para manejo global de sesión y rutas protegidas (`ProtectedRoute`, `PublicOnlyRoute`). Integración con `HttpOnly Cookies` vía `axios.defaults.withCredentials`.
-- **Panel Administrativo:** Interfaz para gestión de usuarios (activación/desactivación, asignación de roles mediante dropdown).
-- **Eliminación Segura:** Flujo de eliminación de tutelas con confirmación mediante radicado (estilo GitHub) y eliminación lógica auditable.
-- **Servicio Centralizado:** Migración a `apiService.js` con configuración base de URL mediante variables de entorno (`.env`).
+## `> STACK TECNOLÓGICO`
 
+| Capa | Tecnología |
+|------|-----------|
+| Framework | React 18 |
+| Bundler | Vite 5 |
+| Estilos | Tailwind CSS |
+| Routing | React Router v6 |
+| HTTP | Axios (`apiService`) con interceptor 401/403 |
+| Animaciones | Framer Motion |
+| Gráficas | Recharts |
+| PDF | jsPDF + jspdf-autotable |
+| Notificaciones | react-hot-toast |
+| Iconos | lucide-react |
 
-## 🛡️ Panel de Administración
-Los usuarios con privilegios de administrador tienen acceso a un panel dedicado para:
-- **Gestión de Usuarios:** Listado centralizado de todos los abogados registrados.
-- **Flujo de Aprobación:** Interfaz administrativa para validar nuevos usuarios. Las cuentas nuevas requieren aprobación explícita de un administrador antes de ingresar.
-- **Seguridad:** Reseteo forzado de contraseñas de cualquier usuario mediante la interfaz administrativa.
-- **Acceso Restringido:** El menú de "Administración" solo es visible para usuarios con el flag `is_admin` activo.
+---
 
-## 📚 Documentación Técnica
-- **Directorio de Módulos:** Para conocer en detalle las páginas y componentes de cada módulo visual, consulte el [Directorio de Módulos del Frontend](docs/DOCUMENTACION_MODULOS.md).
-- **Guía para Agentes de IA:** Si eres un agente de desarrollo de IA trabajando en este proyecto, consulta las [Instrucciones de Contexto de IA del Frontend](AI_INSTRUCTIONS.md).
+## `> MÓDULOS OPERATIVOS`
 
+```
+/                     ⚖️  Derechos de petición — gestión documental y RAG
+/contratos            📄  Auditoría contractual — minutas y diff de contratos
+/comunicaciones       ✉️  Correspondencia — entrada/salida con trazabilidad
+/conformidades        📋  Conformidades — historial de estados y grupos
+/pagos                💰  Pagos judiciales — flujo de aprobación y KPIs
+/rendimiento          📊  Rendimiento — objetivos, cumplimiento, dashboards
+/ambiental            🌿  Derecho ambiental — expedientes y alertas
+/reportes             📈  Reportes cross-módulo — filtros, gráficas, exportación
+/perfil               👤  Mi perfil — tareas y actividades asignadas
+/catalogos            🗃️  Catálogos — entidades, grupos, áreas
+/usuarios             ⚙️  Administración — usuarios, roles y permisos
+/landing              🖥️  Landing pública — presentación del sistema
+```
+
+---
+
+## `> ARQUITECTURA`
+
+```
+tutelas-frontend/
+├── src/
+│   ├── modules/              ← Un directorio por módulo
+│   │   └── <nombre>/
+│   │       ├── components/   ← Layout y componentes del módulo
+│   │       └── pages/        ← Páginas (rutas)
+│   ├── pages/                ← Páginas globales (Login, Landing, Notificaciones)
+│   ├── components/           ← Componentes compartidos (ProtectedRoute, NotificationBell…)
+│   ├── context/              ← AuthContext, ThemeContext
+│   ├── services/
+│   │   └── apiService.js     ← Axios con baseURL + withCredentials + interceptor
+│   └── App.jsx               ← Router principal
+```
+
+**Estética unificada:** fondo `#020617`, `font-mono`, `ConstellationBackground`, bordes `slate-800` — compartida por todos los layouts del sistema.
+
+---
+
+## `> PATRONES DE DISEÑO`
+
+- **`apiService`** — todas las llamadas HTTP pasan por esta instancia; nunca `fetch` directo
+- **`ProtectedRoute`** — envuelve rutas autenticadas; redirige a `/login` si no hay sesión
+- **`checkPermission`** + `hasPermission` — cada módulo verifica su permiso antes de renderizar
+- **`SearchableSelect`** — implementado localmente en cada módulo que lo requiere
+- **Color por módulo** — cada módulo tiene su paleta propia, consistente entre UI y exportaciones PDF
+
+---
+
+## `> EXPORTACIONES`
+
+| Formato | Librería | Módulos |
+|---------|---------|---------|
+| PDF visual multi-página | jsPDF + jspdf-autotable | Reportes, Contratos, Tutelas |
+| CSV | Generación manual | Reportes |
+
+---
+
+## `> COMANDOS`
+
+```bash
+npm run dev      # Servidor de desarrollo (puerto 5173)
+npm run build    # Build de producción
+npm run preview  # Preview del build
+```
+
+---
+
+## `> VARIABLES DE ENTORNO`
+
+```
+VITE_API_BASE_URL=http://localhost:4000/api
+```
+
+---
+
+```
+// SECURE_ENTERPRISE_ENVIRONMENT // ENEL COLOMBIA // 2026
+```
