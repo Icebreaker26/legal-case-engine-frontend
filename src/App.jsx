@@ -12,8 +12,9 @@ import Procesar from './modules/tutelas/pages/Procesar';
 import Entrenar from './modules/tutelas/pages/Entrenar';
 import AdminDashboard from './modules/tutelas/pages/AdminDashboard';
 import Informes from './modules/tutelas/pages/Informes';
-import Notificaciones from './modules/tutelas/pages/Notificaciones';
+import Notificaciones from './pages/Notificaciones';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 import Register from './pages/Register';
 import RegistrationPending from './pages/RegistrationPending';
 import ChangePassword from './pages/ChangePassword';
@@ -51,12 +52,15 @@ import Auditoria from './modules/contratos/pages/Auditoria';
 import AuditoriaDetalle from './modules/contratos/pages/AuditoriaDetalle';
 import GestionMinutas from './modules/contratos/pages/GestionMinutas';
 import ContratosDashboard from './modules/contratos/pages/ContratosDashboard';
+import CoreLayout from './layouts/CoreLayout';
 import AmbientalLayout from './modules/ambiental/components/AmbientalLayout';
 import ListaExpedientes from './modules/ambiental/pages/ListaExpedientes';
 import NuevoExpediente from './modules/ambiental/pages/NuevoExpediente';
 import DetalleExpediente from './modules/ambiental/pages/DetalleExpediente';
 import CalendarioAmbiental from './modules/ambiental/pages/CalendarioAmbiental';
 import DashboardAmbiental from './modules/ambiental/pages/DashboardAmbiental';
+import ReportesLayout from './modules/reportes/components/ReportesLayout';
+import ReportesDashboard from './modules/reportes/pages/ReportesDashboard';
 
 function App() {
   return (
@@ -65,6 +69,7 @@ function App() {
         <ThemeProvider>
           <Toaster position="top-right" toastOptions={{ duration: 2000 }} />
           <Routes>
+            <Route path="/landing" element={<Landing />} />
             <Route path="/login" element={
               <PublicOnlyRoute>
                 <Login />
@@ -94,7 +99,6 @@ function App() {
               <Route path="papelera" element={<Papelera />} />
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="informes" element={<Informes />} />
-              <Route path="notificaciones" element={<Notificaciones />} />
               <Route path="tutela/:id" element={<DetalleTutela />} />
             </Route>
 
@@ -188,6 +192,11 @@ function App() {
               <Route path=":id" element={<DetalleConformidad />} />
             </Route>
 
+            {/* Páginas globales del Core */}
+            <Route path="/core" element={<CoreLayout />}>
+              <Route path="notificaciones" element={<Notificaciones />} />
+            </Route>
+
             {/* Módulo Derecho Ambiental */}
             <Route path="/ambiental" element={
               <ProtectedRoute>
@@ -199,6 +208,11 @@ function App() {
               <Route path="dashboard" element={<DashboardAmbiental />} />
               <Route path="calendario" element={<CalendarioAmbiental />} />
               <Route path="expediente/:id" element={<DetalleExpediente />} />
+            </Route>
+
+            {/* Módulo Reportes */}
+            <Route path="/reportes" element={<ReportesLayout />}>
+              <Route index element={<ReportesDashboard />} />
             </Route>
 
             {/* Nuevo módulo de contratos */}

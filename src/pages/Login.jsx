@@ -29,6 +29,11 @@ export default function Login() {
         <ConstellationBackground />
 
       <div className="bg-[#0F172A]/40 backdrop-blur-xl p-12 border border-slate-800 w-full max-w-sm shadow-2xl z-10 animate-neon-pulse">
+        <div className="flex justify-start mb-6 -mt-4">
+          <Link to="/landing" className="text-[9px] uppercase tracking-[0.2em] text-[#1A441A] hover:text-[#33FF33] transition-colors">
+            {'<'} VOLVER AL INICIO
+          </Link>
+        </div>
         <div className="flex flex-col items-center mb-10">
             <Terminal className="text-[#33FF33] mb-4" size={48} />
             <h2 className="text-xl font-bold text-white uppercase tracking-[0.2em]">[ SYSTEM_ACCESS ]</h2>

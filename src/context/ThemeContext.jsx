@@ -16,7 +16,7 @@ export const ThemeProvider = ({ children }) => {
     '/papelera',
     '/admin',
     '/informes',
-    '/notificaciones',
+    '/core/notificaciones',
     '/tutela'
   ].some(path => location.pathname === path || location.pathname.startsWith(path + '/'));
   

@@ -4,6 +4,7 @@ import {
   ExternalLink, Search, Inbox, BarChart2, Users, LayoutDashboard, RefreshCw,
   List, Columns, GripVertical, X
 } from 'lucide-react';
+import HelpButton from '../../../components/HelpButton';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, Cell, PieChart, Pie, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { tutelaService } from '../services/tutelaService';
@@ -256,9 +257,99 @@ export default function Dashboard() {
     <div className="animate-fade-in pb-12">
       {/* Header */}
       <div className="flex justify-between items-end mb-6">
-        <div>
-          <h1 className="text-3xl font-bold mb-1 text-[#002E6D]">{import.meta.env.VITE_APP_NAME}</h1>
-          <p className="text-sm text-gray-500">Panel de gestión y análisis de derechos de petición.</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-3xl font-bold mb-1 text-[#002E6D]">{import.meta.env.VITE_APP_NAME}</h1>
+            <p className="text-sm text-gray-500">Panel de gestión y análisis de derechos de petición.</p>
+          </div>
+          <HelpButton
+            title="Cómo usar el módulo de Derechos de Petición"
+            color="text-blue-700"
+            tips={[
+              'Sube el PDF del derecho de petición en "Procesar" para que el sistema extraiga los hechos automáticamente.',
+              'El sistema genera un prompt enriquecido con RAG — cópialo y pégalo en la herramienta corporativa de IA.',
+              'Pega la respuesta del LLM de vuelta en el sistema y exporta la contestación en PDF.',
+              'Cambia el estado a "Respondida" una vez enviada la contestación al peticionario.',
+            ]}
+            sections={[
+              {
+                title: '¿Qué hace este módulo?',
+                content: (
+                  <p>
+                    Este módulo gestiona el ciclo de vida completo de los derechos de petición que llegan al área jurídica.
+                    Permite radicar, hacer seguimiento de términos legales y generar contestaciones apoyadas en inteligencia
+                    documental: el sistema construye un prompt enriquecido con casos similares (RAG) que el abogado lleva
+                    a la herramienta corporativa de IA, y la respuesta generada se incorpora al sistema para su exportación y archivo.
+                  </p>
+                )
+              },
+              {
+                title: 'Paso 1 — Radicar y procesar el derecho de petición',
+                content: (
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Ve al menú <b>Procesar</b> y sube el PDF del derecho de petición recibido.</li>
+                    <li>El sistema extrae automáticamente los hechos, pretensiones e información del peticionario.</li>
+                    <li>Verifica que los datos extraídos sean correctos antes de continuar.</li>
+                    <li>Asigna la prioridad (Alta / Media / Baja) según la urgencia del caso.</li>
+                  </ol>
+                )
+              },
+              {
+                title: 'Paso 2 — Generar el prompt enriquecido con RAG',
+                content: (
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Desde el detalle del derecho de petición, haz clic en <b>Generar prompt</b>.</li>
+                    <li>El sistema busca automáticamente en la <b>Memoria</b> casos y argumentos similares (RAG) y los incorpora al prompt.</li>
+                    <li><b>Copia</b> el prompt generado y pégalo en la herramienta corporativa de inteligencia artificial.</li>
+                    <li>La IA redactará la contestación con base en los hechos del caso y el contexto jurídico recuperado.</li>
+                  </ol>
+                )
+              },
+              {
+                title: 'Paso 3 — Incorporar la respuesta y exportar',
+                content: (
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li><b>Copia</b> la contestación generada por la herramienta de IA.</li>
+                    <li>Pégala en el campo correspondiente dentro del sistema.</li>
+                    <li>Haz clic en <b>Exportar PDF</b> para descargar la contestación lista para enviar.</li>
+                  </ol>
+                )
+              },
+              {
+                title: 'Paso 4 — Requerimientos internos',
+                content: (
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Si necesitas información de otra área antes de contestar, crea un <b>Requerimiento interno</b>.</li>
+                    <li>Asigna el requerimiento al área responsable e indica la fecha límite de respuesta.</li>
+                    <li>El área recibe una notificación y puede responder desde su panel.</li>
+                    <li>Con las respuestas recibidas, puedes volver a generar el prompt con información más completa.</li>
+                  </ol>
+                )
+              },
+              {
+                title: 'Paso 5 — Cierre del caso',
+                content: (
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Marca el derecho de petición como <b>Respondido</b> al enviar la contestación al peticionario.</li>
+                    <li>El sistema registra la fecha de respuesta y calcula si se cumplió el término legal.</li>
+                    <li>Los casos respondidos quedan en el historial y alimentan la Memoria para futuros casos.</li>
+                  </ol>
+                )
+              },
+              {
+                title: 'Vistas y herramientas adicionales',
+                content: (
+                  <ul className="list-disc list-inside space-y-2">
+                    <li><b>Bandeja Lista:</b> tabla filtrable por estado, prioridad, fecha y responsable.</li>
+                    <li><b>Bandeja Kanban:</b> arrastra los derechos de petición entre columnas para cambiar su estado visualmente.</li>
+                    <li><b>Inteligencia:</b> gráficas de tendencias, temas recurrentes y métricas del área.</li>
+                    <li><b>Memoria:</b> base de argumentos legales reutilizables que el RAG consulta automáticamente.</li>
+                    <li><b>Prioridad Alta</b> (rojo) se activa automáticamente cuando quedan menos de 5 días hábiles para responder.</li>
+                  </ul>
+                )
+              }
+            ]}
+          />
         </div>
         <button
           onClick={handleRefresh}

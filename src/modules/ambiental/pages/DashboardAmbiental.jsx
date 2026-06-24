@@ -9,6 +9,7 @@ import {
   Leaf, AlertTriangle, CheckCircle, Clock, Archive,
   CreditCard, TrendingUp, ChevronRight, Calendar,
 } from 'lucide-react';
+import HelpButton from '../../../components/HelpButton';
 import toast from 'react-hot-toast';
 
 const RIESGO_COLOR = { Crítico: '#ef4444', Alto: '#f97316', Medio: '#f59e0b', Bajo: '#22c55e' };
@@ -88,6 +89,87 @@ export default function DashboardAmbiental() {
           <h1 className="text-2xl font-semibold text-gray-900">Dashboard Ambiental</h1>
           <p className="text-sm text-gray-400 mt-0.5">Resumen de expedientes, riesgos y pagos</p>
         </div>
+        <HelpButton
+          title="Cómo usar el módulo Ambiental"
+          color="text-green-700"
+          tips={[
+            'Registra cada instrumento ambiental (licencia, permiso, concesión) como un expediente independiente.',
+            'Ingresa las fechas de vigencia para que el sistema genere alertas automáticas de vencimiento.',
+            'Asocia los pagos de tasas ambientales directamente al expediente correspondiente.',
+            'Usa el Calendario para visualizar todos los vencimientos del mes y planear con anticipación.',
+          ]}
+          sections={[
+            {
+              title: '¿Qué hace este módulo?',
+              content: (
+                <p>
+                  Este módulo administra el portafolio de instrumentos de derecho ambiental de la empresa: licencias
+                  ambientales, permisos de vertimiento, concesiones de agua, planes de manejo y otros instrumentos
+                  otorgados por las autoridades ambientales. Permite controlar fechas de vigencia, niveles de riesgo,
+                  pagos de tasas y recibir alertas preventivas antes de cada vencimiento.
+                </p>
+              )
+            },
+            {
+              title: 'Paso 1 — Crear un expediente',
+              content: (
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>Haz clic en <b>Nuevo Expediente</b> en la esquina superior derecha.</li>
+                  <li>Selecciona el <b>tipo de instrumento</b> (licencia ambiental, permiso de vertimiento, concesión de agua, etc.).</li>
+                  <li>Ingresa el número del instrumento tal como aparece en la resolución de la autoridad ambiental.</li>
+                  <li>Selecciona la <b>entidad ambiental</b> que lo otorgó (ANLA, CAR, Corporación regional, etc.).</li>
+                  <li>Ingresa la <b>fecha de expedición y fecha de vencimiento</b> — el sistema calculará automáticamente los días restantes.</li>
+                  <li>Asigna el <b>nivel de riesgo</b> (Crítico, Alto, Medio, Bajo) según la importancia del instrumento para la operación.</li>
+                </ol>
+              )
+            },
+            {
+              title: 'Paso 2 — Seguimiento y cambios de estado',
+              content: (
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>Abre el expediente desde la lista y revisa su información actual.</li>
+                  <li>Cambia el estado según la etapa en que se encuentre: <b>Pendiente → Analizado → Revisado → Archivado</b>.</li>
+                  <li>Agrega notas o documentos soporte (resoluciones, conceptos técnicos, comunicaciones) en el detalle.</li>
+                  <li>Registra cualquier condicionamiento o requisito de seguimiento que imponga la autoridad ambiental.</li>
+                </ol>
+              )
+            },
+            {
+              title: 'Paso 3 — Alertas de vencimiento',
+              content: (
+                <p>
+                  El sistema envía notificaciones automáticas al responsable del expediente <b>30, 15 y 5 días antes</b> de
+                  cada fecha de vencimiento. Los expedientes próximos a vencer aparecen destacados en la sección
+                  <b> Próximos Vencimientos</b> del dashboard. Es importante gestionar la renovación con suficiente anticipación,
+                  ya que los trámites ante autoridades ambientales pueden tomar semanas o meses.
+                </p>
+              )
+            },
+            {
+              title: 'Paso 4 — Registrar pagos de tasas ambientales',
+              content: (
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>Abre el expediente al que pertenece la tasa.</li>
+                  <li>Ve a la sección <b>Pagos</b> dentro del detalle del expediente.</li>
+                  <li>Registra el monto, la fecha de pago y el concepto (tasa retributiva, tasa de uso de agua, etc.).</li>
+                  <li>Adjunta el comprobante de pago para mantener el soporte documental.</li>
+                  <li>El dashboard consolida todos los pagos del portafolio en la sección de resumen financiero.</li>
+                </ol>
+              )
+            },
+            {
+              title: 'Vista de Calendario',
+              content: (
+                <p>
+                  El <b>Calendario Ambiental</b> (menú lateral) muestra en formato mensual todos los vencimientos,
+                  fechas de seguimiento y hitos programados del portafolio. Es la herramienta ideal para la
+                  planificación: permite ver de un vistazo qué trámites tienen fecha límite en las próximas semanas
+                  y priorizar el trabajo del equipo en consecuencia.
+                </p>
+              )
+            }
+          ]}
+        />
       </div>
 
       {/* KPIs fila 1 */}

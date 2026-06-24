@@ -6,6 +6,7 @@ import {
     AlertCircle, Archive, TrendingUp, Calendar, ChevronRight,
     BarChart2, X
 } from 'lucide-react';
+import HelpButton from '../../../components/HelpButton';
 import toast from 'react-hot-toast';
 
 const ESTADOS = ['Todos', 'Pendiente', 'En revisión', 'Completado', 'Archivado'];
@@ -114,9 +115,90 @@ export default function ContratosDashboard() {
         <div className="space-y-8">
             {/* ── Header ── */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-black text-gray-800">Auditoría Contractual</h1>
-                    <p className="text-sm text-gray-500 mt-0.5">Gestión y seguimiento de contratos de terceros</p>
+                <div className="flex items-center gap-3">
+                    <div>
+                        <h1 className="text-2xl font-black text-gray-800">Auditoría Contractual</h1>
+                        <p className="text-sm text-gray-500 mt-0.5">Gestión y seguimiento de contratos de terceros</p>
+                    </div>
+                    <HelpButton
+                        title="Cómo usar el módulo de Contratos"
+                        color="text-pink-600"
+                        tips={[
+                            'Sube el contrato del tercero (PDF o DOCX) y selecciona la minuta estándar a comparar.',
+                            'El sistema detecta automáticamente las diferencias párrafo a párrafo.',
+                            'Genera el prompt de análisis para la herramienta corporativa de IA y pega el resultado.',
+                            'Exporta el informe PDF con todas las desviaciones identificadas y su análisis.',
+                        ]}
+                        sections={[
+                            {
+                                title: '¿Qué hace este módulo?',
+                                content: (
+                                    <p>
+                                        Este módulo permite auditar contratos que envían terceros (proveedores, contratistas, socios)
+                                        comparándolos contra las minutas estándar aprobadas por el área jurídica. El sistema identifica
+                                        automáticamente qué cláusulas fueron modificadas, eliminadas o agregadas, generando un informe
+                                        de desviaciones que facilita la negociación y aprobación contractual.
+                                    </p>
+                                )
+                            },
+                            {
+                                title: 'Paso 1 — Crear una nueva auditoría',
+                                content: (
+                                    <ol className="list-decimal list-inside space-y-2">
+                                        <li>Haz clic en <b>Nueva Auditoría</b> en la parte superior derecha.</li>
+                                        <li>Sube el archivo del contrato del tercero en formato PDF o DOCX.</li>
+                                        <li>Escribe el nombre del tercero (empresa o persona que envió el contrato).</li>
+                                        <li>Selecciona la <b>minuta estándar</b> que corresponde al tipo de contrato.</li>
+                                        <li>Guarda — el sistema procesará el documento y lo dejará listo para analizar.</li>
+                                    </ol>
+                                )
+                            },
+                            {
+                                title: 'Paso 2 — Revisar el diff de diferencias',
+                                content: (
+                                    <ol className="list-decimal list-inside space-y-2">
+                                        <li>Abre el detalle de la auditoría creada.</li>
+                                        <li>El sistema muestra párrafo a párrafo las diferencias entre el contrato del tercero y la minuta.</li>
+                                        <li>Los párrafos en <b>rojo</b> fueron eliminados de la minuta; los en <b>verde</b> fueron agregados por el tercero; los en <b>amarillo</b> fueron modificados.</li>
+                                        <li>Puedes agregar comentarios internos a cada párrafo con observaciones para la negociación.</li>
+                                    </ol>
+                                )
+                            },
+                            {
+                                title: 'Paso 3 — Análisis con herramienta de IA',
+                                content: (
+                                    <ol className="list-decimal list-inside space-y-2">
+                                        <li>Haz clic en <b>Generar prompt de análisis</b> — el sistema construye un prompt estructurado con todas las diferencias.</li>
+                                        <li>Copia el prompt y pégalo en la herramienta corporativa de inteligencia artificial.</li>
+                                        <li>La IA analizará los riesgos jurídicos de cada desviación.</li>
+                                        <li>Copia la respuesta de la IA y pégala de vuelta en el campo correspondiente del sistema.</li>
+                                    </ol>
+                                )
+                            },
+                            {
+                                title: 'Paso 4 — Exportar el informe',
+                                content: (
+                                    <ol className="list-decimal list-inside space-y-2">
+                                        <li>Con el análisis completo, haz clic en <b>Exportar informe PDF</b>.</li>
+                                        <li>El PDF incluye: resumen ejecutivo, tabla de desviaciones, análisis de riesgo y recomendaciones.</li>
+                                        <li>Cambia el estado de la auditoría a <b>Completado</b> para indicar que fue revisada.</li>
+                                        <li>Usa <b>Archivado</b> para contratos ya negociados y cerrados, manteniéndolos en el historial.</li>
+                                    </ol>
+                                )
+                            },
+                            {
+                                title: 'Gestión de minutas estándar',
+                                content: (
+                                    <p>
+                                        Las minutas son los contratos modelo aprobados por el área. Se administran desde <b>Gestión de Minutas</b>
+                                        en el menú lateral. Solo usuarios con permiso <b>WRITE</b> pueden crear o modificar minutas.
+                                        Es importante mantenerlas actualizadas: cada vez que el área apruebe una nueva versión de un contrato tipo,
+                                        debe actualizarse la minuta correspondiente en el sistema.
+                                    </p>
+                                )
+                            }
+                        ]}
+                    />
                 </div>
                 <button
                     onClick={() => navigate('/contratos/nueva')}

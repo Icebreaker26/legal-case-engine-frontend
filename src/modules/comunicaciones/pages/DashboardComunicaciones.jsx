@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend, RadialBarChart, RadialBar, PolarAngleAxis } from 'recharts';
 import { Search, X } from 'lucide-react';
 import SearchableSelect from '../components/SearchableSelect';
+import HelpButton from '../../../components/HelpButton';
 
 export default function DashboardComunicaciones() {
     const [stats, setStats] = useState({ 
@@ -55,7 +56,77 @@ export default function DashboardComunicaciones() {
     return (
         <div className="space-y-6 font-mono text-[#1a1a1a]">
             {/* Barra de Filtros */}
-            <div className="bg-[#e0dcc8] p-4 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e] flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-3 mb-4">
+            <h2 className="text-xl font-bold uppercase tracking-widest text-[#2d4a3e]">Dashboard de Comunicaciones</h2>
+            <HelpButton
+                title="Cómo usar el módulo de Comunicaciones"
+                color="text-indigo-600"
+                tips={[
+                    'Registra cada oficio recibido o enviado con su tipo (Entrada / Salida) y la entidad correspondiente.',
+                    'Asigna un grupo responsable para que quede claro quién debe dar respuesta.',
+                    'El sistema cuenta los días desde la radicación y alerta cuando el término se acerca.',
+                    'Usa los filtros del dashboard para ver el volumen y % de respuesta por período o entidad.',
+                ]}
+                sections={[
+                    {
+                        title: '¿Qué hace este módulo?',
+                        content: (
+                            <p>
+                                Este módulo centraliza la gestión de toda la correspondencia externa del área: oficios recibidos de
+                                entidades externas (Entrada) y oficios que el área envía (Salida). Permite hacer seguimiento de quién
+                                debe responder, en qué fecha límite, y llevar un historial de toda la trazabilidad del trámite.
+                            </p>
+                        )
+                    },
+                    {
+                        title: 'Paso 1 — Registrar una comunicación de entrada',
+                        content: (
+                            <ol className="list-decimal list-inside space-y-2">
+                                <li>Haz clic en <b>Nueva Comunicación</b> en el menú lateral.</li>
+                                <li>Selecciona el tipo <b>Entrada</b> — significa que el oficio llegó al área.</li>
+                                <li>Busca y selecciona la <b>entidad remitente</b> (quien nos envió el oficio).</li>
+                                <li>Ingresa el número de radicado, asunto y fecha de recepción.</li>
+                                <li>Asigna el <b>grupo responsable</b> de gestionar la respuesta.</li>
+                                <li>Adjunta el documento si tienes el archivo digital disponible.</li>
+                            </ol>
+                        )
+                    },
+                    {
+                        title: 'Paso 2 — Registrar una comunicación de salida',
+                        content: (
+                            <ol className="list-decimal list-inside space-y-2">
+                                <li>Selecciona el tipo <b>Salida</b> — significa que el área envió un oficio.</li>
+                                <li>Selecciona la <b>entidad destinataria</b> (a quién se dirigió el oficio).</li>
+                                <li>Si la salida es en respuesta a una entrada registrada, puedes vincularla para mantener la trazabilidad.</li>
+                                <li>Ingresa el número de radicado de salida y la fecha de envío.</li>
+                            </ol>
+                        )
+                    },
+                    {
+                        title: 'Paso 3 — Seguimiento y actualización de estado',
+                        content: (
+                            <ol className="list-decimal list-inside space-y-2">
+                                <li>Las comunicaciones <b>Pendiente</b> son las que aún no tienen respuesta o acción.</li>
+                                <li>Cambia el estado a <b>En revisión</b> cuando el equipo ya esté trabajando en ella.</li>
+                                <li>Marca como <b>Respondida</b> al enviar el oficio de respuesta, vinculando la salida.</li>
+                                <li>Usa <b>Archivado</b> para comunicaciones cerradas que ya no requieren acción.</li>
+                            </ol>
+                        )
+                    },
+                    {
+                        title: 'Filtros y métricas del dashboard',
+                        content: (
+                            <p>
+                                El dashboard muestra estadísticas globales del área. Usa los filtros de <b>fecha</b>, <b>entidad</b> y <b>grupo</b>
+                                para acotar el análisis. El <b>gráfico sonar</b> muestra el porcentaje de comunicaciones respondidas en el período
+                                seleccionado — es el principal indicador de capacidad de respuesta del área.
+                            </p>
+                        )
+                    }
+                ]}
+            />
+        </div>
+        <div className="bg-[#e0dcc8] p-4 border border-[#2d4a3e] shadow-[4px_4px_0px_0px_#2d4a3e] flex flex-wrap gap-4 items-center">
                 <input type="date" className="bg-transparent border-b border-[#2d4a3e] p-1 text-xs" onChange={e => setFilters({...filters, fecha_inicio: e.target.value})} />
                 <input type="date" className="bg-transparent border-b border-[#2d4a3e] p-1 text-xs" onChange={e => setFilters({...filters, fecha_fin: e.target.value})} />
                 

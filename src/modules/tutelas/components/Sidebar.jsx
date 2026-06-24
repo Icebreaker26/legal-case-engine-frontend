@@ -68,7 +68,7 @@ export default function Sidebar({ onClose }) {
           <FileBarChart size={20} />
           <span>Informes</span>
         </NavLink>
-        <NavLink to="/notificaciones" className={linkClass}>
+        <NavLink to="/core/notificaciones" className={linkClass}>
           <Bell size={20} />
           <span>Notificaciones</span>
         </NavLink>

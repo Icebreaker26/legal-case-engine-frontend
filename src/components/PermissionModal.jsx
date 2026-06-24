@@ -86,6 +86,15 @@ const MODULOS_CONFIG = [
     ],
   },
   {
+    key: 'reportes',
+    label: 'Reportes',
+    color: 'text-indigo-400',
+    accent: 'border-indigo-800 bg-indigo-950/20',
+    acciones: [
+      { accion: 'READ', label: 'Consultar y exportar reportes' },
+    ],
+  },
+  {
     key: 'supervisor',
     label: 'Supervisor (Catálogos)',
     color: 'text-orange-400',
