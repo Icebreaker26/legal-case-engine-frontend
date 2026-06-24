@@ -90,41 +90,62 @@ function MiniSnake() {
     return () => clearInterval(interval);
   }, [started]);
 
+  const CELL = started ? 14 : 10;
+
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <div className="flex items-center justify-between w-full px-0.5">
+      <motion.div
+        animate={{ opacity: started ? 1 : 0.4 }}
+        transition={{ duration: 0.4 }}
+        className="flex items-center justify-between w-full px-0.5"
+      >
         <span className="text-[9px] font-mono uppercase tracking-widest text-slate-800">
           snake.exe
         </span>
-        <span className="text-[9px] font-mono text-slate-700">
-          {score > 0 && <span className="text-emerald-800">+{score}</span>}
+        <span className="text-[9px] font-mono text-emerald-800">
+          {score > 0 && `+${score}`}
         </span>
-      </div>
+      </motion.div>
 
-      <div
-        className="border border-slate-900 bg-black/40"
-        style={{ display: 'grid', gridTemplateColumns: `repeat(${COLS}, 10px)`, gap: '1px', padding: '2px' }}
+      <motion.div
+        animate={{
+          width:  COLS * CELL + (COLS - 1) + 4,
+          height: ROWS * CELL + (ROWS - 1) + 4,
+        }}
+        transition={{ duration: 0.5, ease: 'easeOut' }}
+        className="border border-slate-900 bg-black/40 overflow-hidden"
+        style={{ padding: '2px' }}
       >
-        {Array.from({ length: ROWS }, (_, y) =>
-          Array.from({ length: COLS }, (_, x) => {
-            const isHead  = snake[0].x === x && snake[0].y === y;
-            const isSnake = !isHead && snake.some(s => s.x === x && s.y === y);
-            const isFood  = food.x === x && food.y === y;
-            return (
-              <div
-                key={`${x}-${y}`}
-                style={{ width: 10, height: 10 }}
-                className={
-                  isHead  ? 'bg-emerald-500' :
-                  isSnake ? 'bg-emerald-900' :
-                  isFood  ? 'bg-red-800'     :
-                  'bg-transparent'
-                }
-              />
-            );
-          })
-        )}
-      </div>
+        <motion.div
+          animate={{ gap: started ? '1px' : '1px' }}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${COLS}, ${CELL}px)`,
+            gap: '1px',
+          }}
+        >
+          {Array.from({ length: ROWS }, (_, y) =>
+            Array.from({ length: COLS }, (_, x) => {
+              const isHead  = snake[0].x === x && snake[0].y === y;
+              const isSnake = !isHead && snake.some(s => s.x === x && s.y === y);
+              const isFood  = food.x === x && food.y === y;
+              return (
+                <motion.div
+                  key={`${x}-${y}`}
+                  animate={{ width: CELL, height: CELL }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                  className={
+                    isHead  ? 'bg-emerald-500' :
+                    isSnake ? 'bg-emerald-900' :
+                    isFood  ? 'bg-red-800'     :
+                    'bg-transparent'
+                  }
+                />
+              );
+            })
+          )}
+        </motion.div>
+      </motion.div>
 
       <p className="text-[9px] font-mono text-slate-800 uppercase tracking-widest">
         {!started && '↑↓←→ para jugar'}
