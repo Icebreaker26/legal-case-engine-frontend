@@ -266,7 +266,7 @@ export default function Notificaciones() {
 
                 {/* Acciones */}
                 <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  {destino && (
+                  {destino ? (
                     <Link
                       to={destino}
                       onClick={e => { e.stopPropagation(); if (!n.leida) marcarLeida(n.id); }}
@@ -274,6 +274,10 @@ export default function Notificaciones() {
                     >
                       <ExternalLink size={11} /> Abrir
                     </Link>
+                  ) : (
+                    <span className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-600 border border-slate-800 cursor-default">
+                      <ExternalLink size={11} /> Abrir
+                    </span>
                   )}
                   <div className="flex items-center gap-1.5">
                   <button
