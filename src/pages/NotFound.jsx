@@ -20,24 +20,33 @@ const rndFood = (snake) => {
 const mkSnake = () => [{ x: 8, y: 6 }, { x: 7, y: 6 }, { x: 6, y: 6 }];
 
 function MiniSnake() {
-  const [snake, setSnake]     = useState(mkSnake);
-  const [food, setFood]       = useState(() => rndFood(mkSnake()));
-  const [score, setScore]     = useState(0);
-  const [dead, setDead]       = useState(false);
-  const [tick, setTick]       = useState(0); // incrementar fuerza re-mount del loop
-
-  const dirRef  = useRef({ x: 1, y: 0 });
-  const foodRef = useRef(food);
-  const deadRef = useRef(false);
+  // 1. Usamos refs para toda la "verdad" de la lógica del juego.
+  // Esto evita problemas de asincronía y bugs del Strict Mode de React.
+  const snakeRef  = useRef(mkSnake());
+  const foodRef   = useRef(rndFood(snakeRef.current));
+  const dirRef    = useRef({ x: 1, y: 0 });
+  const deadRef   = useRef(false);
   const activeRef = useRef(false);
+
+  // 2. Usamos state SOLO para decirle al JSX cuándo repintar la UI.
+  const [snake, setSnake] = useState(snakeRef.current);
+  const [food, setFood]   = useState(foodRef.current);
+  const [score, setScore] = useState(0);
+  const [dead, setDead]   = useState(false);
+  const [tick, setTick]   = useState(0);
 
   const reset = useCallback(() => {
     const s = mkSnake();
     const f = rndFood(s);
-    foodRef.current  = f;
-    deadRef.current  = false;
-    dirRef.current   = { x: 1, y: 0 };
+    
+    // Reseteamos la lógica
+    snakeRef.current  = s;
+    foodRef.current   = f;
+    dirRef.current    = { x: 1, y: 0 };
+    deadRef.current   = false;
     activeRef.current = true;
+    
+    // Reseteamos la UI
     setSnake(s);
     setFood(f);
     setScore(0);
@@ -71,33 +80,51 @@ function MiniSnake() {
     return () => window.removeEventListener('keydown', handler);
   }, [reset]);
 
-  // Game loop — se remonta cada vez que tick cambia
+  // Game loop
   useEffect(() => {
     if (!activeRef.current) return;
+    
     const interval = setInterval(() => {
       if (deadRef.current) return;
-      setSnake(prev => {
-        const head = {
-          x: (prev[0].x + dirRef.current.x + COLS) % COLS,
-          y: (prev[0].y + dirRef.current.y + ROWS) % ROWS,
-        };
-        // Colisión con sí mismo (excluye la cola que se moverá)
-        if (prev.slice(0, -1).some(s => s.x === head.x && s.y === head.y)) {
-          deadRef.current = true;
-          setDead(true);
-          return prev;
-        }
-        const ate = head.x === foodRef.current.x && head.y === foodRef.current.y;
-        const next = ate ? [head, ...prev] : [head, ...prev.slice(0, -1)];
-        if (ate) {
-          const nf = rndFood(next);
-          foodRef.current = nf;
-          setFood(nf);
-          setScore(sc => sc + 1);
-        }
-        return next;
-      });
+
+      // Calculamos la nueva posición leyendo desde nuestra referencia, sin depender del callback de React
+      const currentSnake = snakeRef.current;
+      const headX = currentSnake[0].x + dirRef.current.x;
+      const headY = currentSnake[0].y + dirRef.current.y;
+
+      // SOLUCIÓN MUERTE 1: Chocar contra las paredes detiene el juego en lugar de dar la vuelta
+      if (headX < 0 || headX >= COLS || headY < 0 || headY >= ROWS) {
+        deadRef.current = true;
+        setDead(true);
+        return;
+      }
+
+      const newHead = { x: headX, y: headY };
+
+      // SOLUCIÓN MUERTE 2: Chocar consigo mismo
+      if (currentSnake.some(s => s.x === newHead.x && s.y === newHead.y)) {
+        deadRef.current = true;
+        setDead(true);
+        return;
+      }
+
+      // SOLUCIÓN CRECIMIENTO: Verificamos si come, aplicamos el cambio al Ref y luego despachamos el repintado
+      const ate = newHead.x === foodRef.current.x && newHead.y === foodRef.current.y;
+      const nextSnake = ate 
+        ? [newHead, ...currentSnake] 
+        : [newHead, ...currentSnake.slice(0, -1)];
+
+      snakeRef.current = nextSnake;
+      setSnake(nextSnake); // Repinta la serpiente
+
+      if (ate) {
+        const nf = rndFood(nextSnake);
+        foodRef.current = nf;
+        setFood(nf); // Repinta la comida
+        setScore(sc => sc + 1);
+      }
     }, TICK);
+    
     return () => clearInterval(interval);
   }, [tick]);
 
