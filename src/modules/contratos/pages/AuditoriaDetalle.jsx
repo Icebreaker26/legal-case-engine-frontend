@@ -201,6 +201,14 @@ export default function AuditoriaDetalle() {
             {/* ═══ TAB 1: COMPARACIÓN ═══ */}
             {activeTab === 'comparacion' && (
                 <div className="space-y-4 animate-fade-in">
+                    <DiffViewer auditoriaId={id} />
+                </div>
+            )}
+
+            {/* ═══ TAB 2: RESULTADOS ═══ */}
+            {activeTab === 'resultados' && (
+                <div className="space-y-4 animate-fade-in">
+                    {/* Generar prompt */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
                         <h3 className="font-bold text-gray-800 flex items-center gap-2">
                             <GitCompare size={18} className="text-pink-600" /> Generar Prompt de Comparación
@@ -211,16 +219,16 @@ export default function AuditoriaDetalle() {
                                 Minuta Estándar de Referencia
                             </label>
                             <SearchableSelect
-                            options={minutas.map(m => ({
-                                value: m.id,
-                                label: m.titulo,
-                                sub: m.tipo_contrato,
-                            }))}
-                            value={minutaSeleccionada}
-                            onChange={setMinutaSeleccionada}
-                            placeholder="Selecciona una minuta..."
-                            noResultsText="No hay minutas con ese nombre"
-                        />
+                                options={minutas.map(m => ({
+                                    value: m.id,
+                                    label: m.titulo,
+                                    sub: m.tipo_contrato,
+                                }))}
+                                value={minutaSeleccionada}
+                                onChange={setMinutaSeleccionada}
+                                placeholder="Selecciona una minuta..."
+                                noResultsText="No hay minutas con ese nombre"
+                            />
                         </div>
 
                         <button
@@ -231,44 +239,30 @@ export default function AuditoriaDetalle() {
                             <GitCompare size={16} />
                             {generando ? 'Generando...' : 'Generar / Regenerar Prompt'}
                         </button>
+
+                        {promptGenerado && (
+                            <div className="space-y-3 pt-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                        <FileText size={13} className="text-pink-600" /> Prompt generado
+                                    </p>
+                                    <button
+                                        onClick={handleCopiarPrompt}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                            copiado ? 'bg-green-100 text-green-700' : 'bg-pink-600 text-white hover:bg-pink-700'
+                                        }`}
+                                    >
+                                        {copiado ? <CheckCircle size={16} /> : <Copy size={16} />}
+                                        {copiado ? 'Copiado' : 'Copiar Prompt'}
+                                    </button>
+                                </div>
+                                <pre className="text-xs bg-gray-50 border border-gray-200 p-5 rounded-xl h-48 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">
+                                    {promptGenerado}
+                                </pre>
+                            </div>
+                        )}
                     </div>
 
-                    <DiffViewer auditoriaId={id} />
-
-                    {promptGenerado && (
-                        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                    <FileText size={18} className="text-pink-600" /> Prompt Generado
-                                </h3>
-                                <button
-                                    onClick={handleCopiarPrompt}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
-                                        copiado
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-pink-600 text-white hover:bg-pink-700'
-                                    }`}
-                                >
-                                    {copiado ? <CheckCircle size={16} /> : <Copy size={16} />}
-                                    {copiado ? 'Copiado' : 'Copiar Prompt'}
-                                </button>
-                            </div>
-                            <div className="bg-gradient-to-br from-pink-50 to-gray-50 border border-pink-100 rounded-xl p-4">
-                                <p className="text-[11px] font-bold text-pink-600 uppercase tracking-widest mb-2">
-                                    Copia este prompt y pégalo en tu herramienta de IA corporativa
-                                </p>
-                            </div>
-                            <pre className="text-xs bg-gray-50 border border-gray-200 p-5 rounded-xl h-72 overflow-y-auto whitespace-pre-wrap font-mono leading-relaxed">
-                                {promptGenerado}
-                            </pre>
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* ═══ TAB 2: RESULTADOS ═══ */}
-            {activeTab === 'resultados' && (
-                <div className="space-y-4 animate-fade-in">
                     {/* Panel pegar JSON */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
                         <h3 className="font-bold text-gray-800 flex items-center gap-2">
@@ -278,7 +272,7 @@ export default function AuditoriaDetalle() {
                         <div className="bg-pink-50 border border-pink-100 rounded-xl p-4 flex items-start gap-3">
                             <AlertCircle size={16} className="text-pink-500 mt-0.5 shrink-0" />
                             <p className="text-xs text-pink-700">
-                                Copia el prompt de la pestaña Comparación, pégalo en tu herramienta de IA corporativa y pega aquí el JSON que responda.
+                                Genera el prompt arriba, pégalo en Copilot y pega aquí el JSON que responda.
                             </p>
                         </div>
 
