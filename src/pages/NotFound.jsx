@@ -5,8 +5,8 @@ import { Terminal, RotateCcw } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 // ── Snake (mini) ──────────────────────────────────────────────────────────────
-const COLS = 18;
-const ROWS = 6;
+const COLS = 28;
+const ROWS = 12;
 const TICK = 140;
 
 const rndFood = (snake) => {
@@ -17,18 +17,18 @@ const rndFood = (snake) => {
   return pos;
 };
 
-const INIT_SNAKE = [{ x: 5, y: 3 }, { x: 4, y: 3 }, { x: 3, y: 3 }];
+const INIT_SNAKE = [{ x: 8, y: 6 }, { x: 7, y: 6 }, { x: 6, y: 6 }];
 const INIT_DIR   = { x: 1, y: 0 };
 
 function MiniSnake() {
   const [snake, setSnake]     = useState(INIT_SNAKE);
-  const [food, setFood]       = useState({ x: 12, y: 3 });
+  const [food, setFood]       = useState({ x: 20, y: 6 });
   const [score, setScore]     = useState(0);
   const [dead, setDead]       = useState(false);
   const [started, setStarted] = useState(false);
 
   const dirRef   = useRef(INIT_DIR);
-  const foodRef  = useRef({ x: 12, y: 3 });
+  const foodRef  = useRef({ x: 20, y: 6 });
   const deadRef  = useRef(false);
 
   const reset = useCallback(() => {
