@@ -9,7 +9,7 @@ export default function PublicOnlyRoute({ children }) {
   }
   
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/selector" replace />;
   }
   
   return children;
