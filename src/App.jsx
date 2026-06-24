@@ -14,6 +14,7 @@ import AdminDashboard from './modules/tutelas/pages/AdminDashboard';
 import Informes from './modules/tutelas/pages/Informes';
 import Notificaciones from './pages/Notificaciones';
 import Login from './pages/Login';
+import Landing from './pages/Landing';
 import Register from './pages/Register';
 import RegistrationPending from './pages/RegistrationPending';
 import ChangePassword from './pages/ChangePassword';
@@ -68,6 +69,7 @@ function App() {
         <ThemeProvider>
           <Toaster position="top-right" toastOptions={{ duration: 2000 }} />
           <Routes>
+            <Route path="/landing" element={<Landing />} />
             <Route path="/login" element={
               <PublicOnlyRoute>
                 <Login />
