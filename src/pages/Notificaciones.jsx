@@ -227,7 +227,7 @@ export default function Notificaciones() {
                 key={n.id}
                 className={`flex items-start gap-4 p-4 border transition-all ${
                   n.leida
-                    ? 'bg-slate-900/40 border-slate-800 opacity-60'
+                    ? 'bg-slate-900/40 border-slate-800'
                     : 'bg-slate-800/70 border-slate-600 hover:border-slate-400'
                 } ${destino ? 'cursor-pointer' : ''}`}
                 onClick={destino ? handleCardClick : undefined}
