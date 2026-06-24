@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, ExternalLink, CheckCheck, X } from 'lucide-react';
+import { Bell, Check, ExternalLink, CheckCheck, X, FileText, Mail, Shield, Wallet, Leaf, BarChart3 } from 'lucide-react';
 import apiService from '../services/apiService';
 import { useNavigate, Link } from 'react-router-dom';
 
@@ -8,6 +8,17 @@ const TIPO_DOT = {
   alerta:      'bg-red-500',
   default:     'bg-blue-500',
 };
+
+const MODULO_CONFIG = {
+  tutelas:        { label: 'Petición',      color: 'text-blue-700',    bg: 'bg-blue-50',    icon: FileText  },
+  contratos:      { label: 'Contratos',     color: 'text-pink-700',    bg: 'bg-pink-50',    icon: FileText  },
+  comunicaciones: { label: 'Comunicac.',    color: 'text-indigo-700',  bg: 'bg-indigo-50',  icon: Mail      },
+  conformidades:  { label: 'Conformid.',    color: 'text-yellow-700',  bg: 'bg-yellow-50',  icon: Shield    },
+  pagos:          { label: 'Pagos',         color: 'text-sky-700',     bg: 'bg-sky-50',     icon: Wallet    },
+  ambiental:      { label: 'Ambiental',     color: 'text-green-700',   bg: 'bg-green-50',   icon: Leaf      },
+  rendimiento:    { label: 'Rendimiento',   color: 'text-emerald-700', bg: 'bg-emerald-50', icon: BarChart3 },
+};
+const getModulo = (m) => MODULO_CONFIG[m] || { label: m || 'Sistema', color: 'text-gray-600', bg: 'bg-gray-100', icon: Bell };
 
 const getLink = (modulo, referencia_uuid) => {
   if (!referencia_uuid) return null;
@@ -18,6 +29,7 @@ const getLink = (modulo, referencia_uuid) => {
     conformidades:  `/conformidades/${referencia_uuid}`,
     pagos:          `/pagos/${referencia_uuid}`,
     rendimiento:    `/rendimiento/${referencia_uuid}`,
+    ambiental:      `/ambiental/${referencia_uuid}`,
   };
   return rutas[modulo] || `/tutela/${referencia_uuid}`;
 };
@@ -123,6 +135,7 @@ export default function NotificationBell() {
                 ? fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
                 : fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
 
+              const moduloCfg = getModulo(n.modulo || 'tutelas');
               return (
                 <div
                   key={n.id}
@@ -138,8 +151,12 @@ export default function NotificationBell() {
                     <p className={`text-xs leading-snug ${n.leida ? 'text-gray-400' : 'text-gray-700 font-medium'}`}>
                       {n.mensaje}
                     </p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex items-center flex-wrap gap-2 mt-1">
                       <span className="text-[10px] text-gray-400">{fechaStr}</span>
+                      <span className={`inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${moduloCfg.bg} ${moduloCfg.color}`}>
+                        <moduloCfg.icon size={8} />
+                        {moduloCfg.label}
+                      </span>
                       {n.referencia_uuid && getLink(n.modulo, n.referencia_uuid) && (
                         <button
                           onClick={async () => {

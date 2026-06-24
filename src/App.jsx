@@ -12,7 +12,7 @@ import Procesar from './modules/tutelas/pages/Procesar';
 import Entrenar from './modules/tutelas/pages/Entrenar';
 import AdminDashboard from './modules/tutelas/pages/AdminDashboard';
 import Informes from './modules/tutelas/pages/Informes';
-import Notificaciones from './modules/tutelas/pages/Notificaciones';
+import Notificaciones from './pages/Notificaciones';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import RegistrationPending from './pages/RegistrationPending';
