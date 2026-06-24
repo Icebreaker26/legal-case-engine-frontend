@@ -15,7 +15,7 @@ const getLink = (modulo, referencia_uuid) => {
     rendimiento:    `/rendimiento/${referencia_uuid}`,
     ambiental:      `/ambiental/${referencia_uuid}`,
   };
-  return rutas[modulo] || `/tutela/${referencia_uuid}`;
+  return rutas[modulo] || null;
 };
 
 const MODULO_CONFIG = {
