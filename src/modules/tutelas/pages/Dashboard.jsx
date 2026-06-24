@@ -421,7 +421,7 @@ export default function Dashboard() {
                     <div className="p-3 space-y-2.5">
                       {colTutelas.length === 0 && (
                         <p className="text-xs text-gray-400 text-center italic py-8">
-                          {isOver ? 'Suelta aquí' : 'Sin tutelas'}
+                          {isOver ? 'Suelta aquí' : 'Sin peticiones'}
                         </p>
                       )}
                       {colTutelas.map(tutela => {

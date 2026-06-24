@@ -231,5 +231,5 @@ export const generarExpedientePDF = ({ tutela, historial = [], requerimientos = 
 
     const radicado = (tutela.radicado || 'expediente').replace(/\s+/g, '_').replace(/\//g, '-');
     const fecha    = new Date().toISOString().split('T')[0];
-    doc.save(`Tutela_${radicado}_${fecha}.pdf`);
+    doc.save(`Peticion_${radicado}_${fecha}.pdf`);
 };

@@ -68,7 +68,7 @@ export default function Procesar() {
     try {
       await tutelaService.procesar(file, metadata);
       setDone(true);
-      toast.success('Tutela registrada exitosamente');
+      toast.success('Petición registrada exitosamente');
     } catch {
       toast.error('Error al procesar el documento');
     } finally {
@@ -291,7 +291,7 @@ export default function Procesar() {
               </>
             ) : (
               <>
-                Registrar tutela
+                Registrar petición
                 <ChevronRight size={15} />
               </>
             )}
