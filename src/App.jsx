@@ -15,6 +15,7 @@ import Informes from './modules/tutelas/pages/Informes';
 import Notificaciones from './pages/Notificaciones';
 import Login from './pages/Login';
 import Landing from './pages/Landing';
+import NotFound from './pages/NotFound';
 import Register from './pages/Register';
 import RegistrationPending from './pages/RegistrationPending';
 import ChangePassword from './pages/ChangePassword';
@@ -226,6 +227,7 @@ function App() {
               <Route path="auditoria/:id" element={<AuditoriaDetalle />} />
               <Route path="minutas" element={<GestionMinutas />} />
             </Route>
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </ThemeProvider>
       </BrowserRouter>
