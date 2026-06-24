@@ -9,7 +9,7 @@ const INFORMES = [
   {
     id: 'pdf',
     titulo: 'Reporte general PDF',
-    descripcion: 'Tabla completa de tutelas activas con estado, prioridad y fechas de vencimiento.',
+    descripcion: 'Tabla completa de peticiones activas con estado, prioridad y fechas de vencimiento.',
     icono: FileText,
     iconColor: 'text-red-500',
     iconBg: 'bg-red-50',
@@ -81,10 +81,10 @@ export default function Informes() {
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(255, 255, 255);
-        doc.text('Reporte de Tutelas', 14, 13);
+        doc.text('Reporte de Derechos de Petición', 14, 13);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Generado el ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })} · Total: ${data.length} tutelas`, 14, 21);
+        doc.text(`Generado el ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })} · Total: ${data.length} peticiones`, 14, 21);
 
         // KPIs rápidos
         const pendientes  = data.filter(t => t.estado === 'Pendiente').length;
@@ -233,7 +233,7 @@ export default function Informes() {
       {/* Nota */}
       <div className="mt-8 flex items-start gap-2.5 text-xs text-gray-400 leading-relaxed">
         <Download size={13} className="shrink-0 mt-0.5" />
-        <p>Los informes incluyen todas las tutelas activas del sistema al momento de la exportación.</p>
+        <p>Los informes incluyen todas las peticiones activas del sistema al momento de la exportación.</p>
       </div>
 
     </div>

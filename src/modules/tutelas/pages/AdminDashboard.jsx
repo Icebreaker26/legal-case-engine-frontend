@@ -314,7 +314,7 @@ export default function AdminDashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                   <div className="bg-gray-950 p-5 border border-green-900">
-                    <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Tutelas procesadas</p>
+                    <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Peticiones procesadas</p>
                     <p className="text-2xl font-bold text-white">{parseInt(roi.totalTutelas).toLocaleString()}</p>
                   </div>
                   <div className="bg-gray-950 p-5 border border-green-900">

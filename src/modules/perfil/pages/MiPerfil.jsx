@@ -262,7 +262,7 @@ export default function MiPerfil() {
         <div className="space-y-3">
 
           {hasPermission('tutelas', 'READ') && (
-            <SeccionCard titulo="Tutelas" icono={<FileText size={14} />} color="text-blue-400" count={tutFil.length} emptyMsg="Sin tutelas activas">
+            <SeccionCard titulo="Derechos de Petición" icono={<FileText size={14} />} color="text-blue-400" count={tutFil.length} emptyMsg="Sin peticiones activas">
               {tutFil.map(t => (
                 <Link key={t.id} to={`/tutela/${t.id}`} className="flex items-center gap-4 px-5 py-3 hover:bg-slate-800/30 transition-colors group">
                   <span className="text-xs font-bold text-blue-400 w-28 shrink-0">{t.radicado}</span>

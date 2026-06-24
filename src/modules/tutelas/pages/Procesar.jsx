@@ -68,7 +68,7 @@ export default function Procesar() {
     try {
       await tutelaService.procesar(file, metadata);
       setDone(true);
-      toast.success('Tutela registrada exitosamente');
+      toast.success('Petición registrada exitosamente');
     } catch {
       toast.error('Error al procesar el documento');
     } finally {
@@ -115,7 +115,7 @@ export default function Procesar() {
           <Scale size={20} className="text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 leading-tight">Registrar nueva tutela</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 leading-tight">Registrar nuevo derecho de petición</h1>
           <p className="text-sm text-gray-500 mt-1">Carga el documento judicial y asigna la gestión administrativa.</p>
         </div>
       </div>
@@ -291,7 +291,7 @@ export default function Procesar() {
               </>
             ) : (
               <>
-                Registrar tutela
+                Registrar petición
                 <ChevronRight size={15} />
               </>
             )}

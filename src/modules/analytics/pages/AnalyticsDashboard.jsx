@@ -112,7 +112,7 @@ function TabScoreRiesgo() {
         <SectionTitle>Distribución por nivel de riesgo</SectionTitle>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={[{ name: 'Tutelas', Alto: dist.Alto, Medio: dist.Medio, Bajo: dist.Bajo }]}>
+            <BarChart data={[{ name: 'Peticiones', Alto: dist.Alto, Medio: dist.Medio, Bajo: dist.Bajo }]}>
               <XAxis dataKey="name" tick={{ fill: '#475569', fontSize: 10 }} />
               <YAxis tick={{ fill: '#475569', fontSize: 10 }} />
               <Tooltip content={<CustomTooltip />} />

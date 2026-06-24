@@ -258,7 +258,7 @@ export default function Dashboard() {
       <div className="flex justify-between items-end mb-6">
         <div>
           <h1 className="text-3xl font-bold mb-1 text-[#002E6D]">{import.meta.env.VITE_APP_NAME}</h1>
-          <p className="text-sm text-gray-500">Panel de gestión y análisis de tutelas.</p>
+          <p className="text-sm text-gray-500">Panel de gestión y análisis de derechos de petición.</p>
         </div>
         <button
           onClick={handleRefresh}
@@ -421,7 +421,7 @@ export default function Dashboard() {
                     <div className="p-3 space-y-2.5">
                       {colTutelas.length === 0 && (
                         <p className="text-xs text-gray-400 text-center italic py-8">
-                          {isOver ? 'Suelta aquí' : 'Sin tutelas'}
+                          {isOver ? 'Suelta aquí' : 'Sin peticiones'}
                         </p>
                       )}
                       {colTutelas.map(tutela => {
@@ -944,7 +944,7 @@ export default function Dashboard() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-              <h3 className="font-bold mb-4 text-sm text-gray-800">Distribución por Derecho Vulnerado</h3>
+              <h3 className="font-bold mb-4 text-sm text-gray-800">Distribución por Categoría</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={dataDerechos} dataKey="value" nameKey="name" outerRadius={75} label>
@@ -956,7 +956,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-              <h3 className="font-bold mb-4 text-sm text-gray-800">Evolución de Tutelas (Últimos 6 meses)</h3>
+              <h3 className="font-bold mb-4 text-sm text-gray-800">Evolución de Peticiones (Últimos 6 meses)</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={estadisticas}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

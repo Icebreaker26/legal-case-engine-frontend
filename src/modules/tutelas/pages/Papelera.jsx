@@ -23,7 +23,7 @@ export default function Papelera() {
 
   const handleView = async (item, tipo) => {
     setLoadingDoc(true);
-    setSelectedDoc(tipo === 'tutela' ? `Tutela: ${item.radicado}` : item.titulo_referencia);
+    setSelectedDoc(tipo === 'tutela' ? `Petición: ${item.radicado}` : item.titulo_referencia);
     setDocContent('');
     try {
       if (tipo === 'memoria') {
@@ -71,7 +71,7 @@ export default function Papelera() {
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-100">
         {[
-          { id: 'tutelas', label: `Tutelas`, count: items.tutelas.length },
+          { id: 'tutelas', label: `Peticiones`, count: items.tutelas.length },
           { id: 'memoria', label: `Documentos de conocimiento`, count: items.memoria.length },
         ].map(t => (
           <button
@@ -97,7 +97,7 @@ export default function Papelera() {
       {tab === 'tutelas' && (
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
           {items.tutelas.length === 0 ? (
-            <EmptyState label="No hay tutelas eliminadas." />
+            <EmptyState label="No hay peticiones eliminadas." />
           ) : items.tutelas.map((t, i) => (
             <div key={t.id} className={`flex items-center gap-4 px-6 py-4 ${i < items.tutelas.length - 1 ? 'border-b border-gray-100' : ''}`}>
               <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">
