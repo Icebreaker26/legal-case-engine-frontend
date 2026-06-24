@@ -28,12 +28,12 @@ const MODULO_CONFIG = {
   rendimiento:    { label: 'Rendimiento',          color: 'text-emerald-400', bg: 'bg-emerald-950/60', border: 'border-emerald-800', icon: BarChart3 },
 };
 
-const getModulo = (m) => MODULO_CONFIG[m] || { label: m || 'Sistema', color: 'text-slate-400', bg: 'bg-slate-800/60', border: 'border-slate-700', icon: Bell };
+const getModulo = (m) => MODULO_CONFIG[m] || { label: m || 'Sistema', color: 'text-white', bg: 'bg-slate-800/60', border: 'border-slate-700', icon: Bell };
 
 const TIPO_CONFIG = {
   vencimiento: { icon: Clock,         color: 'text-amber-400', bg: 'bg-amber-950/60',  border: 'border-amber-800',  label: 'Vencimiento' },
   alerta:      { icon: AlertTriangle, color: 'text-red-400',   bg: 'bg-red-950/60',    border: 'border-red-800',    label: 'Alerta'      },
-  default:     { icon: Bell,          color: 'text-slate-300', bg: 'bg-slate-800/60',  border: 'border-slate-700',  label: 'Sistema'     },
+  default:     { icon: Bell,          color: 'text-white', bg: 'bg-slate-800/60',  border: 'border-slate-700',  label: 'Sistema'     },
 };
 const getTipo = (tipo) => TIPO_CONFIG[tipo] || TIPO_CONFIG.default;
 
@@ -126,7 +126,7 @@ export default function Notificaciones() {
             {noLeidas > 0 && (
               <button
                 onClick={marcarTodasLeidas}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-white transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white border border-slate-700 hover:border-slate-500 hover:text-white transition-all"
               >
                 <CheckCheck size={12} /> Marcar leídas
               </button>
@@ -152,13 +152,13 @@ export default function Notificaciones() {
             className={`flex items-center gap-2 px-4 py-2.5 text-[10px] font-bold tracking-[0.15em] border-b-2 -mb-px transition-colors ${
               tabTipo === id
                 ? 'border-emerald-500 text-emerald-400'
-                : 'border-transparent text-slate-400 hover:text-white'
+                : 'border-transparent text-white hover:text-white'
             }`}
           >
             {label}
             {count > 0 && (
               <span className={`text-[9px] px-1.5 py-0.5 font-bold ${
-                tabTipo === id ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-slate-300'
+                tabTipo === id ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-white'
               }`}>
                 {count}
               </span>
@@ -181,12 +181,12 @@ export default function Notificaciones() {
               className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-widest border transition-all ${
                 isActive
                   ? 'bg-slate-700 text-white border-slate-500'
-                  : 'bg-transparent text-slate-300 border-slate-700 hover:border-slate-500 hover:text-white'
+                  : 'bg-transparent text-white border-slate-700 hover:border-slate-500 hover:text-white'
               }`}
             >
               {cfg && <cfg.icon size={10} className={isActive ? 'text-white' : cfg.color} />}
               {m === 'Todos' ? 'TODOS' : cfg.label}
-              <span className={`text-[9px] ${isActive ? 'text-slate-300' : 'text-slate-600'}`}>{count}</span>
+              <span className={`text-[9px] ${isActive ? 'text-white' : 'text-slate-600'}`}>{count}</span>
             </button>
           );
         })}
@@ -200,7 +200,7 @@ export default function Notificaciones() {
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
           <BellOff size={28} className="text-slate-700" />
-          <p className="text-xs text-slate-400 uppercase tracking-widest">Sin notificaciones en esta categoría</p>
+          <p className="text-xs text-white uppercase tracking-widest">Sin notificaciones en esta categoría</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -240,7 +240,7 @@ export default function Notificaciones() {
                     {n.mensaje}
                   </p>
                   <div className="flex items-center flex-wrap gap-2 mt-2">
-                    <span className="text-[10px] text-slate-400 font-mono">{fechaStr}</span>
+                    <span className="text-[10px] text-white font-mono">{fechaStr}</span>
 
                     {/* Badge módulo */}
                     <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 border ${moduloCfg.bg} ${moduloCfg.border} ${moduloCfg.color}`}>
@@ -271,7 +271,7 @@ export default function Notificaciones() {
                     <button
                       onClick={() => marcarLeida(n.id)}
                       title="Marcar como leída"
-                      className="p-1.5 text-slate-400 hover:text-emerald-400 transition-colors"
+                      className="p-1.5 text-white hover:text-emerald-400 transition-colors"
                     >
                       <Check size={13} />
                     </button>
@@ -280,7 +280,7 @@ export default function Notificaciones() {
                     onClick={() => eliminar(n.id)}
                     disabled={deletingId === n.id}
                     title="Eliminar"
-                    className="p-1.5 text-slate-400 hover:text-red-400 transition-colors"
+                    className="p-1.5 text-white hover:text-red-400 transition-colors"
                   >
                     {deletingId === n.id
                       ? <div className="w-3 h-3 border border-red-500 border-t-transparent rounded-full animate-spin" />
