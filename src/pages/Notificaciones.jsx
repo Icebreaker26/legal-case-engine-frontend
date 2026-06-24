@@ -274,25 +274,25 @@ export default function Notificaciones() {
                 </div>
 
                 {/* Acciones */}
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   {!n.leida && (
                     <button
                       onClick={e => { e.stopPropagation(); marcarLeida(n.id); }}
                       title="Marcar como leída"
-                      className="p-1.5 text-white hover:text-emerald-400 transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-emerald-400 border border-emerald-800 hover:bg-emerald-900 transition-colors"
                     >
-                      <Check size={13} />
+                      <Check size={11} /> Leída
                     </button>
                   )}
                   <button
                     onClick={e => { e.stopPropagation(); eliminar(n.id); }}
                     disabled={deletingId === n.id}
                     title="Eliminar"
-                    className="p-1.5 text-white hover:text-red-400 transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-red-400 border border-red-900 hover:bg-red-950 transition-colors"
                   >
                     {deletingId === n.id
                       ? <div className="w-3 h-3 border border-red-500 border-t-transparent rounded-full animate-spin" />
-                      : <X size={13} />}
+                      : <><X size={11} /> Borrar</>}
                   </button>
                 </div>
               </div>
