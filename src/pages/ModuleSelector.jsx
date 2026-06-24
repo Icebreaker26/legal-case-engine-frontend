@@ -112,7 +112,7 @@ export default function ModuleSelector() {
                 <button onClick={logout} className="text-xs text-red-500 hover:text-red-300 flex items-center gap-1 uppercase tracking-widest transition-colors">
                     <LogOut size={12} /> Logout
                 </button>
-                <p className="text-[10px] text-slate-500">VERSION: 2.0.26</p>
+                <p className="text-[10px] text-slate-500">BETA 1.0</p>
             </div>
         </header>
 

@@ -58,7 +58,7 @@ export default function Calendario() {
             <h1 className="text-2xl font-semibold text-gray-900 leading-tight capitalize">
               {currentDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
             </h1>
-            <p className="text-sm text-gray-400 mt-0.5">Vencimientos y fechas clave de tutelas activas</p>
+            <p className="text-sm text-gray-400 mt-0.5">Vencimientos y fechas clave de peticiones activas</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
