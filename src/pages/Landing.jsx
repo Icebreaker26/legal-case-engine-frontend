@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   Scale, FileText, Mail, Shield, Wallet, Leaf, BarChart2,
   ChevronRight, Terminal, Lock, Database, Zap,
@@ -65,72 +66,124 @@ export default function Landing() {
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 py-24">
-        <div className="mb-6 inline-flex items-center gap-2 border border-emerald-900 bg-emerald-950/20 px-4 py-1.5 text-[10px] uppercase tracking-[0.25em] text-emerald-600">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-6 inline-flex items-center gap-2 border border-emerald-900 bg-emerald-950/20 px-4 py-1.5 text-[10px] uppercase tracking-[0.25em] text-emerald-600"
+        >
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Sistema Operativo Centralizado — Build 2026
-        </div>
+        </motion.div>
 
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-tight max-w-3xl mb-4">
+        <motion.h1
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.15 }}
+          className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-tight max-w-3xl mb-4"
+        >
           CORE<br />
           <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-blue-400 to-emerald-400">
             OPERATING SYSTEM
           </span>
-        </h1>
+        </motion.h1>
 
-        <p className="text-slate-500 text-[10px] uppercase tracking-[0.4em] mb-6">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.35 }}
+          className="text-slate-500 text-[10px] uppercase tracking-[0.4em] mb-6"
+        >
           <Typewriter text="// gestión integral de operaciones — enel colombia" className="text-slate-600" />
-        </p>
+        </motion.p>
 
-        <p className="text-slate-400 text-sm max-w-xl leading-relaxed mb-10">
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="text-slate-400 text-sm max-w-xl leading-relaxed mb-10"
+        >
           Plataforma transversal para la gestión de procesos legales, ambientales,
           contractuales y operativos. Trazabilidad completa, permisos granulares,
           reportería cross-módulo.
-        </p>
+        </motion.p>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4">
-          <button
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.65 }}
+          className="flex flex-col sm:flex-row items-center gap-4"
+        >
+          <motion.button
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => navigate('/login')}
-            className="flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-all hover:shadow-[0_0_25px_-5px_rgba(99,102,241,0.7)]"
+            className="flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold uppercase tracking-[0.2em] transition-colors hover:shadow-[0_0_25px_-5px_rgba(99,102,241,0.7)]"
           >
             ACCEDER AL SISTEMA <ChevronRight size={14} />
-          </button>
+          </motion.button>
           <span className="text-[10px] text-slate-700 uppercase tracking-widest">
             Acceso restringido — requiere credenciales
           </span>
-        </div>
+        </motion.div>
       </section>
 
       {/* ── Módulos ───────────────────────────────────────────────────────── */}
       <section className="relative z-10 px-8 pb-20 max-w-5xl mx-auto w-full">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-slate-700 text-center mb-8">
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-[10px] uppercase tracking-[0.3em] text-slate-700 text-center mb-8"
+        >
           :: MÓDULOS OPERATIVOS ::
-        </p>
+        </motion.p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {MODULOS.map(({ icon: Icon, label, color, border, bg }) => (
-            <div
+          {MODULOS.map(({ icon: Icon, label, color, border, bg }, i) => (
+            <motion.div
               key={label}
-              className={`flex items-center gap-2.5 px-4 py-3 border ${border} ${bg} text-[10px] font-bold uppercase tracking-wide ${color}`}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.07 }}
+              whileHover={{ scale: 1.04, transition: { duration: 0.15 } }}
+              className={`flex items-center gap-2.5 px-4 py-3 border ${border} ${bg} text-[10px] font-bold uppercase tracking-wide ${color} cursor-default`}
             >
               <Icon size={13} /> {label}
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
 
       {/* ── Pilares técnicos ──────────────────────────────────────────────── */}
       <section className="relative z-10 px-8 pb-24 max-w-5xl mx-auto w-full">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-slate-700 text-center mb-8">
+        <motion.p
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-[10px] uppercase tracking-[0.3em] text-slate-700 text-center mb-8"
+        >
           :: ARQUITECTURA ::
-        </p>
+        </motion.p>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {PILARES.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="border border-slate-800 bg-slate-900/30 p-6">
+          {PILARES.map(({ icon: Icon, title, desc }, i) => (
+            <motion.div
+              key={title}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.12 }}
+              whileHover={{ borderColor: 'rgba(99,102,241,0.4)', transition: { duration: 0.2 } }}
+              className="border border-slate-800 bg-slate-900/30 p-6"
+            >
               <div className="flex items-center gap-2 mb-3">
                 <Icon size={14} className="text-indigo-400" />
                 <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-400">{title}</span>
               </div>
               <p className="text-[11px] text-slate-600 leading-relaxed">{desc}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </section>
