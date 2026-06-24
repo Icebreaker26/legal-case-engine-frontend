@@ -201,6 +201,81 @@ export default function AuditoriaDetalle() {
             {/* ═══ TAB 1: COMPARACIÓN ═══ */}
             {activeTab === 'comparacion' && (
                 <div className="space-y-4 animate-fade-in">
+                    {/* Banner de resultado si ya fue analizado */}
+                    {resultadoJson && (
+                        <div className={`rounded-2xl border-2 p-5 ${
+                            resultadoJson.nivel_riesgo === 'Alto'  ? 'border-red-300 bg-red-50' :
+                            resultadoJson.nivel_riesgo === 'Medio' ? 'border-amber-300 bg-amber-50' :
+                            'border-green-300 bg-green-50'
+                        }`}>
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div className="flex items-center gap-3">
+                                    <span className={`text-2xl font-black ${
+                                        resultadoJson.nivel_riesgo === 'Alto'  ? 'text-red-600' :
+                                        resultadoJson.nivel_riesgo === 'Medio' ? 'text-amber-600' :
+                                        'text-green-600'
+                                    }`}>
+                                        {resultadoJson.nivel_riesgo === 'Alto' ? '⚠' : resultadoJson.nivel_riesgo === 'Medio' ? '◆' : '✓'}
+                                    </span>
+                                    <div>
+                                        <p className={`text-xs font-bold uppercase tracking-widest ${
+                                            resultadoJson.nivel_riesgo === 'Alto'  ? 'text-red-500' :
+                                            resultadoJson.nivel_riesgo === 'Medio' ? 'text-amber-500' :
+                                            'text-green-500'
+                                        }`}>Nivel de Riesgo</p>
+                                        <p className={`text-xl font-black ${
+                                            resultadoJson.nivel_riesgo === 'Alto'  ? 'text-red-700' :
+                                            resultadoJson.nivel_riesgo === 'Medio' ? 'text-amber-700' :
+                                            'text-green-700'
+                                        }`}>{resultadoJson.nivel_riesgo}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs text-gray-500 font-semibold">
+                                        {resultadoJson.cambios?.length || 0} cambio{resultadoJson.cambios?.length !== 1 ? 's' : ''} detectado{resultadoJson.cambios?.length !== 1 ? 's' : ''}
+                                    </span>
+                                    <button
+                                        onClick={() => generarInformeAuditoria({ ...auditoria, resultado_llm_json: resultadoJson })}
+                                        className="flex items-center gap-2 bg-pink-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-pink-700 transition-colors"
+                                    >
+                                        <Download size={14} /> Exportar PDF
+                                    </button>
+                                </div>
+                            </div>
+                            {resultadoJson.justificacion_riesgo && (
+                                <p className="text-sm text-gray-600 mt-3 border-t border-black/10 pt-3">{resultadoJson.justificacion_riesgo}</p>
+                            )}
+                            {/* Mini tabla resumen */}
+                            {resultadoJson.cambios?.length > 0 && (
+                                <div className="mt-3 overflow-x-auto">
+                                    <table className="w-full text-xs border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-black/10">
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">#</th>
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Cláusula</th>
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Tipo</th>
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Recomendación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {resultadoJson.cambios.map((c, i) => (
+                                                <tr key={i} className="border-b border-black/5">
+                                                    <td className="py-1.5 px-2 text-gray-400 font-bold">{c.numero}</td>
+                                                    <td className="py-1.5 px-2 text-gray-700 font-semibold">{c.clausula}</td>
+                                                    <td className="py-1.5 px-2 text-gray-500">{c.tipo}</td>
+                                                    <td className={`py-1.5 px-2 font-bold ${
+                                                        c.recomendacion === 'Rechazar' ? 'text-red-600' :
+                                                        c.recomendacion === 'Aceptar'  ? 'text-green-600' :
+                                                        'text-amber-600'
+                                                    }`}>{c.recomendacion}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <DiffViewer auditoriaId={id} />
                 </div>
             )}
