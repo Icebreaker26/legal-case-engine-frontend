@@ -51,6 +51,7 @@ import Auditoria from './modules/contratos/pages/Auditoria';
 import AuditoriaDetalle from './modules/contratos/pages/AuditoriaDetalle';
 import GestionMinutas from './modules/contratos/pages/GestionMinutas';
 import ContratosDashboard from './modules/contratos/pages/ContratosDashboard';
+import CoreLayout from './layouts/CoreLayout';
 import AmbientalLayout from './modules/ambiental/components/AmbientalLayout';
 import ListaExpedientes from './modules/ambiental/pages/ListaExpedientes';
 import NuevoExpediente from './modules/ambiental/pages/NuevoExpediente';
@@ -94,7 +95,6 @@ function App() {
               <Route path="papelera" element={<Papelera />} />
               <Route path="admin" element={<AdminDashboard />} />
               <Route path="informes" element={<Informes />} />
-              <Route path="notificaciones" element={<Notificaciones />} />
               <Route path="tutela/:id" element={<DetalleTutela />} />
             </Route>
 
@@ -186,6 +186,11 @@ function App() {
               <Route path="nueva" element={<NuevaSolicitudConformidad />} />
               <Route path="dashboard" element={<DashboardConformidades />} />
               <Route path=":id" element={<DetalleConformidad />} />
+            </Route>
+
+            {/* Páginas globales del Core */}
+            <Route path="/core" element={<CoreLayout />}>
+              <Route path="notificaciones" element={<Notificaciones />} />
             </Route>
 
             {/* Módulo Derecho Ambiental */}

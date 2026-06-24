@@ -191,7 +191,7 @@ export default function NotificationBell() {
           {/* Footer */}
           <div className="px-4 py-3 border-t border-gray-100 bg-gray-50/60">
             <Link
-              to="/notificaciones"
+              to="/core/notificaciones"
               onClick={() => setAbierto(false)}
               className="block text-center text-xs font-semibold text-[#002E6D] hover:text-[#001d4a] transition-colors"
             >
