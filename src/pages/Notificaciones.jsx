@@ -19,21 +19,21 @@ const getLink = (modulo, referencia_uuid) => {
 };
 
 const MODULO_CONFIG = {
-  tutelas:        { label: 'Derechos de Petición', color: 'text-blue-700',   bg: 'bg-blue-50',    icon: FileText   },
-  contratos:      { label: 'Contratos',            color: 'text-pink-700',   bg: 'bg-pink-50',    icon: FileText   },
-  comunicaciones: { label: 'Comunicaciones',       color: 'text-indigo-700', bg: 'bg-indigo-50',  icon: Mail       },
-  conformidades:  { label: 'Conformidades',        color: 'text-yellow-700', bg: 'bg-yellow-50',  icon: Shield     },
-  pagos:          { label: 'Pagos (PDP)',           color: 'text-sky-700',    bg: 'bg-sky-50',     icon: Wallet     },
-  ambiental:      { label: 'Derecho Ambiental',    color: 'text-green-700',  bg: 'bg-green-50',   icon: Leaf       },
-  rendimiento:    { label: 'Rendimiento',          color: 'text-emerald-700',bg: 'bg-emerald-50', icon: BarChart3  },
+  tutelas:        { label: 'Derechos de Petición', color: 'text-blue-400',    bg: 'bg-blue-950/60',    border: 'border-blue-800',    icon: FileText  },
+  contratos:      { label: 'Contratos',            color: 'text-pink-400',    bg: 'bg-pink-950/60',    border: 'border-pink-800',    icon: FileText  },
+  comunicaciones: { label: 'Comunicaciones',       color: 'text-indigo-400',  bg: 'bg-indigo-950/60',  border: 'border-indigo-800',  icon: Mail      },
+  conformidades:  { label: 'Conformidades',        color: 'text-yellow-400',  bg: 'bg-yellow-950/60',  border: 'border-yellow-800',  icon: Shield    },
+  pagos:          { label: 'Pagos (PDP)',           color: 'text-sky-400',     bg: 'bg-sky-950/60',     border: 'border-sky-800',     icon: Wallet    },
+  ambiental:      { label: 'Derecho Ambiental',    color: 'text-green-400',   bg: 'bg-green-950/60',   border: 'border-green-800',   icon: Leaf      },
+  rendimiento:    { label: 'Rendimiento',          color: 'text-emerald-400', bg: 'bg-emerald-950/60', border: 'border-emerald-800', icon: BarChart3 },
 };
 
-const getModulo = (modulo) => MODULO_CONFIG[modulo] || { label: modulo || 'Sistema', color: 'text-gray-600', bg: 'bg-gray-100', icon: Bell };
+const getModulo = (m) => MODULO_CONFIG[m] || { label: m || 'Sistema', color: 'text-slate-400', bg: 'bg-slate-800/60', border: 'border-slate-700', icon: Bell };
 
 const TIPO_CONFIG = {
-  vencimiento: { icon: Clock,        color: 'text-amber-600', bg: 'bg-amber-50', label: 'Vencimiento' },
-  alerta:      { icon: AlertTriangle, color: 'text-red-600',  bg: 'bg-red-50',   label: 'Alerta'      },
-  default:     { icon: Bell,          color: 'text-blue-600', bg: 'bg-blue-50',  label: 'Sistema'     },
+  vencimiento: { icon: Clock,         color: 'text-amber-400', bg: 'bg-amber-950/60',  border: 'border-amber-800',  label: 'Vencimiento' },
+  alerta:      { icon: AlertTriangle, color: 'text-red-400',   bg: 'bg-red-950/60',    border: 'border-red-800',    label: 'Alerta'      },
+  default:     { icon: Bell,          color: 'text-slate-300', bg: 'bg-slate-800/60',  border: 'border-slate-700',  label: 'Sistema'     },
 };
 const getTipo = (tipo) => TIPO_CONFIG[tipo] || TIPO_CONFIG.default;
 
@@ -100,39 +100,43 @@ export default function Notificaciones() {
   }, [notifs, tabTipo, tabModulo]);
 
   const TABS_TIPO = [
-    { id: 'Todos',        label: 'Todas',        count: notifs.length },
-    { id: 'No leídas',    label: 'Sin leer',     count: noLeidas },
-    { id: 'Vencimientos', label: 'Vencimientos', count: notifs.filter(n => n.tipo === 'vencimiento').length },
-    { id: 'Alertas',      label: 'Alertas',      count: notifs.filter(n => n.tipo === 'alerta').length },
+    { id: 'Todos',        label: 'TODAS',        count: notifs.length },
+    { id: 'No leídas',    label: 'SIN LEER',     count: noLeidas },
+    { id: 'Vencimientos', label: 'VENCIMIENTOS', count: notifs.filter(n => n.tipo === 'vencimiento').length },
+    { id: 'Alertas',      label: 'ALERTAS',      count: notifs.filter(n => n.tipo === 'alerta').length },
   ];
 
   return (
-    <div className="max-w-3xl mx-auto pb-16 animate-fade-in">
+    <div className="pb-16">
 
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
-        <div className="flex items-start gap-4">
-          <div className="w-11 h-11 bg-[#002E6D] rounded-xl flex items-center justify-center shrink-0 shadow-sm mt-0.5">
-            <Bell size={20} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900 leading-tight">Notificaciones</h1>
-            <p className="text-sm text-gray-400 mt-0.5">
-              {noLeidas > 0 ? `${noLeidas} sin leer` : 'Todo al día'}
-              {notifs.length > 0 && ` · ${notifs.length} en total`}
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-medium tracking-[0.2em] text-white uppercase">
+            {'>'} NOTIFICACIONES
+          </h1>
+          <p className="text-[11px] text-emerald-900 tracking-[0.15em] mt-1 font-mono">
+            {noLeidas > 0 ? `${noLeidas} SIN LEER` : 'TODO AL DÍA'}
+            {notifs.length > 0 && ` · ${notifs.length} EN TOTAL`}
+          </p>
         </div>
+
         {notifs.length > 0 && (
           <div className="flex gap-2">
             {noLeidas > 0 && (
-              <button onClick={marcarTodasLeidas} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-600 border border-gray-200 bg-white rounded-xl hover:bg-gray-50 transition-colors">
-                <CheckCheck size={13} /> Marcar todas leídas
+              <button
+                onClick={marcarTodasLeidas}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400 border border-slate-700 hover:border-slate-500 hover:text-white transition-all"
+              >
+                <CheckCheck size={12} /> Marcar leídas
               </button>
             )}
             {notifs.some(n => n.leida) && (
-              <button onClick={limpiarLeidas} className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-red-500 border border-red-100 bg-red-50 rounded-xl hover:bg-red-100 transition-colors">
-                <Trash2 size={13} /> Limpiar leídas
+              <button
+                onClick={limpiarLeidas}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-500 border border-red-900 hover:border-red-500 hover:text-red-300 transition-all"
+              >
+                <Trash2 size={12} /> Limpiar leídas
               </button>
             )}
           </div>
@@ -140,18 +144,22 @@ export default function Notificaciones() {
       </div>
 
       {/* Tabs tipo */}
-      <div className="flex gap-1 mb-4 border-b border-gray-100">
+      <div className="flex gap-0 mb-6 border-b border-slate-800">
         {TABS_TIPO.map(({ id, label, count }) => (
           <button
             key={id}
             onClick={() => setTabTipo(id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
-              tabTipo === id ? 'border-[#002E6D] text-[#002E6D]' : 'border-transparent text-gray-500 hover:text-gray-700'
+            className={`flex items-center gap-2 px-4 py-2.5 text-[10px] font-bold tracking-[0.15em] border-b-2 -mb-px transition-colors ${
+              tabTipo === id
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-slate-500 hover:text-slate-300'
             }`}
           >
             {label}
             {count > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${tabTipo === id ? 'bg-[#002E6D] text-white' : 'bg-gray-100 text-gray-500'}`}>
+              <span className={`text-[9px] px-1.5 py-0.5 font-bold ${
+                tabTipo === id ? 'bg-emerald-900 text-emerald-300' : 'bg-slate-800 text-slate-500'
+              }`}>
                 {count}
               </span>
             )}
@@ -170,15 +178,15 @@ export default function Notificaciones() {
             <button
               key={m}
               onClick={() => setTabModulo(m)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-widest border transition-all ${
                 isActive
-                  ? 'bg-[#002E6D] text-white border-[#002E6D]'
-                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+                  ? 'bg-slate-700 text-white border-slate-500'
+                  : 'bg-transparent text-slate-500 border-slate-800 hover:border-slate-600 hover:text-slate-300'
               }`}
             >
-              {cfg && <cfg.icon size={11} />}
-              {m === 'Todos' ? 'Todos los módulos' : cfg.label}
-              <span className={`px-1 rounded-full text-[10px] ${isActive ? 'bg-white/20' : 'bg-gray-100 text-gray-400'}`}>{count}</span>
+              {cfg && <cfg.icon size={10} className={isActive ? 'text-white' : cfg.color} />}
+              {m === 'Todos' ? 'TODOS' : cfg.label}
+              <span className={`text-[9px] ${isActive ? 'text-slate-300' : 'text-slate-600'}`}>{count}</span>
             </button>
           );
         })}
@@ -187,69 +195,72 @@ export default function Notificaciones() {
       {/* Lista */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="w-7 h-7 border-2 border-[#002E6D] border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-          <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-            <BellOff size={20} className="text-gray-300" />
-          </div>
-          <p className="text-sm text-gray-400">No hay notificaciones en esta categoría.</p>
+          <BellOff size={28} className="text-slate-700" />
+          <p className="text-xs text-slate-600 uppercase tracking-widest">Sin notificaciones en esta categoría</p>
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map(n => {
-            const tipoCfg  = getTipo(n.tipo);
+            const tipoCfg   = getTipo(n.tipo);
             const moduloCfg = getModulo(n.modulo || 'tutelas');
-            const TipoIcon = tipoCfg.icon;
-            const fecha = new Date(n.created_at);
-            const hoy   = new Date();
-            const esHoy = fecha.toDateString() === hoy.toDateString();
-            const fechaStr = esHoy
+            const TipoIcon  = tipoCfg.icon;
+            const fecha     = new Date(n.created_at);
+            const hoy       = new Date();
+            const esHoy     = fecha.toDateString() === hoy.toDateString();
+            const fechaStr  = esHoy
               ? fecha.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
               : fecha.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
             return (
               <div
                 key={n.id}
-                className={`flex items-start gap-4 p-4 rounded-2xl border transition-all ${
-                  n.leida ? 'bg-white border-gray-100 opacity-60' : 'bg-white border-gray-200 shadow-sm'
+                className={`flex items-start gap-4 p-4 border transition-all ${
+                  n.leida
+                    ? 'bg-slate-900/30 border-slate-800/50 opacity-50'
+                    : 'bg-slate-900/60 border-slate-700 hover:border-slate-500'
                 }`}
               >
-                {/* Dot */}
-                <div className="mt-1.5 shrink-0">
-                  <span className={`block w-2 h-2 rounded-full ${n.leida ? 'bg-transparent' : 'bg-[#002E6D]'}`} />
+                {/* Dot no leído */}
+                <div className="mt-2 shrink-0">
+                  <span className={`block w-1.5 h-1.5 rounded-full ${n.leida ? 'bg-transparent' : 'bg-emerald-400'}`} />
                 </div>
 
                 {/* Icono tipo */}
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tipoCfg.bg}`}>
-                  <TipoIcon size={16} className={tipoCfg.color} />
+                <div className={`w-8 h-8 flex items-center justify-center shrink-0 border ${tipoCfg.bg} ${tipoCfg.border}`}>
+                  <TipoIcon size={14} className={tipoCfg.color} />
                 </div>
 
                 {/* Contenido */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-snug ${n.leida ? 'text-gray-500' : 'text-gray-800 font-medium'}`}>
+                  <p className={`text-sm leading-snug font-mono ${n.leida ? 'text-slate-500' : 'text-slate-200'}`}>
                     {n.mensaje}
                   </p>
-                  <div className="flex items-center flex-wrap gap-2 mt-1.5">
-                    <span className="text-[11px] text-gray-400">{fechaStr}</span>
+                  <div className="flex items-center flex-wrap gap-2 mt-2">
+                    <span className="text-[10px] text-slate-600 font-mono">{fechaStr}</span>
+
                     {/* Badge módulo */}
-                    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${moduloCfg.bg} ${moduloCfg.color}`}>
-                      <moduloCfg.icon size={9} />
+                    <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 border ${moduloCfg.bg} ${moduloCfg.border} ${moduloCfg.color}`}>
+                      <moduloCfg.icon size={8} />
                       {moduloCfg.label}
                     </span>
+
                     {/* Badge tipo */}
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${tipoCfg.bg} ${tipoCfg.color}`}>
+                    <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 border ${tipoCfg.bg} ${tipoCfg.border} ${tipoCfg.color}`}>
                       {tipoCfg.label}
                     </span>
                   </div>
+
                   {n.referencia_uuid && getLink(n.modulo, n.referencia_uuid) && (
                     <Link
                       to={getLink(n.modulo, n.referencia_uuid)}
                       onClick={() => !n.leida && marcarLeida(n.id)}
-                      className="inline-flex items-center gap-1 mt-2 text-[11px] font-semibold text-[#002E6D] hover:text-[#001d4a] transition-colors"
+                      className="inline-flex items-center gap-1 mt-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500 hover:text-emerald-300 transition-colors"
                     >
-                      <ExternalLink size={11} /> Ver en {moduloCfg.label}
+                      <ExternalLink size={10} /> [ VER EN {moduloCfg.label} ]
                     </Link>
                   )}
                 </div>
@@ -257,14 +268,23 @@ export default function Notificaciones() {
                 {/* Acciones */}
                 <div className="flex items-center gap-1 shrink-0">
                   {!n.leida && (
-                    <button onClick={() => marcarLeida(n.id)} title="Marcar como leída" className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
-                      <Check size={14} />
+                    <button
+                      onClick={() => marcarLeida(n.id)}
+                      title="Marcar como leída"
+                      className="p-1.5 text-slate-600 hover:text-emerald-400 transition-colors"
+                    >
+                      <Check size={13} />
                     </button>
                   )}
-                  <button onClick={() => eliminar(n.id)} disabled={deletingId === n.id} title="Eliminar" className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                  <button
+                    onClick={() => eliminar(n.id)}
+                    disabled={deletingId === n.id}
+                    title="Eliminar"
+                    className="p-1.5 text-slate-600 hover:text-red-400 transition-colors"
+                  >
                     {deletingId === n.id
-                      ? <div className="w-3.5 h-3.5 border border-red-400 border-t-transparent rounded-full animate-spin" />
-                      : <X size={14} />}
+                      ? <div className="w-3 h-3 border border-red-500 border-t-transparent rounded-full animate-spin" />
+                      : <X size={13} />}
                   </button>
                 </div>
               </div>
