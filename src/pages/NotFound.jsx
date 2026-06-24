@@ -17,29 +17,35 @@ const rndFood = (snake) => {
   return pos;
 };
 
-const INIT_SNAKE = [{ x: 8, y: 6 }, { x: 7, y: 6 }, { x: 6, y: 6 }];
-const INIT_DIR   = { x: 1, y: 0 };
+const mkSnake = () => [{ x: 8, y: 6 }, { x: 7, y: 6 }, { x: 6, y: 6 }];
 
 function MiniSnake() {
-  const [snake, setSnake]     = useState(INIT_SNAKE);
-  const [food, setFood]       = useState({ x: 20, y: 6 });
+  const [snake, setSnake]     = useState(mkSnake);
+  const [food, setFood]       = useState(() => rndFood(mkSnake()));
   const [score, setScore]     = useState(0);
   const [dead, setDead]       = useState(false);
-  const [started, setStarted] = useState(false);
+  const [tick, setTick]       = useState(0); // incrementar fuerza re-mount del loop
 
-  const dirRef   = useRef(INIT_DIR);
-  const foodRef  = useRef({ x: 20, y: 6 });
-  const deadRef  = useRef(false);
+  const dirRef  = useRef({ x: 1, y: 0 });
+  const foodRef = useRef(food);
+  const deadRef = useRef(false);
+  const activeRef = useRef(false);
 
   const reset = useCallback(() => {
-    const s = INIT_SNAKE;
+    const s = mkSnake();
     const f = rndFood(s);
-    setSnake(s); setFood(f); setScore(0); setDead(false); setStarted(true);
-    dirRef.current  = INIT_DIR;
-    foodRef.current = f;
-    deadRef.current = false;
+    foodRef.current  = f;
+    deadRef.current  = false;
+    dirRef.current   = { x: 1, y: 0 };
+    activeRef.current = true;
+    setSnake(s);
+    setFood(f);
+    setScore(0);
+    setDead(false);
+    setTick(t => t + 1); // fuerza re-ejecución del game loop
   }, []);
 
+  // Teclado
   useEffect(() => {
     const MAP = {
       ArrowUp:    { x: 0, y: -1 }, ArrowDown:  { x: 0, y: 1 },
@@ -53,17 +59,21 @@ function MiniSnake() {
         const nd = MAP[e.key];
         const cd = dirRef.current;
         if (nd.x === -cd.x && nd.y === -cd.y) return;
-        if (!started) setStarted(true);
+        if (!activeRef.current) {
+          activeRef.current = true;
+          setTick(t => t + 1);
+        }
         dirRef.current = nd;
       }
-      if ((e.key === 'Enter' || e.key === ' ') && dead) reset();
+      if ((e.key === 'Enter' || e.key === ' ') && deadRef.current) reset();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [reset, started, dead]);
+  }, [reset]);
 
+  // Game loop — se remonta cada vez que tick cambia
   useEffect(() => {
-    if (!started || deadRef.current) return;
+    if (!activeRef.current) return;
     const interval = setInterval(() => {
       if (deadRef.current) return;
       setSnake(prev => {
@@ -71,7 +81,8 @@ function MiniSnake() {
           x: (prev[0].x + dirRef.current.x + COLS) % COLS,
           y: (prev[0].y + dirRef.current.y + ROWS) % ROWS,
         };
-        if (prev.some(s => s.x === head.x && s.y === head.y)) {
+        // Colisión con sí mismo (excluye la cola que se moverá)
+        if (prev.slice(0, -1).some(s => s.x === head.x && s.y === head.y)) {
           deadRef.current = true;
           setDead(true);
           return prev;
@@ -88,14 +99,15 @@ function MiniSnake() {
       });
     }, TICK);
     return () => clearInterval(interval);
-  }, [started]);
+  }, [tick]);
 
-  const CELL = started ? 22 : 10;
+  const active = activeRef.current;
+  const CELL = active ? 22 : 10;
 
   return (
     <div className="flex flex-col items-center gap-1.5">
       <motion.div
-        animate={{ opacity: started ? 1 : 0.4 }}
+        animate={{ opacity: active ? 1 : 0.4 }}
         transition={{ duration: 0.4 }}
         className="flex items-center justify-between w-full px-0.5"
       >
@@ -148,8 +160,8 @@ function MiniSnake() {
       </motion.div>
 
       <p className="text-[9px] font-mono text-slate-800 uppercase tracking-widest">
-        {!started && '↑↓←→ para jugar'}
-        {started && dead && <span className="text-red-900 cursor-pointer" onClick={reset}>game over — enter</span>}
+        {!active && '↑↓←→ para jugar'}
+        {active && dead && <span className="text-red-900 cursor-pointer" onClick={reset}>game over — enter</span>}
       </p>
     </div>
   );
