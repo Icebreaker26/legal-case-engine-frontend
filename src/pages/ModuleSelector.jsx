@@ -1,10 +1,117 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, BarChart2, Settings, Shield, Mail, LogOut, Wallet, User, Database, Leaf } from 'lucide-react';
+import { FileText, BarChart3, BarChart2, Settings, Shield, Mail, LogOut, Wallet, User, Database, Leaf, X, Terminal } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
+// ── Modal de créditos ─────────────────────────────────────────────────────────
+const CREDITS_LINES = [
+  '> INICIALIZANDO CORE OS...',
+  '> CARGANDO MÓDULOS OPERATIVOS...',
+  '> SISTEMA LISTO.',
+  '',
+  '╔══════════════════════════════════════════╗',
+  '║         CORE OPERATING SYSTEM            ║',
+  '║         ICEBREAKER — BUILD 2026          ║',
+  '╚══════════════════════════════════════════╝',
+  '',
+  ':: CRÉDITOS DEL SISTEMA ::',
+  '',
+  '  [ ARCHITECT & LEAD DEVELOPER ]',
+  '    Alejandro Torres',
+  '    Diseño de sistema, backend, frontend, infraestructura',
+  '',
+  '  [ LEGAL DOMAIN EXPERTS ]',
+  '    Equipo Jurídico Enel Colombia',
+  '    Requisitos, validación funcional, flujos operativos',
+  '',
+  ':: STACK TECNOLÓGICO ::',
+  '',
+  '  ✦  PostgreSQL + pgvector',
+  '  ✦  Node.js + Express (ESM)',
+  '  ✦  React 18 + Vite',
+  '  ✦  Tailwind CSS',
+  '  ✦  JWT + HttpOnly cookies',
+  '  ✦  jsPDF + recharts',
+  '',
+  ':: AGRADECIMIENTOS ::',
+  '',
+  '  A todo el equipo que confió en este sistema.',
+  '  Construido con precisión, sin atajos.',
+  '',
+  '> END OF LINE.',
+];
+
+function lineClass(l) {
+  if (l.startsWith('╔') || l.startsWith('║') || l.startsWith('╚')) return 'text-indigo-400';
+  if (l.startsWith('::')) return 'text-emerald-500 mt-3';
+  if (l.startsWith('  [')) return 'text-sky-400 mt-2';
+  if (l.startsWith('    ')) return 'text-slate-400';
+  if (l.startsWith('  ✦')) return 'text-yellow-500/80';
+  if (l.startsWith('>')) return 'text-emerald-600';
+  return 'text-slate-500';
+}
+
+function CreditsModal({ onClose }) {
+  const [displayed, setDisplayed] = useState(0);
+
+  useEffect(() => {
+    if (displayed >= CREDITS_LINES.length) return;
+    const delay = displayed < 2 ? 400 : displayed === 2 ? 500 : displayed === 3 ? 300 : 60;
+    const t = setTimeout(() => setDisplayed(d => d + 1), delay);
+    return () => clearTimeout(t);
+  }, [displayed]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-xl bg-[#020617] border border-slate-700 shadow-2xl font-mono text-xs"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Barra de título estilo terminal */}
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800 bg-slate-900/60">
+          <div className="flex items-center gap-2">
+            <Terminal size={12} className="text-emerald-500" />
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-500">icebreaker_os — credits.sh</span>
+          </div>
+          <button onClick={onClose} className="text-slate-600 hover:text-slate-300 transition-colors">
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Salida de terminal */}
+        <div className="p-6 space-y-0.5 max-h-[70vh] overflow-y-auto">
+          {CREDITS_LINES.slice(0, displayed).map((l, i) => (
+            <div key={i} className={`leading-relaxed whitespace-pre ${lineClass(l)}`}>
+              {l || ' '}
+            </div>
+          ))}
+          {displayed < CREDITS_LINES.length && (
+            <span className="inline-block w-2 h-3.5 bg-emerald-500 animate-pulse align-middle" />
+          )}
+        </div>
+
+        <div className="px-6 py-3 border-t border-slate-800 text-[9px] text-slate-800 uppercase tracking-widest text-center">
+          ESC o click fuera para cerrar
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── ModuleSelector ────────────────────────────────────────────────────────────
 export default function ModuleSelector() {
   const { hasPermission, logout } = useAuth();
+  const [creditsOpen, setCreditsOpen] = useState(false);
 
   const modules = [
     {
@@ -106,54 +213,62 @@ export default function ModuleSelector() {
       permission: ['admin', 'READ'],
       hoverGlow: 'hover:border-purple-500 hover:shadow-[0_0_25px_-5px_rgba(168,85,247,0.5)]'
     }
-    ];
+  ];
 
   return (
     <div className="min-h-screen bg-[#020617] text-slate-200 p-8 flex flex-col items-center relative overflow-hidden">
-        <ConstellationBackground />
-        
-        <header className="w-full max-w-6xl mb-16 flex justify-between items-center border-b border-slate-800/50 pb-8 z-10">
-            <div>
-                <h1 className="text-xl font-medium tracking-[0.3em] text-white uppercase">CORE OPERATING SYSTEM</h1>
-                <p className="text-emerald-900 text-[10px] font-mono mt-1 tracking-[0.2em]">{'>'} GESTIÓN CENTRALIZADA ENEL</p>
-            </div>
-            <div className="text-right font-mono flex flex-col items-end gap-2">
-                <button onClick={logout} className="text-xs text-red-500 hover:text-red-300 flex items-center gap-1 uppercase tracking-widest transition-colors">
-                    <LogOut size={12} /> Logout
-                </button>
-                <p className="text-[10px] text-slate-500">BETA 1.0</p>
-            </div>
-        </header>
+      <ConstellationBackground />
 
-        <main className="w-full max-w-6xl z-10">
-            <h2 className="text-2xl font-light text-slate-400 mb-12 uppercase tracking-[0.3em] text-center">Seleccione un módulo operativo</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                {modules
-                  .filter(mod => !mod.permission || hasPermission(mod.permission[0], mod.permission[1]))
-                  .map((mod) => (
-                        <Link 
-                            key={mod.id} 
-                            to={mod.path}
-                            className={`group bg-slate-900/50 backdrop-blur-md p-8 rounded-none border border-slate-700 hover:border-slate-500 transition-all duration-300 ${mod.hoverGlow} flex flex-col items-center text-center shadow-xl`}
-                        >
-                            <div className="mb-8 p-6 bg-[#020617] rounded-full group-hover:scale-105 transition-transform duration-300 border border-slate-800">
-                                {mod.icon}
-                            </div>
-                            <h3 className="text-xl font-bold text-white mb-3 tracking-wide">{mod.name}</h3>
-                            <p className="text-slate-400 text-sm leading-relaxed mb-6 flex-1">{mod.description}</p>
-                            <div className="mt-auto text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 group-hover:text-white transition-colors">
-                                [ ACCEDER ]
-                            </div>
-                        </Link>
-                ))}
-            </div>
-        </main>
+      <header className="w-full max-w-6xl mb-16 flex justify-between items-center border-b border-slate-800/50 pb-8 z-10">
+        <div>
+          <h1 className="text-xl font-medium tracking-[0.3em] text-white uppercase">CORE OPERATING SYSTEM</h1>
+          <p className="text-emerald-900 text-[10px] font-mono mt-1 tracking-[0.2em]">{'>'} GESTIÓN CENTRALIZADA ENEL</p>
+        </div>
+        <div className="text-right font-mono flex flex-col items-end gap-2">
+          <button onClick={logout} className="text-xs text-red-500 hover:text-red-300 flex items-center gap-1 uppercase tracking-widest transition-colors">
+            <LogOut size={12} /> Logout
+          </button>
+          <p className="text-[10px] text-slate-500">BETA 1.0</p>
+        </div>
+      </header>
 
-        <footer className="mt-auto pt-20 text-slate-700 text-[10px] uppercase tracking-[0.2em] font-mono flex flex-col items-center gap-2 z-10">
-            <span>ICEBREAKER © 2026 // ARCHITECTURE: ALEJANDRO TORRES</span>
-            <span className="text-slate-800">// SECURE_ENTERPRISE_ENVIRONMENT //</span>
-        </footer>
+      <main className="w-full max-w-6xl z-10">
+        <h2 className="text-2xl font-light text-slate-400 mb-12 uppercase tracking-[0.3em] text-center">Seleccione un módulo operativo</h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {modules
+            .filter(mod => !mod.permission || hasPermission(mod.permission[0], mod.permission[1]))
+            .map((mod) => (
+              <Link
+                key={mod.id}
+                to={mod.path}
+                className={`group bg-slate-900/50 backdrop-blur-md p-8 rounded-none border border-slate-700 hover:border-slate-500 transition-all duration-300 ${mod.hoverGlow} flex flex-col items-center text-center shadow-xl`}
+              >
+                <div className="mb-8 p-6 bg-[#020617] rounded-full group-hover:scale-105 transition-transform duration-300 border border-slate-800">
+                  {mod.icon}
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3 tracking-wide">{mod.name}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed mb-6 flex-1">{mod.description}</p>
+                <div className="mt-auto text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 group-hover:text-white transition-colors">
+                  [ ACCEDER ]
+                </div>
+              </Link>
+            ))}
+        </div>
+      </main>
+
+      <footer className="mt-auto pt-20 text-slate-700 text-[10px] uppercase tracking-[0.2em] font-mono flex flex-col items-center gap-2 z-10">
+        {/* Easter egg: visualmente idéntico al texto de footer, pero clickeable */}
+        <button
+          onClick={() => setCreditsOpen(true)}
+          className="text-slate-700 hover:text-slate-600 transition-colors duration-700 cursor-default select-none"
+        >
+          ICEBREAKER © 2026 // ARCHITECTURE: ALEJANDRO TORRES
+        </button>
+        <span className="text-slate-800">// SECURE_ENTERPRISE_ENVIRONMENT //</span>
+      </footer>
+
+      {creditsOpen && <CreditsModal onClose={() => setCreditsOpen(false)} />}
     </div>
   );
 }
