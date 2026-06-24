@@ -944,7 +944,7 @@ export default function Dashboard() {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-              <h3 className="font-bold mb-4 text-sm text-gray-800">Distribución por Derecho Vulnerado</h3>
+              <h3 className="font-bold mb-4 text-sm text-gray-800">Distribución por Categoría</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie data={dataDerechos} dataKey="value" nameKey="name" outerRadius={75} label>
@@ -956,7 +956,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-              <h3 className="font-bold mb-4 text-sm text-gray-800">Evolución de Tutelas (Últimos 6 meses)</h3>
+              <h3 className="font-bold mb-4 text-sm text-gray-800">Evolución de Peticiones (Últimos 6 meses)</h3>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={estadisticas}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

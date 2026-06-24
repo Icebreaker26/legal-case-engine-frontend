@@ -71,7 +71,7 @@ export default function Papelera() {
       {/* Tabs */}
       <div className="flex gap-1 mb-6 border-b border-gray-100">
         {[
-          { id: 'tutelas', label: `Tutelas`, count: items.tutelas.length },
+          { id: 'tutelas', label: `Peticiones`, count: items.tutelas.length },
           { id: 'memoria', label: `Documentos de conocimiento`, count: items.memoria.length },
         ].map(t => (
           <button

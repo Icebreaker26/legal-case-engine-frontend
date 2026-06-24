@@ -7,11 +7,11 @@ import toast from 'react-hot-toast';
 const MODULOS_CONFIG = [
   {
     key: 'tutelas',
-    label: 'Tutelas',
+    label: 'Derechos de Petición',
     color: 'text-blue-400',
     accent: 'border-blue-800 bg-blue-950/20',
     acciones: [
-      { accion: 'READ',   label: 'Ver tutelas' },
+      { accion: 'READ',   label: 'Ver peticiones' },
       { accion: 'WRITE',  label: 'Crear / editar' },
       { accion: 'DELETE', label: 'Archivar' },
     ],

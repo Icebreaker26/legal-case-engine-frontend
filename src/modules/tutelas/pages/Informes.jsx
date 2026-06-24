@@ -81,7 +81,7 @@ export default function Informes() {
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(255, 255, 255);
-        doc.text('Reporte de Tutelas', 14, 13);
+        doc.text('Reporte de Derechos de Petición', 14, 13);
         doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
         doc.text(`Generado el ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })} · Total: ${data.length} tutelas`, 14, 21);
