@@ -101,7 +101,7 @@ function MiniSnake() {
     return () => clearInterval(interval);
   }, [tick]);
 
-  const active = activeRef.current;
+  const active = tick > 0;
   const CELL = active ? 22 : 10;
 
   return (
