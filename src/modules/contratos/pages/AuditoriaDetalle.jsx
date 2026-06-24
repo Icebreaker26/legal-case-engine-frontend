@@ -252,7 +252,7 @@ export default function AuditoriaDetalle() {
                                         <thead>
                                             <tr className="border-b border-black/10">
                                                 <th className="text-left py-1.5 px-2 text-gray-500 font-bold">#</th>
-                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Cláusula</th>
+                                                <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Cláusula / Impacto</th>
                                                 <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Tipo</th>
                                                 <th className="text-left py-1.5 px-2 text-gray-500 font-bold">Recomendación</th>
                                             </tr>
@@ -260,10 +260,13 @@ export default function AuditoriaDetalle() {
                                         <tbody>
                                             {resultadoJson.cambios.map((c, i) => (
                                                 <tr key={i} className="border-b border-black/5">
-                                                    <td className="py-1.5 px-2 text-gray-400 font-bold">{c.numero}</td>
-                                                    <td className="py-1.5 px-2 text-gray-700 font-semibold">{c.clausula}</td>
-                                                    <td className="py-1.5 px-2 text-gray-500">{c.tipo}</td>
-                                                    <td className={`py-1.5 px-2 font-bold ${
+                                                    <td className="py-2 px-2 text-gray-400 font-bold align-top">{c.numero}</td>
+                                                    <td className="py-2 px-2 align-top">
+                                                        <p className="text-gray-700 font-semibold">{c.clausula}</p>
+                                                        {c.impacto && <p className="text-gray-500 mt-0.5 leading-snug">{c.impacto}</p>}
+                                                    </td>
+                                                    <td className="py-2 px-2 text-gray-500 align-top whitespace-nowrap">{c.tipo}</td>
+                                                    <td className={`py-2 px-2 font-bold align-top whitespace-nowrap ${
                                                         c.recomendacion === 'Rechazar' ? 'text-red-600' :
                                                         c.recomendacion === 'Aceptar'  ? 'text-green-600' :
                                                         'text-amber-600'
