@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FileText, BarChart3, Settings, Shield, Mail, LogOut, Wallet, User, Database, Leaf } from 'lucide-react';
+import { FileText, BarChart3, BarChart2, Settings, Shield, Mail, LogOut, Wallet, User, Database, Leaf } from 'lucide-react';
 import ConstellationBackground from '../modules/rendimiento/components/ConstellationBackground';
 
 export default function ModuleSelector() {
@@ -78,6 +78,15 @@ export default function ModuleSelector() {
       icon: <User size={40} className="text-slate-400" />,
       permission: null,
       hoverGlow: 'hover:border-slate-500 hover:shadow-[0_0_25px_-5px_rgba(148,163,184,0.5)]'
+    },
+    {
+      id: 'reportes',
+      name: 'Reportes',
+      description: 'Consulta y exporta información cruzada de todos los módulos del sistema',
+      path: '/reportes',
+      icon: <BarChart2 size={40} className="text-indigo-400" />,
+      permission: ['reportes', 'READ'],
+      hoverGlow: 'hover:border-indigo-500 hover:shadow-[0_0_25px_-5px_rgba(99,102,241,0.5)]'
     },
     {
       id: 'catalogos',

@@ -58,6 +58,8 @@ import NuevoExpediente from './modules/ambiental/pages/NuevoExpediente';
 import DetalleExpediente from './modules/ambiental/pages/DetalleExpediente';
 import CalendarioAmbiental from './modules/ambiental/pages/CalendarioAmbiental';
 import DashboardAmbiental from './modules/ambiental/pages/DashboardAmbiental';
+import ReportesLayout from './modules/reportes/components/ReportesLayout';
+import ReportesDashboard from './modules/reportes/pages/ReportesDashboard';
 
 function App() {
   return (
@@ -204,6 +206,11 @@ function App() {
               <Route path="dashboard" element={<DashboardAmbiental />} />
               <Route path="calendario" element={<CalendarioAmbiental />} />
               <Route path="expediente/:id" element={<DetalleExpediente />} />
+            </Route>
+
+            {/* Módulo Reportes */}
+            <Route path="/reportes" element={<ReportesLayout />}>
+              <Route index element={<ReportesDashboard />} />
             </Route>
 
             {/* Nuevo módulo de contratos */}
