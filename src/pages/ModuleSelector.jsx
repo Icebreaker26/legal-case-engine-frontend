@@ -105,8 +105,8 @@ export default function ModuleSelector() {
         
         <header className="w-full max-w-6xl mb-16 flex justify-between items-center border-b border-slate-800/50 pb-8 z-10">
             <div>
-                <h1 className="text-xl font-medium tracking-[0.3em] text-white uppercase">ICEBREAKER CORE OPERATING SYSTEM</h1>
-                <p className="text-emerald-900 text-[10px] font-mono mt-1 tracking-[0.2em]">{'>'} GESTIÓN CENTRALIZADA</p>
+                <h1 className="text-xl font-medium tracking-[0.3em] text-white uppercase">CORE OPERATING SYSTEM</h1>
+                <p className="text-emerald-900 text-[10px] font-mono mt-1 tracking-[0.2em]">{'>'} GESTIÓN CENTRALIZADA ENEL</p>
             </div>
             <div className="text-right font-mono flex flex-col items-end gap-2">
                 <button onClick={logout} className="text-xs text-red-500 hover:text-red-300 flex items-center gap-1 uppercase tracking-widest transition-colors">
