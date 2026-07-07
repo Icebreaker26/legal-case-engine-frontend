@@ -499,6 +499,10 @@ export default function DetalleExpediente() {
         setJsonRecurso(exp.recurso_llm_json);
         try { setRecursoParseado(JSON.parse(exp.recurso_llm_json)); } catch { /* json corrupto */ }
       }
+      if (exp.respuesta_llm_json) {
+        setJsonRespuesta(exp.respuesta_llm_json);
+        try { setRespuestaParseada(JSON.parse(exp.respuesta_llm_json)); } catch { /* json corrupto */ }
+      }
       try {
         const { data: an } = await apiService.get(`/ambiental/expedientes/${id}/analisis`);
         setAnalisis(an);
@@ -1883,20 +1887,27 @@ export default function DetalleExpediente() {
                 className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed focus:ring-2 focus:ring-green-600 outline-none"
               />
               <button
-                onClick={() => {
+                onClick={async () => {
                   try {
                     const p = JSON.parse(jsonRespuesta);
                     setRespuestaParseada(p);
                     setErrorParseRespuesta('');
-                  } catch {
-                    setErrorParseRespuesta('JSON inválido. Verifica el formato.');
-                    setRespuestaParseada(null);
+                    await apiService.patch(`/ambiental/expedientes/${expediente.id}`, { respuesta_llm_json: jsonRespuesta });
+                    setExpediente(prev => ({ ...prev, respuesta_llm_json: jsonRespuesta }));
+                    toast.success('Evaluación guardada');
+                  } catch (err) {
+                    if (err.message?.includes('JSON')) {
+                      setErrorParseRespuesta('JSON inválido. Verifica el formato.');
+                      setRespuestaParseada(null);
+                    } else {
+                      toast.error('Error al guardar la evaluación');
+                    }
                   }
                 }}
                 disabled={!jsonRespuesta.trim()}
                 className="px-4 py-2 bg-green-700 text-white rounded-xl text-xs font-bold hover:bg-green-800 transition-colors disabled:opacity-40"
               >
-                Parsear y previsualizar
+                Parsear y guardar
               </button>
               {errorParseRespuesta && <p className="text-xs text-red-600">{errorParseRespuesta}</p>}
             </div>
