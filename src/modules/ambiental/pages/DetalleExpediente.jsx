@@ -329,6 +329,92 @@ function construirPromptRecurso(expediente, analisis, hallazgosSeleccionados, ar
   return lineas.join('\n');
 }
 
+function generarRespuestaPDF(expediente, evaluacion) {
+  const doc = new jsPDF();
+  const slate = [51, 65, 85];
+  const gris  = [75, 85, 99];
+
+  doc.setFillColor(...slate);
+  doc.rect(0, 0, 210, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('EVALUACIÓN DE RESPUESTA DE ENTIDAD', 14, 11);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(expediente.titulo || '', 14, 18, { maxWidth: 160 });
+  doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 150, 24);
+
+  let y = 36;
+
+  const bloque = (titulo, contenido) => {
+    if (!contenido) return;
+    if (y > 260) { doc.addPage(); y = 14; }
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...slate);
+    doc.text(titulo.toUpperCase(), 14, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...gris);
+    const lines = doc.splitTextToSize(String(contenido), 182);
+    lines.forEach(l => {
+      if (y > 275) { doc.addPage(); y = 14; }
+      doc.text(l, 14, y);
+      y += 5;
+    });
+    y += 3;
+  };
+
+  // Resumen ejecutivo
+  const valoracion = evaluacion.valoracion || '—';
+  const cumplimiento = evaluacion.cumplimiento || '—';
+  const procedeRecurso = evaluacion.procede_recurso || '—';
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Valoración', 'Cumplimiento', 'Procede recurso']],
+    body: [[valoracion, cumplimiento, procedeRecurso]],
+    styles: { fontSize: 9, cellPadding: 3 },
+    headStyles: { fillColor: slate, textColor: 255, fontStyle: 'bold' },
+    columnStyles: { 0: { fontStyle: 'bold' }, 1: { fontStyle: 'bold' }, 2: { fontStyle: 'bold' } },
+    margin: { left: 14, right: 14 },
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  bloque('Resumen', evaluacion.resumen);
+
+  if (evaluacion.tipo_recurso && evaluacion.tipo_recurso !== 'No aplica') {
+    bloque('Tipo de recurso', evaluacion.tipo_recurso);
+    bloque('Plazo para interponer recurso', evaluacion.plazo_recurso);
+    bloque('Fundamentos legales', evaluacion.fundamentos_recurso);
+  }
+
+  if (evaluacion.recomendaciones?.length > 0) {
+    if (y > 255) { doc.addPage(); y = 14; }
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...slate);
+    doc.text('RECOMENDACIONES', 14, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...gris);
+    evaluacion.recomendaciones.forEach((r, i) => {
+      const lines = doc.splitTextToSize(`${i + 1}. ${r}`, 178);
+      lines.forEach(l => {
+        if (y > 275) { doc.addPage(); y = 14; }
+        doc.text(l, 14, y);
+        y += 5;
+      });
+    });
+    y += 3;
+  }
+
+  bloque('Observaciones adicionales', evaluacion.observaciones);
+
+  doc.save(`evaluacion-respuesta-${expediente.numero_expediente || expediente.id}.pdf`);
+}
+
 export default function DetalleExpediente() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1832,7 +1918,7 @@ export default function DetalleExpediente() {
               <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
                 <div className="bg-slate-50 px-5 py-3 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
                   <h3 className="text-sm font-bold text-gray-700">Evaluación de la respuesta</h3>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     {respuestaParseada.valoracion && (
                       <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${valoracionColor[respuestaParseada.valoracion] || 'bg-gray-100 text-gray-600'}`}>
                         {respuestaParseada.valoracion}
@@ -1843,6 +1929,12 @@ export default function DetalleExpediente() {
                         Recurso: {respuestaParseada.procede_recurso}
                       </span>
                     )}
+                    <button
+                      onClick={() => generarRespuestaPDF(expediente, respuestaParseada)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-700 text-white hover:bg-slate-800 transition-colors"
+                    >
+                      <Download size={12} /> Exportar PDF
+                    </button>
                   </div>
                 </div>
                 <div className="p-5 space-y-4">
