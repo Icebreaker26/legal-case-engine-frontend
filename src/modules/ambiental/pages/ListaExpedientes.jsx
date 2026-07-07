@@ -3,12 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import apiService from '../../../services/apiService';
 import {
   Plus, Search, FileText, Clock, CheckCircle, AlertTriangle,
-  Archive, ChevronRight, Calendar, X, Leaf, Zap, ChevronDown, Check
+  Archive, ChevronRight, Calendar, X, Leaf, Zap, ChevronDown, Check, ArrowUpDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ESTADOS = ['Todos', 'Pendiente', 'Analizado', 'Revisado', 'Archivado'];
 const TIPOS = ['Todos', 'expediente', 'auto', 'resolución', 'concepto'];
+const ORDENES = [
+  { value: 'reciente',    label: 'Más reciente' },
+  { value: 'urgencia',   label: 'Urgencia' },
+  { value: 'vencimiento', label: 'Vencimiento próximo' },
+];
+
+const RIESGO_PESO = { 'Crítico': 0, 'Alto': 1, 'Medio': 2, 'Bajo': 3 };
+
+function urgencyScore(exp) {
+  const hoy = new Date();
+  let diasScore = exp.fecha_vencimiento
+    ? Math.ceil((new Date(exp.fecha_vencimiento) - hoy) / 86400000)
+    : 99999;
+  const riesgoScore = RIESGO_PESO[exp.nivel_riesgo] ?? 4;
+  return diasScore * 10 + riesgoScore;
+}
 
 const estadoConfig = {
   'Pendiente':  { bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-400', icon: <Clock size={11} /> },
@@ -42,26 +58,26 @@ function FilterSelect({ label, options, value, onChange, allLabel = 'Todos' }) {
   useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 30); }, [open]);
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex items-center gap-1.5">
+      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">{label}</span>
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
           selected
-            ? 'bg-green-700 text-white border-green-700'
-            : 'bg-white text-gray-600 border-gray-200 hover:border-green-400 hover:text-green-700'
+            ? 'bg-green-700 text-white'
+            : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
         }`}
       >
-        <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">{label}:</span>
-        <span className="max-w-[120px] truncate">{selected || allLabel}</span>
+        <span className="max-w-[110px] truncate">{selected || allLabel}</span>
         {selected
-          ? <X size={12} onClick={e => { e.stopPropagation(); onChange(allLabel); setQuery(''); }} className="shrink-0 opacity-80 hover:opacity-100" />
-          : <ChevronDown size={12} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+          ? <X size={11} onClick={e => { e.stopPropagation(); onChange(allLabel); setQuery(''); }} className="shrink-0 opacity-80 hover:opacity-100" />
+          : <ChevronDown size={11} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
         }
       </button>
 
       {open && (
-        <div className="absolute z-50 mt-1 left-0 w-56 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
+        <div className="absolute z-50 top-full mt-1 left-0 w-56 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
           <div className="p-2 border-b border-gray-100">
             <div className="relative">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -150,6 +166,7 @@ export default function ListaExpedientes() {
   const [filtroEntidad, setFiltroEntidad] = useState('Todas');
   const [filtroResponsable, setFiltroResponsable] = useState('Todos');
   const [filtroProyecto, setFiltroProyecto] = useState('Todos');
+  const [ordenar, setOrdenar] = useState('reciente');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -191,7 +208,7 @@ export default function ListaExpedientes() {
 
   const filtrados = useMemo(() => {
     const q = busqueda.toLowerCase();
-    return expedientes.filter(e => {
+    const lista = expedientes.filter(e => {
       const matchBusqueda = !busqueda ||
         e.titulo?.toLowerCase().includes(q) ||
         e.numero_expediente?.toLowerCase().includes(q) ||
@@ -205,13 +222,29 @@ export default function ListaExpedientes() {
       const matchProyecto = filtroProyecto === 'Todos' || e.proyecto_nombre === filtroProyecto;
       return matchBusqueda && matchEstado && matchTipo && matchEntidad && matchResponsable && matchProyecto;
     });
-  }, [expedientes, busqueda, filtroEstado, filtroTipo, filtroEntidad, filtroResponsable, filtroProyecto]);
+
+    if (ordenar === 'urgencia') {
+      lista.sort((a, b) => urgencyScore(a) - urgencyScore(b));
+    } else if (ordenar === 'vencimiento') {
+      lista.sort((a, b) => {
+        if (!a.fecha_vencimiento && !b.fecha_vencimiento) return 0;
+        if (!a.fecha_vencimiento) return 1;
+        if (!b.fecha_vencimiento) return -1;
+        return new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento);
+      });
+    } else {
+      lista.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    return lista;
+  }, [expedientes, busqueda, filtroEstado, filtroTipo, filtroEntidad, filtroResponsable, filtroProyecto, ordenar]);
 
   const hayFiltros = busqueda || filtroEstado !== 'Todos' || filtroTipo !== 'Todos' || filtroEntidad !== 'Todas' || filtroResponsable !== 'Todos' || filtroProyecto !== 'Todos';
 
   const limpiar = () => {
     setBusqueda(''); setFiltroEstado('Todos'); setFiltroTipo('Todos');
     setFiltroEntidad('Todas'); setFiltroResponsable('Todos'); setFiltroProyecto('Todos');
+    setOrdenar('reciente');
   };
 
   return (
@@ -241,14 +274,15 @@ export default function ListaExpedientes() {
       )}
 
       {/* Filtros */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm">
+        {/* Barra de búsqueda */}
+        <div className="px-4 pt-4 pb-3 border-b border-gray-100">
+          <div className="relative">
+            <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar por título, número, entidad, responsable o proyecto..."
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-green-600 transition-shadow"
+              className="w-full pl-10 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-green-600 focus:bg-white transition-all"
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
             />
@@ -260,51 +294,96 @@ export default function ListaExpedientes() {
           </div>
         </div>
 
-        <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Estado:</span>
-          {ESTADOS.map(e => (
-            <button
-              key={e}
-              onClick={() => setFiltroEstado(e)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                filtroEstado === e
-                  ? 'bg-green-700 text-white shadow-sm'
-                  : 'bg-white border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700'
-              }`}
-            >
-              {e}
-            </button>
-          ))}
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-3">Tipo:</span>
-          {TIPOS.map(t => (
-            <button
-              key={t}
-              onClick={() => setFiltroTipo(t)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all capitalize ${
-                filtroTipo === t
-                  ? 'bg-green-700 text-white shadow-sm'
-                  : 'bg-white border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+        {/* Fila de filtros */}
+        <div className="flex flex-wrap items-center px-2 py-1 gap-x-1 gap-y-1">
 
-        <div className="flex flex-wrap items-center gap-2">
+          {/* Estado */}
+          <div className="flex items-center gap-1.5 px-2 py-2">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">Estado</span>
+            {ESTADOS.map(e => (
+              <button
+                key={e}
+                onClick={() => setFiltroEstado(e)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  filtroEstado === e
+                    ? 'bg-green-700 text-white'
+                    : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
+                }`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+
+          <div className="w-px h-5 bg-gray-200 shrink-0" />
+
+          {/* Tipo */}
+          <div className="flex items-center gap-1.5 px-2 py-2">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">Tipo</span>
+            {TIPOS.map(t => (
+              <button
+                key={t}
+                onClick={() => setFiltroTipo(t)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all capitalize ${
+                  filtroTipo === t
+                    ? 'bg-green-700 text-white'
+                    : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <div className="w-px h-5 bg-gray-200 shrink-0" />
+
+          {/* Entidad / Responsable / Proyecto */}
           {entidades.length > 1 && (
-            <FilterSelect label="Entidad" options={entidades} value={filtroEntidad} onChange={setFiltroEntidad} allLabel="Todas" />
+            <div className="px-2 py-2">
+              <FilterSelect label="Entidad" options={entidades} value={filtroEntidad} onChange={setFiltroEntidad} allLabel="Todas" />
+            </div>
           )}
           {responsables.length > 1 && (
-            <FilterSelect label="Responsable" options={responsables} value={filtroResponsable} onChange={setFiltroResponsable} />
+            <div className="px-2 py-2">
+              <FilterSelect label="Responsable" options={responsables} value={filtroResponsable} onChange={setFiltroResponsable} />
+            </div>
           )}
           {proyectos.length > 1 && (
-            <FilterSelect label="Proyecto" options={proyectos} value={filtroProyecto} onChange={setFiltroProyecto} />
+            <div className="px-2 py-2">
+              <FilterSelect label="Proyecto" options={proyectos} value={filtroProyecto} onChange={setFiltroProyecto} />
+            </div>
           )}
+
+          <div className="w-px h-5 bg-gray-200 shrink-0" />
+
+          {/* Orden */}
+          <div className="flex items-center gap-1.5 px-2 py-2">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0 flex items-center gap-1">
+              <ArrowUpDown size={11} /> Orden
+            </span>
+            {ORDENES.map(o => (
+              <button
+                key={o.value}
+                onClick={() => setOrdenar(o.value)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                  ordenar === o.value
+                    ? 'bg-green-700 text-white'
+                    : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Limpiar */}
           {hayFiltros && (
-            <button onClick={limpiar} className="text-xs font-semibold text-green-700 hover:underline ml-1">
-              ✕ Limpiar todo
-            </button>
+            <>
+              <div className="w-px h-5 bg-gray-200 shrink-0" />
+              <button onClick={limpiar} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                <X size={11} /> Limpiar
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -371,6 +450,25 @@ export default function ListaExpedientes() {
                   )}
                   {!exp.responsable_nombre && !exp.proyecto_nombre && <div className="mb-3" />}
 
+                  {exp.fecha_vencimiento && (() => {
+                    const dias = Math.ceil((new Date(exp.fecha_vencimiento) - new Date()) / 86400000);
+                    const vencido = dias < 0;
+                    const urgente = dias >= 0 && dias <= 7;
+                    return (
+                      <p className={`text-xs px-2 py-1 rounded-lg mb-2 font-semibold ${
+                        vencido  ? 'bg-red-100 text-red-700' :
+                        urgente  ? 'bg-orange-100 text-orange-700' :
+                                   'bg-gray-50 text-gray-500'
+                      }`}>
+                        {vencido
+                          ? `⚠️ Vencido hace ${Math.abs(dias)} día${Math.abs(dias) !== 1 ? 's' : ''}`
+                          : dias === 0
+                            ? '🔴 Vence hoy'
+                            : `⏳ Vence en ${dias} día${dias !== 1 ? 's' : ''}`
+                        }
+                      </p>
+                    );
+                  })()}
                   {exp.plazo_respuesta && (
                     <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-lg mb-3 line-clamp-1">
                       ⏱ {exp.plazo_respuesta}
