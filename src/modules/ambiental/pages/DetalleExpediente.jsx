@@ -358,6 +358,15 @@ export default function DetalleExpediente() {
   const [editandoEntidad, setEditandoEntidad] = useState(false);
   const [guardandoEntidad, setGuardandoEntidad] = useState(false);
   const [entidadSeleccionada, setEntidadSeleccionada] = useState('');
+
+  const [usuarios, setUsuarios] = useState([]);
+  const [proyectos, setProyectos] = useState([]);
+  const [editandoResponsable, setEditandoResponsable] = useState(false);
+  const [responsableSeleccionado, setResponsableSeleccionado] = useState('');
+  const [guardandoResponsable, setGuardandoResponsable] = useState(false);
+  const [editandoProyecto, setEditandoProyecto] = useState(false);
+  const [proyectoSeleccionado, setProyectoSeleccionado] = useState('');
+  const [guardandoProyecto, setGuardandoProyecto] = useState(false);
   const fileRef = useRef(null);
 
   // Tab Recurso
@@ -414,6 +423,12 @@ export default function DetalleExpediente() {
     cargarDatos();
     apiService.get('/core/entidades')
       .then(r => setEntidades((r.data || []).map(e => ({ value: e.id, label: e.nombre }))))
+      .catch(() => {});
+    apiService.get('/core/usuarios-activos')
+      .then(r => setUsuarios((r.data || []).map(u => ({ value: u.id, label: u.nombre }))))
+      .catch(() => {});
+    apiService.get('/core/proyectos')
+      .then(r => setProyectos((r.data || []).map(p => ({ value: p.id, label: p.nombre }))))
       .catch(() => {});
   }, [id]);
 
@@ -815,6 +830,120 @@ export default function DetalleExpediente() {
               <p className="font-semibold text-gray-700">{expediente.entidad_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}</p>
             )}
           </div>
+          {/* Responsable */}
+          <div>
+            <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+              Responsable
+              {!editandoResponsable && (
+                <button
+                  onClick={() => { setResponsableSeleccionado(expediente.responsable_uuid || ''); setEditandoResponsable(true); }}
+                  className="ml-1 text-green-600 hover:text-green-800 transition-colors"
+                >
+                  <Pencil size={11} />
+                </button>
+              )}
+            </p>
+            {editandoResponsable ? (
+              <div className="flex flex-col gap-2">
+                <SearchableSelect
+                  options={usuarios}
+                  value={responsableSeleccionado}
+                  onChange={setResponsableSeleccionado}
+                  placeholder="Buscar responsable..."
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      setGuardandoResponsable(true);
+                      try {
+                        await apiService.patch(`/ambiental/expedientes/${id}`, { responsable_uuid: responsableSeleccionado || null });
+                        const u = usuarios.find(u => u.value === responsableSeleccionado);
+                        setExpediente(prev => ({ ...prev, responsable_uuid: responsableSeleccionado || null, responsable_nombre: u?.label || null }));
+                        setEditandoResponsable(false);
+                        toast.success('Responsable actualizado');
+                      } catch {
+                        toast.error('Error al guardar el responsable');
+                      } finally {
+                        setGuardandoResponsable(false);
+                      }
+                    }}
+                    disabled={guardandoResponsable}
+                    className="flex-1 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
+                  >
+                    {guardandoResponsable ? 'Guardando…' : 'Guardar'}
+                  </button>
+                  <button
+                    onClick={() => setEditandoResponsable(false)}
+                    className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="font-semibold text-gray-700 text-sm">
+                {expediente.responsable_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}
+              </p>
+            )}
+          </div>
+
+          {/* Proyecto */}
+          <div>
+            <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
+              Proyecto
+              {!editandoProyecto && (
+                <button
+                  onClick={() => { setProyectoSeleccionado(expediente.proyecto_id || ''); setEditandoProyecto(true); }}
+                  className="ml-1 text-green-600 hover:text-green-800 transition-colors"
+                >
+                  <Pencil size={11} />
+                </button>
+              )}
+            </p>
+            {editandoProyecto ? (
+              <div className="flex flex-col gap-2">
+                <SearchableSelect
+                  options={proyectos}
+                  value={proyectoSeleccionado}
+                  onChange={setProyectoSeleccionado}
+                  placeholder="Buscar proyecto..."
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={async () => {
+                      setGuardandoProyecto(true);
+                      try {
+                        await apiService.patch(`/ambiental/expedientes/${id}`, { proyecto_id: proyectoSeleccionado ? Number(proyectoSeleccionado) : null });
+                        const p = proyectos.find(p => String(p.value) === String(proyectoSeleccionado));
+                        setExpediente(prev => ({ ...prev, proyecto_id: proyectoSeleccionado ? Number(proyectoSeleccionado) : null, proyecto_nombre: p?.label || null }));
+                        setEditandoProyecto(false);
+                        toast.success('Proyecto actualizado');
+                      } catch {
+                        toast.error('Error al guardar el proyecto');
+                      } finally {
+                        setGuardandoProyecto(false);
+                      }
+                    }}
+                    disabled={guardandoProyecto}
+                    className="flex-1 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
+                  >
+                    {guardandoProyecto ? 'Guardando…' : 'Guardar'}
+                  </button>
+                  <button
+                    onClick={() => setEditandoProyecto(false)}
+                    className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="font-semibold text-gray-700 text-sm">
+                {expediente.proyecto_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}
+              </p>
+            )}
+          </div>
+
           <div>
             <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5"><Calendar size={11} /> Fecha documento</p>
             <input
