@@ -18,6 +18,7 @@ const estadoConfig = {
   'Analizado':  { bg: 'bg-blue-100',   text: 'text-blue-700',   icon: <Zap size={13} /> },
   'Revisado':   { bg: 'bg-green-100',  text: 'text-green-700',  icon: <CheckCircle size={13} /> },
   'Archivado':  { bg: 'bg-gray-100',   text: 'text-gray-500',   icon: <Archive size={13} /> },
+  'Cerrado':    { bg: 'bg-slate-100',  text: 'text-slate-600',  icon: <Shield size={13} /> },
 };
 
 const riesgoColor = {
@@ -33,7 +34,7 @@ const prioridadDot = {
   'Baja':  'bg-green-400',
 };
 
-const ESTADOS = ['Pendiente', 'Analizado', 'Revisado', 'Archivado'];
+const ESTADOS = ['Pendiente', 'Analizado', 'Revisado', 'Archivado', 'Cerrado'];
 
 function generarInformePDF(expediente, analisis, hallazgos, normas, pagos = []) {
   const doc = new jsPDF();
@@ -380,6 +381,16 @@ export default function DetalleExpediente() {
   const [errorParseRecurso, setErrorParseRecurso] = useState('');
   const [guardandoRecursoJson, setGuardandoRecursoJson] = useState(false);
   const [exportandoRecurso, setExportandoRecurso] = useState(false);
+
+  // Tab Respuesta entidad
+  const [procesandoRespuesta, setProcesandoRespuesta] = useState(false);
+  const [promptRespuesta, setPromptRespuesta] = useState('');
+  const [copiadoPromptRespuesta, setCopiadoPromptRespuesta] = useState(false);
+  const [jsonRespuesta, setJsonRespuesta] = useState('');
+  const [respuestaParseada, setRespuestaParseada] = useState(null);
+  const [errorParseRespuesta, setErrorParseRespuesta] = useState('');
+  const [cerrandoTramite, setCerrandoTramite] = useState(false);
+  const fileRespuestaRef = useRef(null);
 
   const paginasTexto = useMemo(() => {
     const texto = expediente?.contenido_texto || '';
@@ -980,6 +991,7 @@ export default function DetalleExpediente() {
           { key: 'documento', label: 'Texto del documento' },
           { key: 'llm', label: analisis ? 'Actualizar análisis' : 'Pegar respuesta LLM' },
           ...(analisis ? [{ key: 'recurso', label: 'Redactar recurso' }] : []),
+          { key: 'respuesta', label: 'Respuesta entidad' },
         ].map(t => (
           <button
             key={t.key}
@@ -1645,6 +1657,282 @@ export default function DetalleExpediente() {
 
         </div>
       )}
+
+      {/* TAB: Respuesta de la entidad */}
+      {tab === 'respuesta' && (
+        <div className="space-y-6">
+
+          {/* Texto ya guardado */}
+          {expediente?.respuesta_entidad_texto && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-700">Texto de la respuesta registrada</h3>
+                {expediente.fecha_respuesta && (
+                  <span className="text-xs text-gray-400">
+                    Recibida: {new Date(expediente.fecha_respuesta).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </span>
+                )}
+              </div>
+              <textarea
+                readOnly
+                value={expediente.respuesta_entidad_texto}
+                rows={8}
+                className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed"
+              />
+              <button
+                onClick={() => {
+                  const doc = new jsPDF();
+                  const verde = [22, 101, 52];
+                  doc.setFillColor(...verde);
+                  doc.rect(0, 0, 210, 28, 'F');
+                  doc.setTextColor(255, 255, 255);
+                  doc.setFontSize(14);
+                  doc.setFont('helvetica', 'bold');
+                  doc.text('RESPUESTA DE LA ENTIDAD', 14, 12);
+                  doc.setFontSize(9);
+                  doc.setFont('helvetica', 'normal');
+                  doc.text(expediente.titulo || '', 14, 20);
+                  doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 150, 20);
+                  let y = 36;
+                  doc.setTextColor(75, 85, 99);
+                  doc.setFontSize(9);
+                  const lines = doc.splitTextToSize(expediente.respuesta_entidad_texto, 182);
+                  lines.forEach(line => {
+                    if (y > 275) { doc.addPage(); y = 14; }
+                    doc.text(line, 14, y);
+                    y += 5;
+                  });
+                  doc.save(`respuesta-entidad-${expediente.numero_expediente || expediente.id}.pdf`);
+                }}
+                className="flex items-center gap-2 text-xs font-semibold text-green-700 hover:text-green-800 transition-colors"
+              >
+                <Download size={13} /> Exportar texto como PDF
+              </button>
+            </div>
+          )}
+
+          {/* Subir nueva respuesta */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+            <h3 className="text-sm font-bold text-gray-700">
+              {expediente?.respuesta_entidad_texto ? 'Reemplazar documento de respuesta' : 'Registrar respuesta de la entidad'}
+            </h3>
+            <p className="text-xs text-gray-500">
+              Sube el PDF o DOCX de la respuesta. El sistema extrae el texto, lo guarda y genera un prompt para que el LLM evalúe si la respuesta es favorable y si procede recurso.
+            </p>
+
+            <input type="hidden" ref={fileRespuestaRef} />
+            <input
+              type="file"
+              id="file-respuesta"
+              accept=".pdf,.docx,.txt"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setProcesandoRespuesta(true);
+                setPromptRespuesta('');
+                setJsonRespuesta('');
+                setRespuestaParseada(null);
+                setErrorParseRespuesta('');
+                try {
+                  const fd = new FormData();
+                  fd.append('file', file);
+                  const { data } = await apiService.post(`/ambiental/expedientes/${expediente.id}/respuesta`, fd);
+                  setExpediente(prev => ({
+                    ...prev,
+                    respuesta_entidad_texto: data.respuesta_entidad_texto,
+                    fecha_respuesta: data.fecha_respuesta,
+                  }));
+                  setPromptRespuesta(data.prompt_respuesta);
+                  toast.success('Respuesta registrada correctamente');
+                } catch {
+                  toast.error('Error al procesar el archivo');
+                } finally {
+                  setProcesandoRespuesta(false);
+                  e.target.value = '';
+                }
+              }}
+            />
+            <button
+              onClick={() => document.getElementById('file-respuesta').click()}
+              disabled={procesandoRespuesta}
+              className="flex items-center gap-2 px-4 py-2.5 bg-green-700 text-white rounded-xl text-sm font-bold hover:bg-green-800 transition-colors disabled:opacity-50"
+            >
+              {procesandoRespuesta ? <Loader size={15} className="animate-spin" /> : <Upload size={15} />}
+              {procesandoRespuesta ? 'Procesando...' : 'Subir documento de respuesta'}
+            </button>
+          </div>
+
+          {/* Prompt generado */}
+          {promptRespuesta && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-gray-700">Prompt para el LLM</h3>
+                <button
+                  onClick={() => { navigator.clipboard.writeText(promptRespuesta); setCopiadoPromptRespuesta(true); setTimeout(() => setCopiadoPromptRespuesta(false), 2000); }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${copiadoPromptRespuesta ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                  {copiadoPromptRespuesta ? <><Check size={12} /> Copiado</> : <><Copy size={12} /> Copiar prompt</>}
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={promptRespuesta}
+                rows={6}
+                className="w-full text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed"
+              />
+            </div>
+          )}
+
+          {/* Pegar respuesta del LLM */}
+          {(promptRespuesta || expediente?.respuesta_entidad_texto) && (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
+              <h3 className="text-sm font-bold text-gray-700">Respuesta del LLM (JSON)</h3>
+              <p className="text-xs text-gray-400">Pega aquí el JSON que devolvió el LLM tras analizar la respuesta de la entidad.</p>
+              <textarea
+                value={jsonRespuesta}
+                onChange={e => { setJsonRespuesta(e.target.value); setRespuestaParseada(null); setErrorParseRespuesta(''); }}
+                rows={6}
+                placeholder='{ "valoracion": "Favorable", ... }'
+                className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed focus:ring-2 focus:ring-green-600 outline-none"
+              />
+              <button
+                onClick={() => {
+                  try {
+                    const p = JSON.parse(jsonRespuesta);
+                    setRespuestaParseada(p);
+                    setErrorParseRespuesta('');
+                  } catch {
+                    setErrorParseRespuesta('JSON inválido. Verifica el formato.');
+                    setRespuestaParseada(null);
+                  }
+                }}
+                disabled={!jsonRespuesta.trim()}
+                className="px-4 py-2 bg-green-700 text-white rounded-xl text-xs font-bold hover:bg-green-800 transition-colors disabled:opacity-40"
+              >
+                Parsear y previsualizar
+              </button>
+              {errorParseRespuesta && <p className="text-xs text-red-600">{errorParseRespuesta}</p>}
+            </div>
+          )}
+
+          {/* Preview del resultado */}
+          {respuestaParseada && (() => {
+            const valoracionColor = {
+              'Favorable':   'bg-green-100 text-green-700',
+              'Desfavorable':'bg-red-100 text-red-700',
+              'Parcial':     'bg-yellow-100 text-yellow-700',
+            };
+            const procedeColor = {
+              'Sí':      'bg-red-100 text-red-700',
+              'No':      'bg-green-100 text-green-700',
+              'Evaluar': 'bg-yellow-100 text-yellow-700',
+            };
+            return (
+              <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+                <div className="bg-slate-50 px-5 py-3 border-b border-gray-200 flex items-center justify-between flex-wrap gap-2">
+                  <h3 className="text-sm font-bold text-gray-700">Evaluación de la respuesta</h3>
+                  <div className="flex gap-2">
+                    {respuestaParseada.valoracion && (
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${valoracionColor[respuestaParseada.valoracion] || 'bg-gray-100 text-gray-600'}`}>
+                        {respuestaParseada.valoracion}
+                      </span>
+                    )}
+                    {respuestaParseada.procede_recurso && (
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${procedeColor[respuestaParseada.procede_recurso] || 'bg-gray-100 text-gray-600'}`}>
+                        Recurso: {respuestaParseada.procede_recurso}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="p-5 space-y-4">
+                  {respuestaParseada.resumen && (
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Resumen</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">{respuestaParseada.resumen}</p>
+                    </div>
+                  )}
+                  {respuestaParseada.cumplimiento && (
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Cumplimiento</p>
+                      <p className="text-sm text-gray-700">{respuestaParseada.cumplimiento}</p>
+                    </div>
+                  )}
+                  {respuestaParseada.tipo_recurso && respuestaParseada.tipo_recurso !== 'No aplica' && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+                      <p className="text-xs font-bold text-amber-800">Tipo de recurso: {respuestaParseada.tipo_recurso}</p>
+                      {respuestaParseada.plazo_recurso && <p className="text-xs text-amber-700">⏳ {respuestaParseada.plazo_recurso}</p>}
+                      {respuestaParseada.fundamentos_recurso && (
+                        <p className="text-xs text-amber-700 leading-relaxed">{respuestaParseada.fundamentos_recurso}</p>
+                      )}
+                    </div>
+                  )}
+                  {respuestaParseada.recomendaciones?.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Recomendaciones</p>
+                      <ul className="space-y-1.5">
+                        {respuestaParseada.recomendaciones.map((r, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-gray-700">
+                            <span className="mt-0.5 w-4 h-4 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-bold shrink-0 text-[10px]">{i + 1}</span>
+                            {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {respuestaParseada.observaciones && (
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
+                      <p className="text-xs text-gray-600 leading-relaxed">{respuestaParseada.observaciones}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Cerrar trámite */}
+          {expediente?.respuesta_entidad_texto && expediente?.estado !== 'Cerrado' && (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-slate-700">Cerrar trámite</p>
+                <p className="text-xs text-slate-500 mt-0.5">Marca este expediente como cerrado. El historial y los documentos se conservan.</p>
+              </div>
+              <button
+                disabled={cerrandoTramite}
+                onClick={async () => {
+                  setCerrandoTramite(true);
+                  try {
+                    await apiService.patch(`/ambiental/expedientes/${expediente.id}`, { estado: 'Cerrado' });
+                    setExpediente(prev => ({ ...prev, estado: 'Cerrado' }));
+                    toast.success('Trámite cerrado');
+                  } catch {
+                    toast.error('Error al cerrar el trámite');
+                  } finally {
+                    setCerrandoTramite(false);
+                  }
+                }}
+                className="flex items-center gap-2 px-5 py-2.5 bg-slate-700 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors disabled:opacity-50 shrink-0"
+              >
+                {cerrandoTramite ? <Loader size={14} className="animate-spin" /> : <Shield size={14} />}
+                Cerrar trámite
+              </button>
+            </div>
+          )}
+
+          {expediente?.estado === 'Cerrado' && (
+            <div className="bg-slate-100 border border-slate-200 rounded-2xl p-5 flex items-center gap-3">
+              <Shield size={18} className="text-slate-500 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-slate-600">Trámite cerrado</p>
+                <p className="text-xs text-slate-400">Este expediente fue cerrado. Puedes reabrirlo cambiando el estado desde los detalles.</p>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
     </div>
   );
 }
