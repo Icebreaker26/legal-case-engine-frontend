@@ -63,6 +63,8 @@ export default function ListaExpedientes() {
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [filtroTipo, setFiltroTipo] = useState('Todos');
   const [filtroEntidad, setFiltroEntidad] = useState('Todas');
+  const [filtroResponsable, setFiltroResponsable] = useState('Todos');
+  const [filtroProyecto, setFiltroProyecto] = useState('Todos');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -92,22 +94,40 @@ export default function ListaExpedientes() {
     return ['Todas', ...Array.from(set).sort()];
   }, [expedientes]);
 
+  const responsables = useMemo(() => {
+    const set = new Set(expedientes.map(e => e.responsable_nombre).filter(Boolean));
+    return ['Todos', ...Array.from(set).sort()];
+  }, [expedientes]);
+
+  const proyectos = useMemo(() => {
+    const set = new Set(expedientes.map(e => e.proyecto_nombre).filter(Boolean));
+    return ['Todos', ...Array.from(set).sort()];
+  }, [expedientes]);
+
   const filtrados = useMemo(() => {
+    const q = busqueda.toLowerCase();
     return expedientes.filter(e => {
       const matchBusqueda = !busqueda ||
-        e.titulo?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        e.numero_expediente?.toLowerCase().includes(busqueda.toLowerCase()) ||
-        e.entidad_nombre?.toLowerCase().includes(busqueda.toLowerCase());
+        e.titulo?.toLowerCase().includes(q) ||
+        e.numero_expediente?.toLowerCase().includes(q) ||
+        e.entidad_nombre?.toLowerCase().includes(q) ||
+        e.responsable_nombre?.toLowerCase().includes(q) ||
+        e.proyecto_nombre?.toLowerCase().includes(q);
       const matchEstado = filtroEstado === 'Todos' || (e.estado || 'Pendiente') === filtroEstado;
       const matchTipo = filtroTipo === 'Todos' || e.tipo_instrumento === filtroTipo;
       const matchEntidad = filtroEntidad === 'Todas' || e.entidad_nombre === filtroEntidad;
-      return matchBusqueda && matchEstado && matchTipo && matchEntidad;
+      const matchResponsable = filtroResponsable === 'Todos' || e.responsable_nombre === filtroResponsable;
+      const matchProyecto = filtroProyecto === 'Todos' || e.proyecto_nombre === filtroProyecto;
+      return matchBusqueda && matchEstado && matchTipo && matchEntidad && matchResponsable && matchProyecto;
     });
-  }, [expedientes, busqueda, filtroEstado, filtroTipo, filtroEntidad]);
+  }, [expedientes, busqueda, filtroEstado, filtroTipo, filtroEntidad, filtroResponsable, filtroProyecto]);
 
-  const hayFiltros = busqueda || filtroEstado !== 'Todos' || filtroTipo !== 'Todos' || filtroEntidad !== 'Todas';
+  const hayFiltros = busqueda || filtroEstado !== 'Todos' || filtroTipo !== 'Todos' || filtroEntidad !== 'Todas' || filtroResponsable !== 'Todos' || filtroProyecto !== 'Todos';
 
-  const limpiar = () => { setBusqueda(''); setFiltroEstado('Todos'); setFiltroTipo('Todos'); setFiltroEntidad('Todas'); };
+  const limpiar = () => {
+    setBusqueda(''); setFiltroEstado('Todos'); setFiltroTipo('Todos');
+    setFiltroEntidad('Todas'); setFiltroResponsable('Todos'); setFiltroProyecto('Todos');
+  };
 
   return (
     <div className="space-y-8">
@@ -142,7 +162,7 @@ export default function ListaExpedientes() {
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar por título, número de expediente o entidad..."
+              placeholder="Buscar por título, número, entidad, responsable o proyecto..."
               className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white outline-none focus:ring-2 focus:ring-green-600 transition-shadow"
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
@@ -186,25 +206,49 @@ export default function ListaExpedientes() {
           ))}
         </div>
 
-        {entidades.length > 1 && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Entidad:</span>
-            <select
-              value={filtroEntidad}
-              onChange={e => setFiltroEntidad(e.target.value)}
-              className="border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-green-600 focus:border-green-600 transition-shadow"
-            >
-              {entidades.map(en => (
-                <option key={en} value={en}>{en}</option>
-              ))}
-            </select>
-            {filtroEntidad !== 'Todas' && (
-              <button onClick={() => setFiltroEntidad('Todas')} className="text-green-700 hover:underline text-xs font-semibold">
-                ✕ Limpiar
-              </button>
-            )}
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {entidades.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Entidad:</span>
+              <select
+                value={filtroEntidad}
+                onChange={e => setFiltroEntidad(e.target.value)}
+                className="border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-green-600 transition-shadow"
+              >
+                {entidades.map(en => <option key={en} value={en}>{en}</option>)}
+              </select>
+            </div>
+          )}
+          {responsables.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Responsable:</span>
+              <select
+                value={filtroResponsable}
+                onChange={e => setFiltroResponsable(e.target.value)}
+                className="border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-green-600 transition-shadow"
+              >
+                {responsables.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          )}
+          {proyectos.length > 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Proyecto:</span>
+              <select
+                value={filtroProyecto}
+                onChange={e => setFiltroProyecto(e.target.value)}
+                className="border border-gray-200 rounded-xl text-xs font-semibold text-gray-600 px-3 py-1.5 bg-white outline-none focus:ring-2 focus:ring-green-600 transition-shadow"
+              >
+                {proyectos.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          )}
+          {hayFiltros && (
+            <button onClick={limpiar} className="text-xs font-semibold text-green-700 hover:underline">
+              ✕ Limpiar filtros
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Lista */}
@@ -231,7 +275,6 @@ export default function ListaExpedientes() {
         <>
           <p className="text-xs text-gray-400 -mt-4">
             Mostrando {filtrados.length} de {expedientes.length}
-            {hayFiltros && <button onClick={limpiar} className="ml-2 text-green-700 hover:underline">limpiar filtros</button>}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filtrados.map(exp => {
@@ -260,8 +303,15 @@ export default function ListaExpedientes() {
                     <p className="text-xs text-gray-400 mb-1">Exp. <span className="font-semibold text-gray-600">{exp.numero_expediente}</span></p>
                   )}
                   {exp.entidad_nombre && (
-                    <p className="text-xs text-gray-400 mb-3">Entidad: <span className="font-semibold text-gray-600">{exp.entidad_nombre}</span></p>
+                    <p className="text-xs text-gray-400 mb-1">Entidad: <span className="font-semibold text-gray-600">{exp.entidad_nombre}</span></p>
                   )}
+                  {exp.responsable_nombre && (
+                    <p className="text-xs text-gray-400 mb-1">Responsable: <span className="font-semibold text-gray-600">{exp.responsable_nombre}</span></p>
+                  )}
+                  {exp.proyecto_nombre && (
+                    <p className="text-xs text-gray-400 mb-3">Proyecto: <span className="font-semibold text-gray-600">{exp.proyecto_nombre}</span></p>
+                  )}
+                  {!exp.responsable_nombre && !exp.proyecto_nombre && <div className="mb-3" />}
 
                   {exp.plazo_respuesta && (
                     <p className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-lg mb-3 line-clamp-1">
