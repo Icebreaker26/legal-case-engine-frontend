@@ -1854,23 +1854,54 @@ export default function DetalleExpediente() {
           </div>
 
           {/* Prompt generado */}
-          {promptRespuesta && (
+          {(promptRespuesta || expediente?.respuesta_entidad_texto) && (
             <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-700">Prompt para el LLM</h3>
-                <button
-                  onClick={() => { navigator.clipboard.writeText(promptRespuesta); setCopiadoPromptRespuesta(true); setTimeout(() => setCopiadoPromptRespuesta(false), 2000); }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${copiadoPromptRespuesta ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                  {copiadoPromptRespuesta ? <><Check size={12} /> Copiado</> : <><Copy size={12} /> Copiar prompt</>}
-                </button>
+                <div className="flex items-center gap-2">
+                  {!promptRespuesta && (
+                    <button
+                      onClick={async () => {
+                        setProcesandoRespuesta(true);
+                        try {
+                          const fd = new FormData();
+                          fd.append('texto', expediente.respuesta_entidad_texto);
+                          const { data } = await apiService.post(`/ambiental/expedientes/${expediente.id}/respuesta`, fd);
+                          setPromptRespuesta(data.prompt_respuesta);
+                        } catch {
+                          toast.error('Error al regenerar el prompt');
+                        } finally {
+                          setProcesandoRespuesta(false);
+                        }
+                      }}
+                      disabled={procesandoRespuesta}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all disabled:opacity-50"
+                    >
+                      {procesandoRespuesta ? <Loader size={12} className="animate-spin" /> : <Zap size={12} />}
+                      Regenerar prompt
+                    </button>
+                  )}
+                  {promptRespuesta && (
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(promptRespuesta); setCopiadoPromptRespuesta(true); setTimeout(() => setCopiadoPromptRespuesta(false), 2000); }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${copiadoPromptRespuesta ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
+                      {copiadoPromptRespuesta ? <><Check size={12} /> Copiado</> : <><Copy size={12} /> Copiar prompt</>}
+                    </button>
+                  )}
+                </div>
               </div>
-              <textarea
-                readOnly
-                value={promptRespuesta}
-                rows={6}
-                className="w-full text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed"
-              />
+              {promptRespuesta && (
+                <textarea
+                  readOnly
+                  value={promptRespuesta}
+                  rows={6}
+                  className="w-full text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed"
+                />
+              )}
+              {!promptRespuesta && (
+                <p className="text-xs text-gray-400 italic">Haz clic en "Regenerar prompt" para volver a generar el prompt de análisis.</p>
+              )}
             </div>
           )}
 
