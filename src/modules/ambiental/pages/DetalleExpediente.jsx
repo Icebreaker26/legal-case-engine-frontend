@@ -4,7 +4,7 @@ import apiService from '../../../services/apiService';
 import {
   ChevronLeft, FileText, AlertTriangle, CheckCircle, Clock,
   Zap, Archive, Copy, Check, Send, Loader, Download, Trash2,
-  Shield, Calendar, Building2, Upload, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus, Pencil
+  Shield, Calendar, Building2, Upload, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus, Pencil, Scale
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -182,6 +182,152 @@ function generarInformePDF(expediente, analisis, hallazgos, normas, pagos = []) 
   doc.save(`informe_ambiental_${expediente.numero_expediente || expediente.id.slice(0, 8)}.pdf`);
 }
 
+function escribirBloque(doc, titulo, texto, y, verde, gris) {
+  if (!texto?.trim()) return y;
+  if (y > 240) { doc.addPage(); y = 20; }
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...verde);
+  doc.text(titulo, 14, y);
+  y += 5;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...gris);
+  const lines = doc.splitTextToSize(texto.trim(), 182);
+  lines.forEach(l => {
+    if (y > 278) { doc.addPage(); y = 20; }
+    doc.text(l, 14, y);
+    y += 5;
+  });
+  return y + 4;
+}
+
+function generarRecursoPDF(expediente, recurso) {
+  const doc = new jsPDF();
+  const verde = [22, 101, 52];
+  const gris = [75, 85, 99];
+
+  doc.setFillColor(...verde);
+  doc.rect(0, 0, 210, 28, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(15);
+  doc.setFont('helvetica', 'bold');
+  doc.text((recurso.tipo_recurso || 'RECURSO').toUpperCase(), 14, 12);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Expediente: ${expediente.numero_expediente || '—'}  ·  ${expediente.entidad_nombre || '—'}`, 14, 21);
+  doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 150, 21);
+
+  let y = 36;
+
+  autoTable(doc, {
+    startY: y,
+    head: [['Campo', 'Valor']],
+    body: [
+      ['Título', expediente.titulo],
+      ['Tipo instrumento', expediente.tipo_instrumento || '—'],
+      ['Admite recurso', expediente.admite_recurso || '—'],
+      ['Plazo', expediente.plazo_respuesta || '—'],
+    ],
+    headStyles: { fillColor: verde, fontSize: 8 },
+    bodyStyles: { fontSize: 8 },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 42 } },
+    margin: { left: 14 },
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  y = escribirBloque(doc, 'I. IDENTIFICACIÓN DEL ACTO RECURRIDO', recurso.identificacion_acto, y, verde, gris);
+  y = escribirBloque(doc, 'II. FUNDAMENTOS DE HECHO', recurso.fundamentos_hecho, y, verde, gris);
+  y = escribirBloque(doc, 'III. FUNDAMENTOS DE DERECHO', recurso.fundamentos_derecho, y, verde, gris);
+
+  if (recurso.argumentos_por_cargo?.length > 0) {
+    if (y > 240) { doc.addPage(); y = 20; }
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...verde);
+    doc.text('IV. ANÁLISIS CARGO POR CARGO', 14, y);
+    y += 6;
+    recurso.argumentos_por_cargo.forEach((item, i) => {
+      if (y > 240) { doc.addPage(); y = 20; }
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...gris);
+      const cargoLines = doc.splitTextToSize(`Cargo ${i + 1}: ${item.cargo}`, 182);
+      doc.text(cargoLines, 14, y);
+      y += cargoLines.length * 5 + 2;
+      doc.setFont('helvetica', 'normal');
+      const respLines = doc.splitTextToSize(item.respuesta || '', 182);
+      respLines.forEach(l => {
+        if (y > 278) { doc.addPage(); y = 20; }
+        doc.text(l, 14, y);
+        y += 5;
+      });
+      y += 3;
+    });
+    y += 2;
+  }
+
+  y = escribirBloque(doc, 'V. PRETENSIONES', recurso.pretensiones, y, verde, gris);
+  y = escribirBloque(doc, 'VI. CONCLUSIÓN Y SOLICITUD', recurso.conclusion, y, verde, gris);
+
+  doc.save(`recurso_ambiental_${expediente.numero_expediente || expediente.id.slice(0, 8)}.pdf`);
+}
+
+function construirPromptRecurso(expediente, analisis, hallazgosSeleccionados, argumentosUsuario) {
+  const lineas = [
+    'Actúa como experto en derecho ambiental colombiano con amplio conocimiento de la Ley 99 de 1993 y el Decreto 1076 de 2015.',
+    '',
+    'DATOS DEL EXPEDIENTE:',
+    `- Título: ${expediente.titulo}`,
+    expediente.numero_expediente ? `- Número de expediente: ${expediente.numero_expediente}` : null,
+    expediente.entidad_nombre ? `- Entidad: ${expediente.entidad_nombre}` : null,
+    expediente.tipo_instrumento ? `- Tipo de instrumento: ${expediente.tipo_instrumento}` : null,
+    '',
+    'LO QUE ORDENA EL INSTRUMENTO:',
+    expediente.que_ordena || '(no especificado)',
+    '',
+    `ADMITE RECURSO: ${expediente.admite_recurso || 'No determinado'}`,
+    expediente.plazo_respuesta ? `PLAZO DE RESPUESTA: ${expediente.plazo_respuesta}` : null,
+    analisis?.nivel_riesgo ? `NIVEL DE RIESGO: ${analisis.nivel_riesgo}` : null,
+  ].filter(l => l !== null);
+
+  if (hallazgosSeleccionados.length > 0) {
+    lineas.push('', 'HALLAZGOS DEL ANÁLISIS A FUNDAMENTAR EN EL RECURSO:');
+    hallazgosSeleccionados.forEach((h, i) => {
+      lineas.push(`${i + 1}. [${h.tipo} — Prioridad ${h.prioridad}] ${h.descripcion}`);
+      if (h.norma_infringida) lineas.push(`   Norma: ${h.norma_infringida}`);
+      if (h.recomendacion) lineas.push(`   Recomendación: ${h.recomendacion}`);
+    });
+  }
+
+  if (argumentosUsuario?.trim()) {
+    lineas.push('', 'ARGUMENTOS ADICIONALES DEL ABOGADO:', argumentosUsuario.trim());
+  }
+
+  lineas.push(
+    '',
+    'INSTRUCCIÓN:',
+    'Redacta un recurso de reposición y en subsidio de apelación en formato jurídico formal colombiano.',
+    'El recurso debe identificar el acto recurrido, exponer fundamentos de hecho y de derecho, rebatir los cargos usando los hallazgos y argumentos indicados, citar normas aplicables de la Ley 99/93 y el Decreto 1076/2015, y concluir con una solicitud clara.',
+    '',
+    'Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, sin markdown, sin bloques de código. El JSON debe seguir exactamente esta estructura:',
+    '',
+    '{',
+    '  "tipo_recurso": "Reposición y en subsidio de apelación",',
+    '  "identificacion_acto": "Identificación precisa del acto administrativo recurrido: número, fecha, autoridad que lo expidió y lo que dispone.",',
+    '  "fundamentos_hecho": "Narración de los hechos relevantes en orden cronológico.",',
+    '  "fundamentos_derecho": "Normas y principios jurídicos aplicables (Ley 99/93, Decreto 1076/2015, Constitución, etc.) que sustentan el recurso.",',
+    '  "argumentos_por_cargo": [',
+    '    { "cargo": "Descripción del cargo o exigencia impuesta por el instrumento", "respuesta": "Argumento jurídico que rebate o controvierte este cargo específico" }',
+    '  ],',
+    '  "pretensiones": "Lista de pretensiones o solicitudes concretas al resolver el recurso.",',
+    '  "conclusion": "Párrafo de cierre con la solicitud formal al funcionario o autoridad competente."',
+    '}',
+  );
+
+  return lineas.join('\n');
+}
+
 export default function DetalleExpediente() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -214,6 +360,17 @@ export default function DetalleExpediente() {
   const [entidadSeleccionada, setEntidadSeleccionada] = useState('');
   const fileRef = useRef(null);
 
+  // Tab Recurso
+  const [hallazgosSeleccionados, setHallazgosSeleccionados] = useState(new Set());
+  const [argumentosRecurso, setArgumentosRecurso] = useState('');
+  const [guardandoArgumentos, setGuardandoArgumentos] = useState(false);
+  const [promptRecurso, setPromptRecurso] = useState('');
+  const [copiadoRecurso, setCopiadoRecurso] = useState(false);
+  const [jsonRecurso, setJsonRecurso] = useState('');
+  const [recursoParseado, setRecursoParseado] = useState(null);
+  const [errorParseRecurso, setErrorParseRecurso] = useState('');
+  const [exportandoRecurso, setExportandoRecurso] = useState(false);
+
   const paginasTexto = useMemo(() => {
     const texto = expediente?.contenido_texto || '';
     if (!texto) return [];
@@ -229,6 +386,8 @@ export default function DetalleExpediente() {
       const { data: exp } = await apiService.get(`/ambiental/expedientes/${id}`);
       setExpediente(exp);
       setCambioEstado(exp.estado || 'Pendiente');
+      setArgumentosRecurso(exp.argumentos_recurso || '');
+      setHallazgosSeleccionados(new Set(exp.hallazgos_recurso_ids || []));
       try {
         const { data: an } = await apiService.get(`/ambiental/expedientes/${id}/analisis`);
         setAnalisis(an);
@@ -651,14 +810,26 @@ export default function DetalleExpediente() {
               <p className="font-semibold text-gray-700">{expediente.entidad_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}</p>
             )}
           </div>
-          {expediente.fecha_documento && (
-            <div>
-              <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5"><Calendar size={11} /> Fecha documento</p>
-              <p className="font-semibold text-gray-700">
-                {new Date(expediente.fecha_documento).toLocaleDateString('es-CO')}
-              </p>
-            </div>
-          )}
+          <div>
+            <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5"><Calendar size={11} /> Fecha documento</p>
+            <input
+              type="date"
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-green-600"
+              defaultValue={expediente.fecha_documento?.split('T')[0] || ''}
+              onBlur={async (e) => {
+                const val = e.target.value;
+                const anterior = expediente.fecha_documento?.split('T')[0] || '';
+                if (val === anterior) return;
+                try {
+                  await apiService.patch(`/ambiental/expedientes/${id}`, { fecha_documento: val || null });
+                  setExpediente(prev => ({ ...prev, fecha_documento: val || null }));
+                  toast.success('Fecha del documento actualizada');
+                } catch {
+                  toast.error('Error al guardar la fecha');
+                }
+              }}
+            />
+          </div>
           <div>
             <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5"><Calendar size={11} /> Registrado</p>
             <p className="font-semibold text-gray-700">
@@ -674,6 +845,7 @@ export default function DetalleExpediente() {
           { key: 'analisis', label: 'Análisis' },
           { key: 'documento', label: 'Texto del documento' },
           { key: 'llm', label: analisis ? 'Actualizar análisis' : 'Pegar respuesta LLM' },
+          ...(analisis ? [{ key: 'recurso', label: 'Redactar recurso' }] : []),
         ].map(t => (
           <button
             key={t.key}
@@ -1066,6 +1238,267 @@ export default function DetalleExpediente() {
           )}
         </div>
       </div>
+      )}
+
+      {/* TAB: Redactar recurso */}
+      {tab === 'recurso' && analisis && (
+        <div className="space-y-4">
+
+          {/* Selección de hallazgos */}
+          {hallazgos.length > 0 && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <AlertTriangle size={13} /> Seleccionar hallazgos para el recurso
+                </h2>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const todos = new Set(hallazgos.map(h => h.id));
+                      setHallazgosSeleccionados(todos);
+                      apiService.patch(`/ambiental/expedientes/${id}`, { hallazgos_recurso_ids: [...todos] })
+                        .catch(() => toast.error('Error al guardar la selección'));
+                    }}
+                    className="text-xs font-bold px-2.5 py-1 rounded-lg bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 transition-colors"
+                  >
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => {
+                      setHallazgosSeleccionados(new Set());
+                      apiService.patch(`/ambiental/expedientes/${id}`, { hallazgos_recurso_ids: [] })
+                        .catch(() => toast.error('Error al guardar la selección'));
+                    }}
+                    className="text-xs font-bold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                  >
+                    Ninguno
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {hallazgos.map(h => (
+                  <label
+                    key={h.id}
+                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                      hallazgosSeleccionados.has(h.id)
+                        ? 'border-green-300 bg-green-50'
+                        : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={hallazgosSeleccionados.has(h.id)}
+                      onChange={async () => {
+                        setHallazgosSeleccionados(prev => {
+                          const next = new Set(prev);
+                          next.has(h.id) ? next.delete(h.id) : next.add(h.id);
+                          apiService.patch(`/ambiental/expedientes/${id}`, {
+                            hallazgos_recurso_ids: [...next],
+                          }).catch(() => toast.error('Error al guardar la selección'));
+                          return next;
+                        });
+                      }}
+                      className="mt-0.5 accent-green-700 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="text-xs font-black text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">#{h.numero_hallazgo}</span>
+                        <span className="text-xs font-bold text-gray-600">{h.tipo}</span>
+                        <div className={`w-2 h-2 rounded-full ${prioridadDot[h.prioridad] || 'bg-gray-300'}`} />
+                        <span className="text-[10px] text-gray-400">{h.prioridad}</span>
+                      </div>
+                      <p className="text-xs text-gray-700 leading-relaxed">{h.descripcion}</p>
+                      {h.norma_infringida && (
+                        <p className="text-[11px] text-red-600 font-semibold mt-0.5">Norma: {h.norma_infringida}</p>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Argumentos del abogado */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <Scale size={13} /> Argumentos del abogado
+              </h2>
+              {guardandoArgumentos && (
+                <span className="text-[11px] text-green-600 flex items-center gap-1">
+                  <Loader size={11} className="animate-spin" /> Guardando...
+                </span>
+              )}
+            </div>
+            <textarea
+              className="w-full h-36 border border-gray-200 rounded-xl p-4 text-sm outline-none focus:ring-2 focus:ring-green-600 resize-none leading-relaxed"
+              placeholder="Escribe aquí tus argumentos, contexto adicional o postura jurídica que debe reflejar el recurso. Se guardan automáticamente al salir del campo."
+              value={argumentosRecurso}
+              onChange={e => setArgumentosRecurso(e.target.value)}
+              onBlur={async () => {
+                const valor = argumentosRecurso;
+                const anterior = expediente.argumentos_recurso || '';
+                if (valor === anterior) return;
+                setGuardandoArgumentos(true);
+                try {
+                  await apiService.patch(`/ambiental/expedientes/${id}`, { argumentos_recurso: valor });
+                  setExpediente(prev => ({ ...prev, argumentos_recurso: valor }));
+                } catch {
+                  toast.error('Error al guardar los argumentos');
+                } finally {
+                  setGuardandoArgumentos(false);
+                }
+              }}
+            />
+            <p className="text-[11px] text-gray-400">Se guardan automáticamente al salir del campo.</p>
+          </div>
+
+          {/* Generar prompt */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Zap size={13} /> Prompt para el LLM
+            </h2>
+
+            <button
+              onClick={() => {
+                const seleccionados = hallazgos.filter(h => hallazgosSeleccionados.has(h.id));
+                setPromptRecurso(construirPromptRecurso(expediente, analisis, seleccionados, argumentosRecurso));
+              }}
+              className="flex items-center gap-2 bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-green-800 transition-colors text-sm"
+            >
+              <Zap size={15} /> Generar prompt
+              {hallazgosSeleccionados.size > 0 && (
+                <span className="bg-green-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {hallazgosSeleccionados.size} hallazgo{hallazgosSeleccionados.size !== 1 ? 's' : ''}
+                </span>
+              )}
+            </button>
+
+            {promptRecurso && (
+              <div className="space-y-2">
+                <div className="relative">
+                  <div className="bg-gray-900 text-green-300 text-xs font-mono p-4 rounded-xl max-h-64 overflow-y-auto whitespace-pre-wrap leading-relaxed pr-16">
+                    {promptRecurso}
+                  </div>
+                  <button
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(promptRecurso);
+                      setCopiadoRecurso(true);
+                      setTimeout(() => setCopiadoRecurso(false), 2000);
+                      toast.success('Prompt copiado');
+                    }}
+                    className={`absolute top-2 right-2 text-xs font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 transition-all ${
+                      copiadoRecurso ? 'bg-green-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-white'
+                    }`}
+                  >
+                    {copiadoRecurso ? <Check size={12} /> : <Copy size={12} />}
+                    {copiadoRecurso ? 'Copiado' : 'Copiar'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Pegar respuesta JSON y exportar */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+              <Send size={13} /> Pegar respuesta del LLM
+            </h2>
+            <textarea
+              className={`w-full h-48 border rounded-xl p-4 text-xs font-mono outline-none focus:ring-2 resize-none leading-relaxed ${
+                errorParseRecurso ? 'border-red-300 focus:ring-red-400' : 'border-gray-200 focus:ring-green-600'
+              }`}
+              placeholder={'{\n  "tipo_recurso": "Reposición y en subsidio de apelación",\n  "identificacion_acto": "...",\n  "fundamentos_hecho": "...",\n  "fundamentos_derecho": "...",\n  "argumentos_por_cargo": [{ "cargo": "...", "respuesta": "..." }],\n  "pretensiones": "...",\n  "conclusion": "..."\n}'}
+              value={jsonRecurso}
+              onChange={e => {
+                setJsonRecurso(e.target.value);
+                setRecursoParseado(null);
+                setErrorParseRecurso('');
+              }}
+            />
+
+            {errorParseRecurso && (
+              <p className="text-xs text-red-600 font-semibold flex items-center gap-1.5">
+                <AlertTriangle size={13} /> {errorParseRecurso}
+              </p>
+            )}
+
+            <button
+              onClick={() => {
+                if (!jsonRecurso.trim()) return toast.error('Pega el JSON del recurso primero.');
+                try {
+                  const parsed = JSON.parse(jsonRecurso);
+                  setRecursoParseado(parsed);
+                  setErrorParseRecurso('');
+                  toast.success('Recurso cargado correctamente');
+                } catch {
+                  setErrorParseRecurso('El JSON no es válido. Verifica que el LLM respondió en el formato correcto.');
+                  setRecursoParseado(null);
+                }
+              }}
+              disabled={!jsonRecurso.trim()}
+              className="flex items-center gap-2 bg-green-700 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-800 disabled:opacity-50 transition-colors text-sm"
+            >
+              <CheckCircle size={15} /> Cargar recurso
+            </button>
+
+            {/* Preview del recurso parseado */}
+            {recursoParseado && (
+              <div className="border border-green-200 rounded-xl overflow-hidden">
+                <div className="bg-green-50 border-b border-green-200 px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-xs font-bold text-green-800 flex items-center gap-2">
+                    <Scale size={13} /> {recursoParseado.tipo_recurso || 'Recurso'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setExportandoRecurso(true);
+                      try {
+                        generarRecursoPDF(expediente, recursoParseado);
+                      } catch {
+                        toast.error('Error al generar el PDF');
+                      } finally {
+                        setExportandoRecurso(false);
+                      }
+                    }}
+                    disabled={exportandoRecurso}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 transition-colors"
+                  >
+                    {exportandoRecurso ? <Loader size={12} className="animate-spin" /> : <Download size={12} />}
+                    Exportar PDF
+                  </button>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {[
+                    ['Identificación del acto', recursoParseado.identificacion_acto],
+                    ['Fundamentos de hecho', recursoParseado.fundamentos_hecho],
+                    ['Fundamentos de derecho', recursoParseado.fundamentos_derecho],
+                    ['Pretensiones', recursoParseado.pretensiones],
+                    ['Conclusión y solicitud', recursoParseado.conclusion],
+                  ].filter(([, v]) => v?.trim()).map(([titulo, texto]) => (
+                    <div key={titulo} className="px-4 py-3">
+                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">{titulo}</p>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{texto}</p>
+                    </div>
+                  ))}
+                  {recursoParseado.argumentos_por_cargo?.length > 0 && (
+                    <div className="px-4 py-3">
+                      <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Análisis cargo por cargo</p>
+                      <div className="space-y-3">
+                        {recursoParseado.argumentos_por_cargo.map((item, i) => (
+                          <div key={i} className="border border-gray-100 rounded-lg p-3">
+                            <p className="text-xs font-bold text-red-600 mb-1">Cargo {i + 1}: {item.cargo}</p>
+                            <p className="text-xs text-gray-700 leading-relaxed">{item.respuesta}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
       )}
     </div>
   );
