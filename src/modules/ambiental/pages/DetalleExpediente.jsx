@@ -369,6 +369,7 @@ export default function DetalleExpediente() {
   const [jsonRecurso, setJsonRecurso] = useState('');
   const [recursoParseado, setRecursoParseado] = useState(null);
   const [errorParseRecurso, setErrorParseRecurso] = useState('');
+  const [guardandoRecursoJson, setGuardandoRecursoJson] = useState(false);
   const [exportandoRecurso, setExportandoRecurso] = useState(false);
 
   const paginasTexto = useMemo(() => {
@@ -388,6 +389,10 @@ export default function DetalleExpediente() {
       setCambioEstado(exp.estado || 'Pendiente');
       setArgumentosRecurso(exp.argumentos_recurso || '');
       setHallazgosSeleccionados(new Set(exp.hallazgos_recurso_ids || []));
+      if (exp.recurso_llm_json) {
+        setJsonRecurso(exp.recurso_llm_json);
+        try { setRecursoParseado(JSON.parse(exp.recurso_llm_json)); } catch { /* json corrupto */ }
+      }
       try {
         const { data: an } = await apiService.get(`/ambiental/expedientes/${id}/analisis`);
         setAnalisis(an);
@@ -1424,22 +1429,33 @@ export default function DetalleExpediente() {
             )}
 
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (!jsonRecurso.trim()) return toast.error('Pega el JSON del recurso primero.');
+                let parsed;
                 try {
-                  const parsed = JSON.parse(jsonRecurso);
-                  setRecursoParseado(parsed);
-                  setErrorParseRecurso('');
-                  toast.success('Recurso cargado correctamente');
+                  parsed = JSON.parse(jsonRecurso);
                 } catch {
                   setErrorParseRecurso('El JSON no es válido. Verifica que el LLM respondió en el formato correcto.');
                   setRecursoParseado(null);
+                  return;
+                }
+                setRecursoParseado(parsed);
+                setErrorParseRecurso('');
+                setGuardandoRecursoJson(true);
+                try {
+                  await apiService.patch(`/ambiental/expedientes/${id}`, { recurso_llm_json: jsonRecurso });
+                  toast.success('Recurso cargado y guardado');
+                } catch {
+                  toast.error('Recurso cargado pero no se pudo guardar en el servidor');
+                } finally {
+                  setGuardandoRecursoJson(false);
                 }
               }}
-              disabled={!jsonRecurso.trim()}
+              disabled={!jsonRecurso.trim() || guardandoRecursoJson}
               className="flex items-center gap-2 bg-green-700 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-800 disabled:opacity-50 transition-colors text-sm"
             >
-              <CheckCircle size={15} /> Cargar recurso
+              {guardandoRecursoJson ? <Loader size={15} className="animate-spin" /> : <CheckCircle size={15} />}
+              {guardandoRecursoJson ? 'Guardando...' : 'Cargar recurso'}
             </button>
 
             {/* Preview del recurso parseado */}
