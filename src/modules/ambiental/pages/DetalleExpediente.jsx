@@ -3197,13 +3197,68 @@ export default function DetalleExpediente() {
 
               <div className="space-y-2">
                 <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Resultado del análisis comparativo</p>
-                <textarea
-                  value={resultadoComparativo}
-                  onChange={e => setResultadoComparativo(e.target.value)}
-                  placeholder="Pega aquí la respuesta de Copilot..."
-                  rows={12}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white outline-none focus:ring-2 focus:ring-green-600 resize-none font-mono"
-                />
+                {(() => {
+                  let parsed = null;
+                  try { parsed = JSON.parse(resultadoComparativo); } catch {}
+                  if (parsed) {
+                    const riesgoColor = { Bajo: 'bg-green-900 text-green-300', Medio: 'bg-yellow-900 text-yellow-300', Alto: 'bg-orange-900 text-orange-300', Crítico: 'bg-red-900 text-red-300' };
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {parsed.riesgo_sugerido && (
+                            <span className={`text-xs font-bold px-3 py-1 rounded-full ${riesgoColor[parsed.riesgo_sugerido] || 'bg-gray-800 text-gray-300'}`}>
+                              Riesgo sugerido: {parsed.riesgo_sugerido}
+                            </span>
+                          )}
+                          {parsed.precedente_mas_relevante && (
+                            <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-900 text-blue-300">
+                              Ref: {parsed.precedente_mas_relevante}
+                            </span>
+                          )}
+                        </div>
+                        {[
+                          { key: 'patrones', label: 'Patrones identificados' },
+                          { key: 'comparacion_riesgo', label: 'Comparación de riesgo' },
+                          { key: 'argumentos_efectivos', label: 'Argumentos que han funcionado' },
+                          { key: 'diferencias_clave', label: 'Diferencias clave' },
+                        ].filter(s => parsed[s.key]).map(s => (
+                          <div key={s.key} className="bg-gray-900 rounded-xl p-4 border-l-[3px] border-green-600">
+                            <p className="text-xs font-black text-green-400 uppercase tracking-widest mb-2">{s.label}</p>
+                            <p className="text-sm text-gray-300 leading-relaxed">{parsed[s.key]}</p>
+                          </div>
+                        ))}
+                        {parsed.recomendaciones?.length > 0 && (
+                          <div className="bg-gray-900 rounded-xl p-4 border-l-[3px] border-emerald-500">
+                            <p className="text-xs font-black text-emerald-400 uppercase tracking-widest mb-3">Recomendaciones estratégicas</p>
+                            <ol className="space-y-2">
+                              {parsed.recomendaciones.map((r, i) => (
+                                <li key={i} className="flex gap-3 text-sm text-gray-300">
+                                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-emerald-800 text-emerald-300 flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                                  <span>{r}</span>
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
+                        )}
+                        <button
+                          onClick={() => setResultadoComparativo('')}
+                          className="text-xs text-gray-500 hover:text-gray-300 underline"
+                        >
+                          Reanálizar (limpiar resultado)
+                        </button>
+                      </div>
+                    );
+                  }
+                  return (
+                    <textarea
+                      value={resultadoComparativo}
+                      onChange={e => setResultadoComparativo(e.target.value)}
+                      placeholder="Pega aquí la respuesta de Copilot (JSON)..."
+                      rows={12}
+                      className="w-full border border-gray-700 rounded-xl px-4 py-3 text-sm bg-gray-900 text-gray-300 outline-none focus:ring-2 focus:ring-green-600 resize-none font-mono"
+                    />
+                  );
+                })()}
               </div>
             </div>
           )}
