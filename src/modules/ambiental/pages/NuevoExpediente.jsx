@@ -119,7 +119,14 @@ export default function NuevoExpediente() {
           ) : (
             <p className="text-sm text-gray-400">Haz clic para seleccionar un archivo PDF, DOCX o TXT</p>
           )}
-          <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={e => setArchivo(e.target.files[0] || null)} />
+          <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={e => {
+            const file = e.target.files[0] || null;
+            setArchivo(file);
+            if (file && !form.titulo.trim()) {
+              const nombre = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+              setForm(p => ({ ...p, titulo: nombre }));
+            }
+          }} />
         </div>
         {archivo && (
           <p className="text-xs text-gray-400">El texto se extraerá automáticamente al guardar. Podrás generar el prompt desde la vista del expediente.</p>

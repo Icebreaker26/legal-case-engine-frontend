@@ -4,7 +4,7 @@ import apiService from '../../../services/apiService';
 import {
   ChevronLeft, FileText, AlertTriangle, CheckCircle, Clock,
   Zap, Archive, Copy, Check, Send, Loader, Download, Trash2,
-  Shield, Calendar, Building2, Upload, ChevronRight, ChevronLeft as ChevronLeftIcon, Plus, Pencil, Scale
+  Shield, Calendar, Building2, Upload, ChevronRight, ChevronDown, Plus, Pencil, Scale
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -415,6 +415,78 @@ function generarRespuestaPDF(expediente, evaluacion) {
   doc.save(`evaluacion-respuesta-${expediente.numero_expediente || expediente.id}.pdf`);
 }
 
+function formatearValor(v) {
+  if (!v) return v;
+  // Si ya tiene símbolo de moneda o letras, devolver tal cual
+  if (/[a-zA-Z$]/.test(v)) return v;
+  const num = parseFloat(v.replace(/[.,]/g, m => m === ',' ? '.' : ''));
+  if (!isNaN(num) && String(v).replace(/\D/g, '').length >= 4) {
+    return `$${Math.round(num).toLocaleString('es-CO')}`;
+  }
+  return v;
+}
+
+function parsePrompt(raw) {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed; // [{num, total, prompt}]
+  } catch { /* string simple */ }
+  return [{ num: 1, total: 1, prompt: raw }];
+}
+
+function PromptVisor({ prompt, seccionPrompt, setSeccionPrompt, copiadoSeccion, setCopiadoSeccion, labelHeader, seccionesGuardadas = [] }) {
+  const partes = parsePrompt(prompt);
+  const idx = Math.min(seccionPrompt, partes.length - 1);
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        {labelHeader ? (
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+            {labelHeader}
+            {partes.length > 1 && <span className="ml-2 text-amber-500 font-normal normal-case">· {partes.length} partes</span>}
+          </span>
+        ) : (
+          <span className="text-[11px] text-gray-400">
+            {partes.length > 1 ? `Parte ${idx + 1} de ${partes.length} · copia cada parte por separado` : 'Copia y pega en el LLM corporativo'}
+          </span>
+        )}
+        <button
+          onClick={async () => {
+            await navigator.clipboard.writeText(partes[idx].prompt);
+            setCopiadoSeccion(p => ({ ...p, [idx]: true }));
+            setTimeout(() => setCopiadoSeccion(p => ({ ...p, [idx]: false })), 2000);
+          }}
+          className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${copiadoSeccion[idx] ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-700'}`}
+        >
+          {copiadoSeccion[idx] ? <Check size={13} /> : <Copy size={13} />}
+          {copiadoSeccion[idx] ? 'Copiado' : 'Copiar'}
+        </button>
+      </div>
+      {partes.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap">
+          {partes.map((p, i) => {
+            const guardada = seccionesGuardadas.includes(p.num);
+            return (
+              <button key={i} onClick={() => setSeccionPrompt(i)}
+                className={`flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  idx === i
+                    ? guardada ? 'bg-green-700 text-white' : 'bg-amber-500 text-white'
+                    : guardada ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500 hover:bg-amber-50 hover:text-amber-700'
+                }`}>
+                {guardada && <Check size={11} />}
+                Parte {p.num}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      <div className="bg-gray-900 text-green-300 text-xs font-mono p-4 rounded-xl max-h-52 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+        {partes[idx].prompt}
+      </div>
+    </div>
+  );
+}
+
 export default function DetalleExpediente() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -435,12 +507,6 @@ export default function DetalleExpediente() {
   const [generandoPrompt, setGenerandoPrompt] = useState(false);
   const [tab, setTab] = useState('analisis');
   const [paginaTexto, setPaginaTexto] = useState(0);
-  const [seccionLlm, setSeccionLlm] = useState(0);
-  const [promptLlm, setPromptLlm] = useState('');
-  const [copiadoLlm, setCopiadoLlm] = useState(false);
-  const [mostrarConsolidar, setMostrarConsolidar] = useState(false);
-  const [resumenConsolidado, setResumenConsolidado] = useState('');
-  const [guardandoResumen, setGuardandoResumen] = useState(false);
   const [entidades, setEntidades] = useState([]);
   const [editandoEntidad, setEditandoEntidad] = useState(false);
   const [guardandoEntidad, setGuardandoEntidad] = useState(false);
@@ -477,6 +543,14 @@ export default function DetalleExpediente() {
   const [errorParseRespuesta, setErrorParseRespuesta] = useState('');
   const [cerrandoTramite, setCerrandoTramite] = useState(false);
   const fileRespuestaRef = useRef(null);
+  const [detallesAbiertos, setDetallesAbiertos] = useState(false);
+  const [pagosInactivos, setPagosInactivos] = useState([]);
+  const [copiadoPrompt, setCopiadoPrompt] = useState(false);
+  const [mostrarConsolidar, setMostrarConsolidar] = useState(false);
+  const [resumenConsolidado, setResumenConsolidado] = useState('');
+  const [guardandoResumen, setGuardandoResumen] = useState(false);
+  const [seccionPrompt, setSeccionPrompt] = useState(0);
+  const [copiadoSeccion, setCopiadoSeccion] = useState({});
 
   const paginasTexto = useMemo(() => {
     const texto = expediente?.contenido_texto || '';
@@ -509,8 +583,9 @@ export default function DetalleExpediente() {
         setHallazgos(an.hallazgos || []);
         setNormas(an.normas_citadas || []);
         setPagos(an.pagos || []);
-      } catch {
-        // sin análisis aún
+      } catch (err) {
+        if (err?.response?.status !== 404) throw err;
+        // 404 = sin análisis aún, es estado válido
       }
     } catch {
       toast.error('Error al cargar el expediente');
@@ -533,15 +608,13 @@ export default function DetalleExpediente() {
       .catch(() => {});
   }, [id]);
 
-  const handleGuardarAnalisis = async (modo = 'reemplazar') => {
+  const handleGuardarAnalisis = async (modo = 'reemplazar', seccionIdx = undefined) => {
     if (!jsonLlm.trim()) return toast.error('Pega el JSON del LLM primero.');
     setGuardandoAnalisis(true);
     try {
-      const { data } = await apiService.post(`/ambiental/expedientes/${id}/analisis`, {
-        resultado_llm_json: jsonLlm,
-        modo,
-        seccion_index: seccionLlm,
-      });
+      const body = { resultado_llm_json: jsonLlm, modo };
+      if (seccionIdx !== undefined) body.seccion_index = seccionIdx;
+      const { data } = await apiService.post(`/ambiental/expedientes/${id}/analisis`, body);
       toast.success(data.message);
       setJsonLlm('');
       await cargarDatos();
@@ -593,6 +666,17 @@ export default function DetalleExpediente() {
     }
   };
 
+  const procesarYGuardar = async (fd, esArchivo = false) => {
+    const { data } = await apiService.post('/ambiental/expedientes/procesar', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const patch = { prompt_generado: data.prompt_generado };
+    if (esArchivo) patch.contenido_texto = data.contenido_texto;
+    await apiService.patch(`/ambiental/expedientes/${id}`, patch);
+    toast.success('Prompt generado');
+    await cargarDatos();
+  };
+
   const handleProcesarArchivo = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -602,20 +686,7 @@ export default function DetalleExpediente() {
       fd.append('file', file);
       if (expediente.entidad_id) fd.append('entidad_id', expediente.entidad_id);
       if (expediente.fecha_documento) fd.append('fecha_documento', expediente.fecha_documento);
-      const { data } = await apiService.post('/ambiental/expedientes/procesar', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      // Persiste el prompt en el expediente
-      await apiService.patch(`/ambiental/expedientes/${id}`, {
-        contenido_texto: data.contenido_texto,
-        prompt_generado: data.prompt_generado,
-      });
-      if (data.meta?.truncado) {
-        toast.success(`Documento extenso (${(data.meta.caracteres_totales / 1000).toFixed(0)}k caracteres). El prompt incluye inicio y final.`);
-      } else {
-        toast.success('Archivo procesado y prompt actualizado');
-      }
-      await cargarDatos();
+      await procesarYGuardar(fd, true);
     } catch {
       toast.error('Error al procesar el archivo');
     } finally {
@@ -624,46 +695,17 @@ export default function DetalleExpediente() {
     }
   };
 
-  const handleGenerarPromptDesdeTab = async (indice) => {
-    if (!paginasTexto[indice]) return;
+  const handleRegenerarPrompt = async () => {
+    if (!expediente?.contenido_texto) return;
     setGenerandoPrompt(true);
     try {
       const fd = new FormData();
-      fd.append('texto', paginasTexto[indice]);
+      fd.append('texto', expediente.contenido_texto);
       if (expediente.entidad_id) fd.append('entidad_id', expediente.entidad_id);
       if (expediente.fecha_documento) fd.append('fecha_documento', expediente.fecha_documento);
-      const { data } = await apiService.post('/ambiental/expedientes/procesar', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      // Guarda el prompt activo en BD y en estado local
-      await apiService.patch(`/ambiental/expedientes/${id}`, { prompt_generado: data.prompt_generado });
-      setPromptLlm(data.prompt_generado);
-      setSeccionLlm(indice);
-      toast.success(`Prompt listo para la sección ${indice + 1}`);
+      await procesarYGuardar(fd, false);
     } catch {
-      toast.error('Error al generar el prompt');
-    } finally {
-      setGenerandoPrompt(false);
-    }
-  };
-
-  const handleGenerarPromptSeccion = async (seccion) => {
-    setGenerandoPrompt(true);
-    try {
-      const fd = new FormData();
-      fd.append('texto', seccion);
-      if (expediente.entidad_id) fd.append('entidad_id', expediente.entidad_id);
-      if (expediente.fecha_documento) fd.append('fecha_documento', expediente.fecha_documento);
-      const { data } = await apiService.post('/ambiental/expedientes/procesar', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      // Guarda el nuevo prompt en el expediente y recarga
-      await apiService.patch(`/ambiental/expedientes/${id}`, { prompt_generado: data.prompt_generado });
-      await cargarDatos();
-      setTab('llm');
-      toast.success('Prompt generado para esta sección — ahora cópialo');
-    } catch {
-      toast.error('Error al generar el prompt');
+      toast.error('Error al regenerar');
     } finally {
       setGenerandoPrompt(false);
     }
@@ -699,414 +741,429 @@ export default function DetalleExpediente() {
 
   const cfgEstado = estadoConfig[expediente.estado] || estadoConfig['Pendiente'];
 
+  // Stepper: progreso del expediente
+  const pasoDocumento  = !!expediente.contenido_texto;
+  const pasoAnalisis   = !!analisis;
+  const pasoRespuesta  = !!expediente.respuesta_entidad_texto;
+  const pasoCerrado    = expediente.estado === 'Cerrado';
+
+  const pasos = [
+    { key: 'documento', num: 1, label: 'Documento',  desc: 'Subir y procesar el archivo',        done: pasoDocumento },
+    { key: 'llm',       num: 2, label: 'Analizar',   desc: 'Generar prompt y guardar resultados', done: pasoAnalisis },
+    { key: 'analisis',  num: 3, label: 'Resultados', desc: 'Ver análisis y hallazgos',            done: pasoAnalisis },
+    { key: 'recurso',   num: 4, label: 'Recurso',    desc: 'Opcional · solo si aplica',           done: !!recursoParseado, optional: true },
+    { key: 'respuesta', num: 5, label: 'Respuesta',  desc: 'Registrar respuesta recibida',        done: pasoRespuesta },
+  ];
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <button onClick={() => navigate('/ambiental')} className="mt-1 text-gray-400 hover:text-green-700 transition-colors shrink-0">
-          <ChevronLeft size={22} />
-        </button>
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className="text-xs font-bold text-gray-400 uppercase bg-gray-100 px-2 py-0.5 rounded-lg capitalize">
-              {expediente.tipo_instrumento}
-            </span>
-            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${cfgEstado.bg} ${cfgEstado.text}`}>
+    <div className="max-w-4xl mx-auto space-y-5">
+
+      {/* ── Cabecera ─────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
+        {/* Fila superior: back + título + acciones */}
+        <div className="px-5 pt-4 pb-3 flex items-center gap-3">
+          <button onClick={() => navigate('/ambiental')} className="text-gray-300 hover:text-green-700 transition-colors shrink-0">
+            <ChevronLeft size={20} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-base font-black text-gray-800 truncate">{expediente.titulo}</h1>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${cfgEstado.bg} ${cfgEstado.text}`}>
               {cfgEstado.icon} {expediente.estado || 'Pendiente'}
             </span>
-            {analisis?.nivel_riesgo && (
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${riesgoColor[analisis.nivel_riesgo] || ''}`}>
-                Riesgo: {analisis.nivel_riesgo}
-              </span>
+            {analisis && (
+              <button onClick={handleExportarPDF} className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-green-700 text-white hover:bg-green-800 transition-colors">
+                <Download size={13} /> PDF
+              </button>
             )}
-          </div>
-          <h1 className="text-xl font-black text-gray-800">{expediente.titulo}</h1>
-          {expediente.numero_expediente && (
-            <p className="text-sm text-gray-500">Exp. {expediente.numero_expediente}</p>
-          )}
-        </div>
-        <div className="flex gap-2 shrink-0">
-          {analisis && (
-            <button
-              onClick={handleExportarPDF}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-green-700 text-white hover:bg-green-800 transition-colors"
-            >
-              <Download size={14} /> PDF
+            <button onClick={handleEliminar} className="p-1.5 rounded-lg text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors">
+              <Trash2 size={15} />
             </button>
-          )}
-          <button
-            onClick={handleEliminar}
-            className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 transition-colors"
-          >
-            <Trash2 size={14} />
-          </button>
+          </div>
         </div>
-      </div>
 
-      {/* Obligaciones de pago */}
-      {pagos.length > 0 && (
-        <div className="bg-white rounded-2xl border border-red-200 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 bg-red-50 border-b border-red-100">
-            <h2 className="text-xs font-bold text-red-600 uppercase tracking-widest flex items-center gap-2">
-              <Shield size={13} /> Obligaciones de pago ({pagos.length})
-            </h2>
-            <span className="text-xs text-red-400">
-              {pagos.filter(p => p.estado === 'Pagado').length} de {pagos.length} pagados
+        {/* Línea de metadata */}
+        <div className="px-5 pb-2 flex flex-wrap items-center gap-2">
+          {expediente.numero_expediente
+            ? <span className="font-mono px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[11px]">{expediente.numero_expediente}</span>
+            : <span className="px-2 py-0.5 rounded-md border border-dashed border-gray-200 text-gray-300 text-[11px]">Sin número</span>}
+          <span className="capitalize px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 text-[11px]">{expediente.tipo_instrumento}</span>
+          {expediente.entidad_nombre
+            ? <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[11px]">{expediente.entidad_nombre}</span>
+            : <span className="px-2 py-0.5 rounded-md border border-dashed border-gray-200 text-gray-300 text-[11px]">Sin entidad</span>}
+          {expediente.responsable_nombre
+            ? <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[11px]">{expediente.responsable_nombre}</span>
+            : <span className="px-2 py-0.5 rounded-md border border-dashed border-gray-200 text-gray-300 text-[11px]">Sin responsable</span>}
+          {expediente.proyecto_nombre
+            ? <span className="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 text-[11px]">{expediente.proyecto_nombre}</span>
+            : <span className="px-2 py-0.5 rounded-md border border-dashed border-gray-200 text-gray-300 text-[11px]">Sin proyecto</span>}
+          {analisis?.nivel_riesgo && (
+            <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${analisis.nivel_riesgo === 'Crítico' || analisis.nivel_riesgo === 'Alto' ? 'bg-red-50 text-red-500' : analisis.nivel_riesgo === 'Medio' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-600'}`}>
+              Riesgo {analisis.nivel_riesgo}
             </span>
-          </div>
-          <div className="divide-y divide-red-50">
-            {pagos.map(p => (
-              <div key={p.id} className={`flex items-start gap-4 px-5 py-4 transition-colors ${p.estado === 'Pagado' ? 'bg-green-50/50' : ''}`}>
-                <button
-                  onClick={async () => {
-                    const nuevoEstado = p.estado === 'Pagado' ? 'Pendiente' : 'Pagado';
-                    try {
-                      await apiService.patch(`/ambiental/expedientes/${id}/pagos/${p.id}`, { estado: nuevoEstado });
-                      setPagos(prev => prev.map(x => x.id === p.id ? { ...x, estado: nuevoEstado } : x));
-                    } catch {
-                      toast.error('Error al actualizar el estado del pago');
-                    }
-                  }}
-                  className={`mt-0.5 shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                    p.estado === 'Pagado'
-                      ? 'bg-green-500 border-green-500 text-white'
-                      : 'border-red-300 hover:border-red-500'
-                  }`}
-                >
-                  {p.estado === 'Pagado' && <Check size={11} />}
-                </button>
-                <div className="flex-1 min-w-0">
-                  {p.descripcion && <p className="text-xs text-gray-500 mb-0.5">{p.descripcion}</p>}
-                  <p className={`text-base font-black ${p.estado === 'Pagado' ? 'text-green-700 line-through' : 'text-red-700'}`}>
-                    {p.valor}
-                  </p>
-                  {p.plazo && (
-                    <p className={`text-xs mt-0.5 ${p.estado === 'Pagado' ? 'text-gray-400' : 'text-red-500 font-semibold'}`}>
-                      {p.plazo}
-                    </p>
-                  )}
-                  {p.nota && (
-                    <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 mt-1.5 leading-relaxed">
-                      {p.nota}
-                    </p>
-                  )}
-                </div>
-                <span className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  p.estado === 'Pagado' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                }`}>
-                  {p.estado}
-                </span>
+          )}
+        </div>
+
+
+        {/* Acordeón */}
+        <button
+          onClick={async () => {
+            const next = !detallesAbiertos;
+            setDetallesAbiertos(next);
+            if (next) {
+              try {
+                const { data } = await apiService.get(`/ambiental/expedientes/${id}/pagos/inactivos`);
+                setPagosInactivos(data);
+              } catch { /* silencioso */ }
+            }
+          }}
+          className="w-full flex items-center justify-between px-5 py-2 border-t border-gray-100 text-xs text-gray-400 hover:text-green-700 hover:bg-gray-50 transition-colors"
+        >
+          <span>Editar detalles</span>
+          <ChevronDown size={13} className={`transition-transform ${detallesAbiertos ? 'rotate-180' : ''}`} />
+        </button>
+
+        {detallesAbiertos && (
+          <div className="border-t border-gray-100 px-5 py-4 space-y-4 bg-gray-50/40">
+            {/* Estado */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-gray-400 w-20 shrink-0">Estado</span>
+              <div className="flex flex-wrap gap-1.5">
+                {ESTADOS.map(e => (
+                  <button key={e} onClick={() => setCambioEstado(e)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${cambioEstado === e ? 'bg-green-700 text-white' : 'bg-white border border-gray-200 text-gray-500 hover:border-green-400 hover:text-green-700'}`}>
+                    {e}
+                  </button>
+                ))}
+                {cambioEstado !== expediente.estado && (
+                  <button onClick={handleCambiarEstado} disabled={guardandoEstado}
+                    className="px-3 py-1 rounded-lg text-xs font-semibold bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 flex items-center gap-1.5 transition-colors">
+                    {guardandoEstado ? <Loader size={11} className="animate-spin" /> : <Check size={11} />} Guardar
+                  </button>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
-      )}
+            </div>
 
-      {/* Info principal — qué ordena / recurso / plazo */}
-      {(expediente.que_ordena || expediente.admite_recurso || expediente.plazo_respuesta) && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="md:col-span-1 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Shield size={12} /> Admite recurso
-            </p>
-            <p className={`text-xl font-black ${
-              expediente.admite_recurso === 'Sí' ? 'text-green-700' :
-              expediente.admite_recurso === 'No' ? 'text-red-600' : 'text-yellow-600'
-            }`}>{expediente.admite_recurso || '—'}</p>
-          </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5">
-            <p className="text-xs font-bold text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Clock size={12} /> Plazo de respuesta
-            </p>
-            <p className="text-base font-bold text-amber-800">{expediente.plazo_respuesta || '—'}</p>
-          </div>
-          <div className="bg-white border border-gray-100 rounded-2xl p-5">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
-              <Calendar size={12} /> Fecha de vencimiento
-            </p>
-            {expediente.fecha_vencimiento ? (
-              <p className="text-base font-bold text-gray-800">
-                {new Date(expediente.fecha_vencimiento).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}
-              </p>
-            ) : (
-              <p className="text-xs text-gray-400 italic mb-2">Sin calcular — se llena al guardar el análisis LLM</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {/* Entidad */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <Building2 size={10} /> Entidad
+                  {!editandoEntidad && <button onClick={() => { setEntidadSeleccionada(expediente.entidad_id || ''); setEditandoEntidad(true); }} className="ml-1 text-green-600 hover:text-green-800"><Pencil size={10} /></button>}
+                </p>
+                {editandoEntidad ? (
+                  <div className="space-y-2">
+                    <SearchableSelect options={entidades} value={entidadSeleccionada} onChange={setEntidadSeleccionada} placeholder="Buscar entidad..." />
+                    <div className="flex gap-2">
+                      <button onClick={handleGuardarEntidad} disabled={guardandoEntidad || !entidadSeleccionada} className="flex-1 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50">{guardandoEntidad ? 'Guardando…' : 'Guardar'}</button>
+                      <button onClick={() => setEditandoEntidad(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-white">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm font-semibold text-gray-700">{expediente.entidad_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}</p>
+                )}
+              </div>
+
+              {/* Responsable */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  Responsable
+                  {!editandoResponsable && <button onClick={() => { setResponsableSeleccionado(expediente.responsable_uuid || ''); setEditandoResponsable(true); }} className="ml-1 text-green-600 hover:text-green-800"><Pencil size={10} /></button>}
+                </p>
+                {editandoResponsable ? (
+                  <div className="space-y-2">
+                    <SearchableSelect options={usuarios} value={responsableSeleccionado} onChange={setResponsableSeleccionado} placeholder="Buscar responsable..." />
+                    <div className="flex gap-2">
+                      <button onClick={async () => { setGuardandoResponsable(true); try { await apiService.patch(`/ambiental/expedientes/${id}`, { responsable_uuid: responsableSeleccionado || null }); const u = usuarios.find(u => u.value === responsableSeleccionado); setExpediente(prev => ({ ...prev, responsable_uuid: responsableSeleccionado || null, responsable_nombre: u?.label || null })); setEditandoResponsable(false); toast.success('Responsable actualizado'); } catch { toast.error('Error al guardar'); } finally { setGuardandoResponsable(false); } }} disabled={guardandoResponsable} className="flex-1 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50">{guardandoResponsable ? 'Guardando…' : 'Guardar'}</button>
+                      <button onClick={() => setEditandoResponsable(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-white">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm font-semibold text-gray-700">{expediente.responsable_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}</p>
+                )}
+              </div>
+
+              {/* Proyecto */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  Proyecto
+                  {!editandoProyecto && <button onClick={() => { setProyectoSeleccionado(expediente.proyecto_id || ''); setEditandoProyecto(true); }} className="ml-1 text-green-600 hover:text-green-800"><Pencil size={10} /></button>}
+                </p>
+                {editandoProyecto ? (
+                  <div className="space-y-2">
+                    <SearchableSelect options={proyectos} value={proyectoSeleccionado} onChange={setProyectoSeleccionado} placeholder="Buscar proyecto..." />
+                    <div className="flex gap-2">
+                      <button onClick={async () => { setGuardandoProyecto(true); try { await apiService.patch(`/ambiental/expedientes/${id}`, { proyecto_id: proyectoSeleccionado ? Number(proyectoSeleccionado) : null }); const p = proyectos.find(p => String(p.value) === String(proyectoSeleccionado)); setExpediente(prev => ({ ...prev, proyecto_id: proyectoSeleccionado ? Number(proyectoSeleccionado) : null, proyecto_nombre: p?.label || null })); setEditandoProyecto(false); toast.success('Proyecto actualizado'); } catch { toast.error('Error al guardar'); } finally { setGuardandoProyecto(false); } }} disabled={guardandoProyecto} className="flex-1 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50">{guardandoProyecto ? 'Guardando…' : 'Guardar'}</button>
+                      <button onClick={() => setEditandoProyecto(false)} className="px-3 py-1.5 text-xs border border-gray-200 rounded-lg text-gray-600 hover:bg-white">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm font-semibold text-gray-700">{expediente.proyecto_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}</p>
+                )}
+              </div>
+
+              {/* Título */}
+              <div className="col-span-2 md:col-span-3">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Título</p>
+                <input type="text" className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:ring-2 focus:ring-green-600"
+                  defaultValue={expediente.titulo || ''}
+                  onBlur={async (e) => {
+                    const val = e.target.value.trim();
+                    if (!val || val === expediente.titulo) return;
+                    try { await apiService.patch(`/ambiental/expedientes/${id}`, { titulo: val }); setExpediente(prev => ({ ...prev, titulo: val })); toast.success('Título actualizado'); } catch { toast.error('Error al guardar'); }
+                  }} />
+              </div>
+
+              {/* Número de expediente */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">N° Expediente</p>
+                <input type="text" className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:ring-2 focus:ring-green-600 font-mono"
+                  defaultValue={expediente.numero_expediente || ''}
+                  placeholder="Ej. EXP-2024-001"
+                  onBlur={async (e) => {
+                    const val = e.target.value.trim();
+                    if (val === (expediente.numero_expediente || '')) return;
+                    try { await apiService.patch(`/ambiental/expedientes/${id}`, { numero_expediente: val || null }); setExpediente(prev => ({ ...prev, numero_expediente: val || null })); toast.success('Número actualizado'); } catch { toast.error('Error al guardar'); }
+                  }} />
+              </div>
+
+              {/* Fecha documento */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5"><Calendar size={10} className="inline mr-1" />Fecha documento</p>
+                <input type="date" className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:ring-2 focus:ring-green-600"
+                  defaultValue={expediente.fecha_documento?.split('T')[0] || ''}
+                  onBlur={async (e) => {
+                    const val = e.target.value;
+                    if (val === (expediente.fecha_documento?.split('T')[0] || '')) return;
+                    try { await apiService.patch(`/ambiental/expedientes/${id}`, { fecha_documento: val || null }); setExpediente(prev => ({ ...prev, fecha_documento: val || null })); toast.success('Fecha actualizada'); } catch { toast.error('Error al guardar'); }
+                  }} />
+              </div>
+
+              {/* Fecha vencimiento */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5"><Calendar size={10} className="inline mr-1" />Fecha vencimiento</p>
+                <input type="date" className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:ring-2 focus:ring-green-600"
+                  defaultValue={expediente.fecha_vencimiento?.split('T')[0] || ''}
+                  onBlur={async (e) => {
+                    const val = e.target.value;
+                    if (!val) return;
+                    try { await apiService.patch(`/ambiental/expedientes/${id}`, { fecha_vencimiento: val }); await cargarDatos(); toast.success('Fecha actualizada'); } catch { toast.error('Error al guardar'); }
+                  }} />
+              </div>
+
+              {/* Registrado */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Registrado</p>
+                <p className="text-sm font-semibold text-gray-700">{new Date(expediente.created_at).toLocaleDateString('es-CO')}</p>
+              </div>
+            </div>
+
+            {/* Pagos inactivos */}
+            {pagosInactivos.length > 0 && (
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Pagos desactivados</p>
+                <div className="space-y-1.5">
+                  {pagosInactivos.map(p => (
+                    <div key={p.id} className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 line-through flex-1">
+                        <strong>{p.valor}</strong>{p.descripcion ? ` · ${p.descripcion}` : ''}
+                      </span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data } = await apiService.patch(`/ambiental/expedientes/${id}/pagos/${p.id}/reactivar`);
+                            setPagosInactivos(prev => prev.filter(x => x.id !== p.id));
+                            setPagos(prev => [...prev, data]);
+                            toast.success('Pago reactivado');
+                          } catch { toast.error('Error al reactivar'); }
+                        }}
+                        className="text-[11px] text-green-600 hover:text-green-800 font-semibold shrink-0 transition-colors"
+                      >
+                        Restaurar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
-            <input
-              type="date"
-              className="mt-2 w-full border border-gray-200 rounded-lg px-3 py-1.5 text-xs outline-none focus:ring-2 focus:ring-green-600"
-              defaultValue={expediente.fecha_vencimiento?.split('T')[0] || ''}
-              onBlur={async (e) => {
-                const val = e.target.value;
-                if (!val) return;
-                try {
-                  await apiService.patch(`/ambiental/expedientes/${id}`, { fecha_vencimiento: val });
-                  await cargarDatos();
-                  toast.success('Fecha de vencimiento actualizada');
-                } catch {
-                  toast.error('Error al guardar la fecha');
-                }
-              }}
-            />
+
+            {/* Obligaciones de pago */}
+            {pagos.length > 0 && (
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                  <Shield size={10} /> Obligaciones de pago
+                  <span className={`ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold ${pagos.some(p => p.estado === 'Pendiente') ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                    {pagos.filter(p => p.estado === 'Pagado').length}/{pagos.length} pagados
+                  </span>
+                </p>
+                <div className="space-y-2">
+                  {pagos.map(p => (
+                    <div key={p.id} className="flex items-center gap-3">
+                      <button onClick={async () => { const nuevoEstado = p.estado === 'Pagado' ? 'Pendiente' : 'Pagado'; try { await apiService.patch(`/ambiental/expedientes/${id}/pagos/${p.id}`, { estado: nuevoEstado }); setPagos(prev => prev.map(x => x.id === p.id ? { ...x, estado: nuevoEstado } : x)); } catch { toast.error('Error al actualizar el pago'); } }}
+                        className={`shrink-0 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${p.estado === 'Pagado' ? 'bg-green-500 border-green-500 text-white' : 'border-red-300 hover:border-red-500'}`}>
+                        {p.estado === 'Pagado' && <Check size={9} />}
+                      </button>
+                      <span className={`text-xs flex-1 ${p.estado === 'Pagado' ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                        <strong>{formatearValor(p.valor)}</strong>{p.descripcion ? ` · ${p.descripcion}` : ''}{p.plazo ? ` · ${p.plazo}` : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
-
-      {expediente.que_ordena && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Qué ordena</p>
-          <p className="text-sm text-gray-700 leading-relaxed">{expediente.que_ordena}</p>
-        </div>
-      )}
-
-      {/* Cambiar estado */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-wrap items-center gap-3">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-2">Estado:</p>
-        {ESTADOS.map(e => (
-          <button
-            key={e}
-            onClick={() => setCambioEstado(e)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-              cambioEstado === e
-                ? 'bg-green-700 text-white'
-                : 'bg-gray-100 text-gray-500 hover:bg-green-50 hover:text-green-700'
-            }`}
-          >
-            {e}
-          </button>
-        ))}
-        {cambioEstado !== expediente.estado && (
-          <button
-            onClick={handleCambiarEstado}
-            disabled={guardandoEstado}
-            className="ml-auto flex items-center gap-1.5 bg-green-700 text-white px-4 py-1.5 rounded-xl text-xs font-bold hover:bg-green-800 disabled:opacity-50 transition-colors"
-          >
-            {guardandoEstado ? <Loader size={12} className="animate-spin" /> : null}
-            Guardar estado
-          </button>
         )}
       </div>
 
-      {/* Metadatos adicionales */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-        <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Detalles del expediente</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
-              <Building2 size={11} /> Entidad
-              {!editandoEntidad && (
-                <button
-                  onClick={() => { setEntidadSeleccionada(expediente.entidad_id || ''); setEditandoEntidad(true); }}
-                  className="ml-1 text-green-600 hover:text-green-800 transition-colors"
-                  title="Editar entidad"
-                >
-                  <Pencil size={11} />
-                </button>
-              )}
-            </p>
-            {editandoEntidad ? (
-              <div className="flex flex-col gap-2">
-                <SearchableSelect
-                  options={entidades}
-                  value={entidadSeleccionada}
-                  onChange={setEntidadSeleccionada}
-                  placeholder="Buscar entidad..."
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleGuardarEntidad}
-                    disabled={guardandoEntidad || !entidadSeleccionada}
-                    className="flex-1 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
-                  >
-                    {guardandoEntidad ? 'Guardando…' : 'Guardar'}
-                  </button>
-                  <button
-                    onClick={() => setEditandoEntidad(false)}
-                    className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="font-semibold text-gray-700">{expediente.entidad_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}</p>
-            )}
-          </div>
-          {/* Responsable */}
-          <div>
-            <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
-              Responsable
-              {!editandoResponsable && (
-                <button
-                  onClick={() => { setResponsableSeleccionado(expediente.responsable_uuid || ''); setEditandoResponsable(true); }}
-                  className="ml-1 text-green-600 hover:text-green-800 transition-colors"
-                >
-                  <Pencil size={11} />
-                </button>
-              )}
-            </p>
-            {editandoResponsable ? (
-              <div className="flex flex-col gap-2">
-                <SearchableSelect
-                  options={usuarios}
-                  value={responsableSeleccionado}
-                  onChange={setResponsableSeleccionado}
-                  placeholder="Buscar responsable..."
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={async () => {
-                      setGuardandoResponsable(true);
-                      try {
-                        await apiService.patch(`/ambiental/expedientes/${id}`, { responsable_uuid: responsableSeleccionado || null });
-                        const u = usuarios.find(u => u.value === responsableSeleccionado);
-                        setExpediente(prev => ({ ...prev, responsable_uuid: responsableSeleccionado || null, responsable_nombre: u?.label || null }));
-                        setEditandoResponsable(false);
-                        toast.success('Responsable actualizado');
-                      } catch {
-                        toast.error('Error al guardar el responsable');
-                      } finally {
-                        setGuardandoResponsable(false);
-                      }
-                    }}
-                    disabled={guardandoResponsable}
-                    className="flex-1 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
-                  >
-                    {guardandoResponsable ? 'Guardando…' : 'Guardar'}
-                  </button>
-                  <button
-                    onClick={() => setEditandoResponsable(false)}
-                    className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="font-semibold text-gray-700 text-sm">
-                {expediente.responsable_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}
+      {/* ── Card recurso / vencimiento ───────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* ¿Admite recurso? */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">¿Admite recurso?</p>
+          {expediente.admite_recurso ? (
+            <>
+              <p className={`text-2xl font-black ${expediente.admite_recurso === 'Sí' ? 'text-green-600' : expediente.admite_recurso === 'No' ? 'text-red-500' : 'text-yellow-600'}`}>
+                {expediente.admite_recurso}
               </p>
-            )}
-          </div>
-
-          {/* Proyecto */}
-          <div>
-            <p className="text-xs text-gray-400 flex items-center gap-1 mb-1">
-              Proyecto
-              {!editandoProyecto && (
-                <button
-                  onClick={() => { setProyectoSeleccionado(expediente.proyecto_id || ''); setEditandoProyecto(true); }}
-                  className="ml-1 text-green-600 hover:text-green-800 transition-colors"
-                >
-                  <Pencil size={11} />
-                </button>
+              {expediente.plazo_respuesta && (
+                <p className="text-xs text-gray-400 mt-1">{expediente.plazo_respuesta}</p>
               )}
-            </p>
-            {editandoProyecto ? (
-              <div className="flex flex-col gap-2">
-                <SearchableSelect
-                  options={proyectos}
-                  value={proyectoSeleccionado}
-                  onChange={setProyectoSeleccionado}
-                  placeholder="Buscar proyecto..."
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={async () => {
-                      setGuardandoProyecto(true);
-                      try {
-                        await apiService.patch(`/ambiental/expedientes/${id}`, { proyecto_id: proyectoSeleccionado ? Number(proyectoSeleccionado) : null });
-                        const p = proyectos.find(p => String(p.value) === String(proyectoSeleccionado));
-                        setExpediente(prev => ({ ...prev, proyecto_id: proyectoSeleccionado ? Number(proyectoSeleccionado) : null, proyecto_nombre: p?.label || null }));
-                        setEditandoProyecto(false);
-                        toast.success('Proyecto actualizado');
-                      } catch {
-                        toast.error('Error al guardar el proyecto');
-                      } finally {
-                        setGuardandoProyecto(false);
-                      }
-                    }}
-                    disabled={guardandoProyecto}
-                    className="flex-1 py-1.5 text-xs font-semibold bg-green-700 text-white rounded-lg hover:bg-green-800 disabled:opacity-50 transition-colors"
-                  >
-                    {guardandoProyecto ? 'Guardando…' : 'Guardar'}
-                  </button>
-                  <button
-                    onClick={() => setEditandoProyecto(false)}
-                    className="px-3 py-1.5 text-xs font-semibold border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="font-semibold text-gray-700 text-sm">
-                {expediente.proyecto_nombre || <span className="text-gray-400 italic text-xs">Sin asignar</span>}
-              </p>
-            )}
-          </div>
+            </>
+          ) : (
+            <p className="text-sm text-gray-300 italic">Sin analizar</p>
+          )}
+        </div>
 
-          <div>
-            <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5"><Calendar size={11} /> Fecha documento</p>
-            <input
-              type="date"
-              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-green-600"
-              defaultValue={expediente.fecha_documento?.split('T')[0] || ''}
-              onBlur={async (e) => {
-                const val = e.target.value;
-                const anterior = expediente.fecha_documento?.split('T')[0] || '';
-                if (val === anterior) return;
-                try {
-                  await apiService.patch(`/ambiental/expedientes/${id}`, { fecha_documento: val || null });
-                  setExpediente(prev => ({ ...prev, fecha_documento: val || null }));
-                  toast.success('Fecha del documento actualizada');
-                } catch {
-                  toast.error('Error al guardar la fecha');
-                }
-              }}
-            />
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 flex items-center gap-1 mb-0.5"><Calendar size={11} /> Registrado</p>
-            <p className="font-semibold text-gray-700">
-              {new Date(expediente.created_at).toLocaleDateString('es-CO')}
-            </p>
-          </div>
+        {/* Vencimiento */}
+        <div className={`rounded-2xl border shadow-sm px-5 py-4 ${
+          expediente.fecha_vencimiento
+            ? (() => {
+                const dias = Math.ceil((new Date(expediente.fecha_vencimiento) - new Date()) / 86400000);
+                return dias < 0 ? 'bg-red-50 border-red-200' : dias <= 7 ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-100';
+              })()
+            : 'bg-white border-gray-100'
+        }`}>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Vencimiento</p>
+          {expediente.fecha_vencimiento ? (() => {
+            const dias = Math.ceil((new Date(expediente.fecha_vencimiento) - new Date()) / 86400000);
+            const vencido = dias < 0;
+            return (
+              <>
+                <p className={`text-2xl font-black ${vencido ? 'text-red-600' : dias <= 7 ? 'text-orange-600' : 'text-gray-700'}`}>
+                  {vencido ? `−${Math.abs(dias)}d` : `${dias}d`}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {new Date(expediente.fecha_vencimiento).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
+              </>
+            );
+          })() : (
+            <p className="text-sm text-gray-300 italic">Sin fecha</p>
+          )}
         </div>
       </div>
 
-      {/* Tabs de navegación */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {[
-          { key: 'analisis', label: 'Análisis' },
-          { key: 'documento', label: 'Texto del documento' },
-          { key: 'llm', label: analisis ? 'Actualizar análisis' : 'Pegar respuesta LLM' },
-          ...(analisis ? [{ key: 'recurso', label: 'Redactar recurso' }] : []),
-          { key: 'respuesta', label: 'Respuesta entidad' },
-        ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              tab === t.key
-                ? 'bg-white text-green-700 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      {/* ── Obligaciones de pago ─────────────────────────────────────────── */}
+      {pagos.length > 0 && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-3">
+          <div className="flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-gray-400 flex items-center gap-1.5 shrink-0">
+              <Shield size={12} /> Pagos
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${pagos.some(p => p.estado === 'Pendiente') ? 'bg-red-100 text-red-500' : 'bg-green-100 text-green-600'}`}>
+                {pagos.filter(p => p.estado === 'Pagado').length}/{pagos.length}
+              </span>
+            </span>
+            <div className="w-px h-4 bg-gray-100 shrink-0" />
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {pagos.map(p => (
+                <div key={p.id} className="flex items-center gap-1.5 group">
+                  <button
+                    onClick={async () => {
+                      const nuevoEstado = p.estado === 'Pagado' ? 'Pendiente' : 'Pagado';
+                      try { await apiService.patch(`/ambiental/expedientes/${id}/pagos/${p.id}`, { estado: nuevoEstado }); setPagos(prev => prev.map(x => x.id === p.id ? { ...x, estado: nuevoEstado } : x)); }
+                      catch { toast.error('Error al actualizar el pago'); }
+                    }}
+                    className={`flex items-center gap-1.5 text-xs transition-all ${p.estado === 'Pagado' ? 'text-gray-400 line-through' : 'text-gray-600 hover:text-green-700'}`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-all ${p.estado === 'Pagado' ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300'}`}>
+                      {p.estado === 'Pagado' && <Check size={8} />}
+                    </span>
+                    <span className="font-semibold">{formatearValor(p.valor)}</span>
+                    {p.descripcion && <span className="text-gray-400 hidden sm:inline">· {p.descripcion}</span>}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try { await apiService.delete(`/ambiental/expedientes/${id}/pagos/${p.id}`); setPagos(prev => prev.filter(x => x.id !== p.id)); }
+                      catch { toast.error('Error al desactivar el pago'); }
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all ml-0.5"
+                    title="No aplica"
+                  >
+                    <span className="text-[11px] leading-none">×</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Stepper ──────────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4">
+        <div className="flex items-start">
+          {pasos.map((paso, i) => {
+            const isActive = tab === paso.key;
+            const isDone   = paso.done;
+            const isLast   = i === pasos.length - 1;
+            return (
+              <div key={paso.key} className="flex-1 flex items-start">
+                {/* Paso */}
+                <button
+                  onClick={() => setTab(paso.key)}
+                  className="flex flex-col items-center gap-1.5 w-full group"
+                >
+                  {/* Círculo + línea conectora */}
+                  <div className="flex items-center w-full">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-all border-2 ${
+                      isActive ? 'border-green-700 bg-green-700 text-white' :
+                      isDone   ? 'border-green-600 bg-green-50 text-green-700' :
+                                 'border-gray-200 bg-white text-gray-400'
+                    }`}>
+                      {isDone && !isActive ? <Check size={12} /> : paso.num}
+                    </div>
+                    {!isLast && (
+                      <div className={`flex-1 h-px mx-2 ${isDone ? 'bg-green-300' : 'bg-gray-200'}`} />
+                    )}
+                  </div>
+                  {/* Label */}
+                  <div className="text-left w-full pl-0.5">
+                    <p className={`text-xs font-bold leading-none ${isActive ? 'text-green-700' : isDone ? 'text-green-600' : 'text-gray-400'}`}>
+                      {paso.label}
+                    </p>
+                    {paso.optional && !isDone && (
+                      <p className="text-[10px] text-gray-300 mt-0.5">opcional</p>
+                    )}
+                  </div>
+                </button>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* TAB: Análisis LLM */}
       {tab === 'analisis' && analisis && (
         <div className="space-y-4">
+
           {/* Resumen ejecutivo */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                 <Zap size={13} /> Resumen ejecutivo
               </h2>
-              {(expediente.secciones_analizadas?.length > 1 || analisis.resumen?.includes('[Sección adicional]')) && (
+              {analisis.resumen?.includes('[Sección adicional]') && (
                 <button
                   onClick={() => setMostrarConsolidar(v => !v)}
                   className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
@@ -1117,58 +1174,55 @@ export default function DetalleExpediente() {
             </div>
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{analisis.resumen}</p>
 
-            {mostrarConsolidar && (() => {
-              const promptConsolidar = `Tengo los siguientes resúmenes parciales de un instrumento ambiental, generados sección por sección. Necesito que los consolides en UN ÚNICO resumen ejecutivo coherente, en 3-5 oraciones, eliminando repeticiones y contradicciones. Responde ÚNICAMENTE con el texto del resumen consolidado, sin prefijos ni explicaciones.\n\nRESÚMENES PARCIALES:\n${analisis.resumen}`;
-              return (
-                <div className="border-t border-amber-100 pt-3 space-y-3">
-                  <p className="text-xs text-amber-700 font-semibold">
-                    Copia este prompt, pégalo en tu herramienta de IA y pega el resultado abajo:
-                  </p>
-                  <div className="relative">
-                    <div className="bg-gray-900 text-green-300 text-xs font-mono p-4 rounded-xl max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed pr-16">
-                      {promptConsolidar}
-                    </div>
-                    <button
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(promptConsolidar);
-                        toast.success('Prompt de consolidación copiado');
-                      }}
-                      className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded-lg flex items-center gap-1"
-                    >
-                      <Copy size={11} /> Copiar
-                    </button>
+            {mostrarConsolidar && (
+              <div className="border-t border-amber-100 pt-3 space-y-3">
+                <p className="text-xs text-amber-700 font-semibold">
+                  Copia este prompt, pégalo en tu herramienta de IA y pega el resultado abajo:
+                </p>
+                <div className="relative">
+                  <div className="bg-gray-900 text-green-300 text-xs font-mono p-4 rounded-xl max-h-36 overflow-y-auto whitespace-pre-wrap leading-relaxed pr-16">
+                    {`Tengo los siguientes resúmenes parciales de un instrumento ambiental, generados sección por sección. Necesito que los consolides en UN ÚNICO resumen ejecutivo coherente, en 3-5 oraciones, eliminando repeticiones y contradicciones. Responde ÚNICAMENTE con el texto del resumen consolidado, sin prefijos ni explicaciones.\n\nRESÚMENES PARCIALES:\n${analisis.resumen}`}
                   </div>
-                  <textarea
-                    className="w-full h-28 border border-amber-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-amber-400 resize-none"
-                    placeholder="Pega aquí el resumen consolidado que te dio el LLM..."
-                    value={resumenConsolidado}
-                    onChange={e => setResumenConsolidado(e.target.value)}
-                  />
                   <button
                     onClick={async () => {
-                      if (!resumenConsolidado.trim()) return toast.error('Pega el resumen primero.');
-                      setGuardandoResumen(true);
-                      try {
-                        await apiService.patch(`/ambiental/expedientes/${id}/analisis/resumen`, { resumen: resumenConsolidado });
-                        toast.success('Resumen consolidado guardado');
-                        setMostrarConsolidar(false);
-                        setResumenConsolidado('');
-                        await cargarDatos();
-                      } catch {
-                        toast.error('Error al guardar el resumen');
-                      } finally {
-                        setGuardandoResumen(false);
-                      }
+                      await navigator.clipboard.writeText(`Tengo los siguientes resúmenes parciales de un instrumento ambiental, generados sección por sección. Necesito que los consolides en UN ÚNICO resumen ejecutivo coherente, en 3-5 oraciones, eliminando repeticiones y contradicciones. Responde ÚNICAMENTE con el texto del resumen consolidado, sin prefijos ni explicaciones.\n\nRESÚMENES PARCIALES:\n${analisis.resumen}`);
+                      toast.success('Prompt de consolidación copiado');
                     }}
-                    disabled={guardandoResumen || !resumenConsolidado.trim()}
-                    className="flex items-center gap-2 bg-amber-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-amber-700 disabled:opacity-50 transition-colors text-sm"
+                    className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white text-xs px-2 py-1 rounded-lg flex items-center gap-1"
                   >
-                    {guardandoResumen ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
-                    Guardar resumen consolidado
+                    <Copy size={11} /> Copiar
                   </button>
                 </div>
-              );
-            })()}
+                <textarea
+                  className="w-full h-28 border border-amber-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                  placeholder="Pega aquí el resumen consolidado que te dio el LLM..."
+                  value={resumenConsolidado}
+                  onChange={e => setResumenConsolidado(e.target.value)}
+                />
+                <button
+                  onClick={async () => {
+                    if (!resumenConsolidado.trim()) return toast.error('Pega el resumen primero.');
+                    setGuardandoResumen(true);
+                    try {
+                      await apiService.patch(`/ambiental/expedientes/${id}/analisis/resumen`, { resumen: resumenConsolidado });
+                      toast.success('Resumen consolidado guardado');
+                      setMostrarConsolidar(false);
+                      setResumenConsolidado('');
+                      await cargarDatos();
+                    } catch {
+                      toast.error('Error al guardar el resumen');
+                    } finally {
+                      setGuardandoResumen(false);
+                    }
+                  }}
+                  disabled={guardandoResumen || !resumenConsolidado.trim()}
+                  className="flex items-center gap-2 bg-amber-600 text-white px-5 py-2 rounded-xl font-bold hover:bg-amber-700 disabled:opacity-50 transition-colors text-sm"
+                >
+                  {guardandoResumen ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
+                  Guardar resumen consolidado
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Hallazgos */}
@@ -1227,10 +1281,16 @@ export default function DetalleExpediente() {
 
       {/* TAB: Sin análisis aún */}
       {tab === 'analisis' && !analisis && (
-        <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
-          <Zap size={32} className="mx-auto text-gray-200 mb-3" />
-          <p className="font-bold text-gray-400">Sin análisis todavía</p>
-          <p className="text-xs text-gray-400 mt-1">Sube un documento, copia el prompt y pega la respuesta en la pestaña <strong>Pegar respuesta LLM</strong>.</p>
+        <div className="bg-white rounded-2xl border border-dashed border-gray-200 p-10 flex flex-col items-center gap-4">
+          <Zap size={32} className="text-gray-200" />
+          <div className="text-center">
+            <p className="font-bold text-gray-400">Sin análisis todavía</p>
+            <p className="text-xs text-gray-400 mt-1">Ve al paso <strong>Analizar</strong> para generar el prompt y guardar los resultados.</p>
+          </div>
+          <button onClick={() => setTab('llm')}
+            className="flex items-center gap-2 bg-green-700 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-800 transition-colors text-sm">
+            <Zap size={14} /> Ir a Analizar
+          </button>
         </div>
       )}
 
@@ -1238,14 +1298,14 @@ export default function DetalleExpediente() {
       {tab === 'documento' && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-              Texto extraído del documento
-              {paginasTexto.length > 1 && (
-                <span className="ml-2 font-normal text-gray-400 normal-case tracking-normal">
-                  — {paginasTexto.length} secciones · {(expediente.contenido_texto.length / 1000).toFixed(0)}k caracteres
-                </span>
+            <div>
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Texto extraído</h2>
+              {expediente.contenido_texto && (
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  {(expediente.contenido_texto.length / 1000).toFixed(0)}k caracteres
+                </p>
               )}
-            </h2>
+            </div>
             <button
               onClick={() => fileRef.current?.click()}
               disabled={procesandoArchivo}
@@ -1257,63 +1317,16 @@ export default function DetalleExpediente() {
           </div>
           <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={handleProcesarArchivo} />
 
-          {paginasTexto.length === 0 ? (
+          {!expediente.contenido_texto ? (
             <p className="text-xs text-gray-400 italic py-8 text-center">
               No hay texto extraído. Sube un archivo PDF, DOCX o TXT para extraer el contenido.
             </p>
           ) : (
-            <>
-              {/* Navegación entre secciones */}
-              {paginasTexto.length > 1 && (
-                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-2.5">
-                  <button
-                    onClick={() => setPaginaTexto(p => Math.max(0, p - 1))}
-                    disabled={paginaTexto === 0}
-                    className="flex items-center gap-1 text-xs font-bold text-green-700 disabled:opacity-30 hover:text-green-900 transition-colors"
-                  >
-                    <ChevronLeftIcon size={14} /> Anterior
-                  </button>
-                  <div className="text-center">
-                    <span className="text-xs font-bold text-green-800">
-                      Sección {paginaTexto + 1} de {paginasTexto.length}
-                    </span>
-                    <span className="block text-[10px] text-green-600">
-                      caracteres {(paginaTexto * CHARS_POR_PAGINA + 1).toLocaleString()} – {Math.min((paginaTexto + 1) * CHARS_POR_PAGINA, expediente.contenido_texto.length).toLocaleString()}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setPaginaTexto(p => Math.min(paginasTexto.length - 1, p + 1))}
-                    disabled={paginaTexto === paginasTexto.length - 1}
-                    className="flex items-center gap-1 text-xs font-bold text-green-700 disabled:opacity-30 hover:text-green-900 transition-colors"
-                  >
-                    Siguiente <ChevronRight size={14} />
-                  </button>
-                </div>
+            <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 text-sm text-gray-800 leading-7 max-h-[500px] overflow-y-auto space-y-3">
+              {expediente.contenido_texto.split(/\n\n+/).map((parrafo, i) =>
+                parrafo.trim() ? <p key={i}>{parrafo.replace(/\n/g, ' ').trim()}</p> : null
               )}
-
-              {/* Texto de la sección actual */}
-              <div className="bg-gray-50 border border-gray-100 rounded-xl p-5 text-sm text-gray-800 leading-7 max-h-[500px] overflow-y-auto space-y-3">
-                {(paginasTexto[paginaTexto] || '').split(/\n\n+/).map((parrafo, i) =>
-                  parrafo.trim()
-                    ? <p key={i}>{parrafo.replace(/\n/g, ' ').trim()}</p>
-                    : null
-                )}
-              </div>
-
-              {/* Botón generar prompt para esta sección */}
-              <button
-                onClick={() => handleGenerarPromptSeccion(paginasTexto[paginaTexto])}
-                disabled={generandoPrompt}
-                className="flex items-center gap-2 bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-green-800 disabled:opacity-50 transition-colors"
-              >
-                {generandoPrompt ? <Loader size={15} className="animate-spin" /> : <Zap size={15} />}
-                {generandoPrompt
-                  ? 'Generando prompt...'
-                  : paginasTexto.length > 1
-                    ? `Generar prompt para la sección ${paginaTexto + 1} de ${paginasTexto.length}`
-                    : 'Generar prompt para este documento'}
-              </button>
-            </>
+            </div>
           )}
         </div>
       )}
@@ -1322,113 +1335,34 @@ export default function DetalleExpediente() {
       {tab === 'llm' && (
       <div className="space-y-4">
 
-        {/* Selector de secciones */}
-        {paginasTexto.length > 0 && (() => {
-          const analizadas = new Set(expediente.secciones_analizadas || []);
-          return (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                  {paginasTexto.length === 1 ? 'Documento' : `Secciones del documento — ${analizadas.size} de ${paginasTexto.length} analizadas`}
-                </h2>
-                {analisis && hallazgos.length > 0 && (
-                  <span className="text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded-lg px-2.5 py-1">
-                    {hallazgos.length} hallazgo{hallazgos.length !== 1 ? 's' : ''} acumulados
-                  </span>
-                )}
-              </div>
+        {/* Prompt */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
 
-              {paginasTexto.length > 1 && (
-                <div className="flex flex-wrap gap-2">
-                  {paginasTexto.map((_, i) => {
-                    const analizada = analizadas.has(i);
-                    const activa = seccionLlm === i && promptLlm;
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => handleGenerarPromptDesdeTab(i)}
-                        disabled={generandoPrompt}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all disabled:opacity-50 ${
-                          activa
-                            ? 'bg-green-700 text-white border-green-700'
-                            : analizada
-                            ? 'bg-green-50 text-green-700 border-green-300 hover:bg-green-100'
-                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        {analizada && !activa && <CheckCircle size={11} />}
-                        {activa && <Zap size={11} />}
-                        Sección {i + 1}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Prompt de la sección seleccionada */}
-              {promptLlm ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-gray-400">
-                      Prompt de la sección {seccionLlm + 1}
-                      {paginasTexto.length > 1 && ` de ${paginasTexto.length}`}
-                      {(expediente.secciones_analizadas || []).includes(seccionLlm) && (
-                        <span className="ml-2 text-green-600 font-bold">· ya analizada</span>
-                      )}
-                    </span>
-                    <button
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(promptLlm);
-                        setCopiadoLlm(true);
-                        setTimeout(() => setCopiadoLlm(false), 2000);
-                      }}
-                      className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
-                        copiadoLlm ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-700'
-                      }`}
-                    >
-                      {copiadoLlm ? <Check size={13} /> : <Copy size={13} />}
-                      {copiadoLlm ? 'Copiado' : 'Copiar prompt'}
-                    </button>
-                  </div>
-                  <div className="bg-gray-900 text-green-300 text-xs font-mono p-4 rounded-xl max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed">
-                    {promptLlm}
-                  </div>
-                </div>
-              ) : paginasTexto.length === 1 ? (
-                <button
-                  onClick={() => handleGenerarPromptDesdeTab(0)}
-                  disabled={generandoPrompt}
-                  className="flex items-center gap-2 bg-green-700 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-800 disabled:opacity-50 transition-colors text-sm"
-                >
-                  {generandoPrompt ? <Loader size={14} className="animate-spin" /> : <Zap size={14} />}
-                  {generandoPrompt ? 'Generando prompt...' : 'Generar prompt'}
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Prompt de análisis</h2>
+            <div className="flex gap-2">
+              {expediente.contenido_texto && (
+                <button onClick={handleRegenerarPrompt} disabled={generandoPrompt}
+                  className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl border border-green-200 text-green-700 hover:bg-green-50 disabled:opacity-50 transition-colors">
+                  {generandoPrompt ? <Loader size={13} className="animate-spin" /> : <Zap size={13} />}
+                  {expediente.prompt_generado ? 'Regenerar' : 'Generar'}
                 </button>
-              ) : (
-                <p className="text-xs text-gray-400 italic">
-                  Haz clic en cualquier sección para generar su prompt y copiarlo al LLM.
-                </p>
               )}
             </div>
-          );
-        })()}
-
-        {/* Sin documento: mostrar botón para subir */}
-        {paginasTexto.length === 0 && (
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs text-gray-400 italic mb-3">
-              No hay texto extraído. Sube un archivo para generar el prompt.
-            </p>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={procesandoArchivo}
-              className="flex items-center gap-2 bg-green-700 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-800 disabled:opacity-50 transition-colors text-sm"
-            >
-              {procesandoArchivo ? <Loader size={14} className="animate-spin" /> : <Upload size={14} />}
-              Subir archivo
-            </button>
-            <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={handleProcesarArchivo} />
           </div>
-        )}
+
+          {!expediente.contenido_texto ? (
+            <div>
+              <p className="text-xs text-gray-400 italic mb-3">No hay texto extraído. Sube un archivo primero.</p>
+              <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 bg-green-700 text-white px-5 py-2 rounded-xl font-bold hover:bg-green-800 transition-colors text-sm">
+                <Upload size={14} /> Subir archivo
+              </button>
+              <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={handleProcesarArchivo} />
+            </div>
+          ) : !expediente.prompt_generado ? (
+            <p className="text-xs text-gray-400 italic">Haz clic en "Generar" para crear el prompt.</p>
+          ) : <PromptVisor prompt={expediente.prompt_generado} seccionPrompt={seccionPrompt} setSeccionPrompt={setSeccionPrompt} copiadoSeccion={copiadoSeccion} setCopiadoSeccion={setCopiadoSeccion} labelInline seccionesGuardadas={expediente.secciones_analizadas || []} />}
+        </div>
 
         {/* Pegar respuesta del LLM */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
@@ -1443,15 +1377,12 @@ export default function DetalleExpediente() {
           <div className="flex gap-3 flex-wrap">
             {analisis && (
               <button
-                onClick={() => handleGuardarAnalisis('acumular')}
+                onClick={() => handleGuardarAnalisis('acumular', seccionPrompt + 1)}
                 disabled={guardandoAnalisis || !jsonLlm.trim()}
                 className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {guardandoAnalisis ? <Loader size={15} className="animate-spin" /> : <Plus size={15} />}
                 Acumular hallazgos
-                {paginasTexto.length > 1 && promptLlm && (
-                  <span className="text-blue-200 font-normal">sección {seccionLlm + 1}</span>
-                )}
               </button>
             )}
             <button
