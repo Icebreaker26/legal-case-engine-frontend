@@ -18,8 +18,9 @@ const ORDENES = [
 const RIESGO_PESO = { 'Crítico': 0, 'Alto': 1, 'Medio': 2, 'Bajo': 3 };
 
 function urgencyScore(exp) {
+  if (['Cerrado', 'Archivado'].includes(exp.estado)) return 9999999;
   const hoy = new Date();
-  let diasScore = exp.fecha_vencimiento
+  const diasScore = exp.fecha_vencimiento
     ? Math.ceil((new Date(exp.fecha_vencimiento) - hoy) / 86400000)
     : 99999;
   const riesgoScore = RIESGO_PESO[exp.nivel_riesgo] ?? 4;
