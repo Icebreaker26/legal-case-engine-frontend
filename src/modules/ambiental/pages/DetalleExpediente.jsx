@@ -533,8 +533,18 @@ export default function DetalleExpediente() {
   const [errorParseRecurso, setErrorParseRecurso] = useState('');
   const [guardandoRecursoJson, setGuardandoRecursoJson] = useState(false);
   const [exportandoRecurso, setExportandoRecurso] = useState(false);
-  const [subiendoRespuestaRecurso, setSubiendoRespuestaRecurso] = useState(false);
-  const [respuestaRecursoTexto, setRespuestaRecursoTexto] = useState('');
+
+  // Tab Comunicaciones
+  const [comunicaciones, setComunicaciones] = useState([]);
+  const [loadingComs, setLoadingComs] = useState(false);
+  const [expandedCom, setExpandedCom] = useState(null);
+  const [filtroCom, setFiltroCom] = useState('todas');
+  const [formCom, setFormCom] = useState({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '' });
+  const [archivoCom, setArchivoCom] = useState(null);
+  const [guardandoCom, setGuardandoCom] = useState(false);
+  const [mostrarFormCom, setMostrarFormCom] = useState(false);
+  const [comunicacionesInactivas, setComunicacionesInactivas] = useState([]);
+  const [mostrarInactivas, setMostrarInactivas] = useState(false);
 
   // Tab Respuesta entidad
   const [procesandoRespuesta, setProcesandoRespuesta] = useState(false);
@@ -571,7 +581,6 @@ export default function DetalleExpediente() {
       setCambioEstado(exp.estado || 'Pendiente');
       setArgumentosRecurso(exp.argumentos_recurso || '');
       setHallazgosSeleccionados(new Set(exp.hallazgos_recurso_ids || []));
-      setRespuestaRecursoTexto(exp.respuesta_recurso_texto || '');
       if (exp.recurso_llm_json) {
         setJsonRecurso(exp.recurso_llm_json);
         try { setRecursoParseado(JSON.parse(exp.recurso_llm_json)); } catch { /* json corrupto */ }
@@ -598,8 +607,18 @@ export default function DetalleExpediente() {
     }
   };
 
+  const cargarComunicaciones = async () => {
+    setLoadingComs(true);
+    try {
+      const { data } = await apiService.get(`/ambiental/expedientes/${id}/comunicaciones`);
+      setComunicaciones(data);
+    } catch { /* silencioso */ }
+    finally { setLoadingComs(false); }
+  };
+
   useEffect(() => {
     cargarDatos();
+    cargarComunicaciones();
     apiService.get('/core/entidades')
       .then(r => setEntidades((r.data || []).map(e => ({ value: e.id, label: e.nombre }))))
       .catch(() => {});
@@ -755,7 +774,8 @@ export default function DetalleExpediente() {
     { key: 'llm',       num: 2, label: 'Analizar',   desc: 'Generar prompt y guardar resultados', done: pasoAnalisis },
     { key: 'analisis',  num: 3, label: 'Resultados', desc: 'Ver análisis y hallazgos',            done: pasoAnalisis },
     { key: 'recurso',   num: 4, label: 'Recurso',    desc: 'Opcional · solo si aplica',           done: !!recursoParseado, optional: true },
-    { key: 'respuesta', num: 5, label: 'Respuesta',  desc: 'Registrar respuesta recibida',        done: pasoRespuesta },
+    { key: 'respuesta',      num: 5, label: 'Respuesta',      desc: 'Registrar respuesta recibida',        done: pasoRespuesta },
+    { key: 'comunicaciones', num: 6, label: 'Comunicaciones', desc: 'Historial de intercambios con la entidad', done: comunicaciones.length > 0 },
   ];
 
   return (
@@ -1681,94 +1701,6 @@ export default function DetalleExpediente() {
             )}
           </div>
 
-          {/* Respuesta enviada por el equipo (PDF real) */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center">
-                <Upload size={13} className="text-indigo-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-gray-800">Respuesta enviada por el equipo</h3>
-                <p className="text-xs text-gray-400">Sube el PDF del recurso que efectivamente se radicó. Solo lectura.</p>
-              </div>
-            </div>
-
-            {/* Upload */}
-            <label className="flex items-center gap-3 cursor-pointer border-2 border-dashed border-gray-200 hover:border-indigo-400 rounded-xl px-4 py-3 transition-colors">
-              <Upload size={16} className="text-gray-400 shrink-0" />
-              <span className="text-sm text-gray-500">
-                {subiendoRespuestaRecurso ? 'Procesando...' : 'Seleccionar PDF o Word del recurso enviado'}
-              </span>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx"
-                className="hidden"
-                disabled={subiendoRespuestaRecurso}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setSubiendoRespuestaRecurso(true);
-                  try {
-                    const fd = new FormData();
-                    fd.append('file', file);
-                    const { data } = await apiService.post(`/ambiental/expedientes/${id}/recurso/respuesta-pdf`, fd);
-                    setRespuestaRecursoTexto(data.respuesta_recurso_texto);
-                    toast.success('Respuesta del recurso guardada.');
-                  } catch {
-                    toast.error('Error al procesar el archivo.');
-                  } finally {
-                    setSubiendoRespuestaRecurso(false);
-                    e.target.value = '';
-                  }
-                }}
-              />
-            </label>
-
-            {/* Texto extraído */}
-            {respuestaRecursoTexto && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Texto extraído</p>
-                  <button
-                    onClick={() => {
-                      const doc = new jsPDF();
-                      const verde = [67, 56, 202];
-                      doc.setFillColor(...verde);
-                      doc.rect(0, 0, 210, 28, 'F');
-                      doc.setTextColor(255, 255, 255);
-                      doc.setFontSize(14);
-                      doc.setFont('helvetica', 'bold');
-                      doc.text('RECURSO ENVIADO', 14, 12);
-                      doc.setFontSize(9);
-                      doc.setFont('helvetica', 'normal');
-                      doc.text(expediente.titulo || '', 14, 20);
-                      doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 150, 20);
-                      let y = 36;
-                      doc.setTextColor(30, 30, 30);
-                      doc.setFontSize(10);
-                      const lines = doc.splitTextToSize(respuestaRecursoTexto, 182);
-                      lines.forEach(line => {
-                        if (y > 280) { doc.addPage(); y = 14; }
-                        doc.text(line, 14, y);
-                        y += 5;
-                      });
-                      doc.save(`recurso-enviado-${expediente.numero_expediente || id.slice(0, 8)}.pdf`);
-                    }}
-                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
-                  >
-                    <Download size={12} /> Exportar PDF
-                  </button>
-                </div>
-                <textarea
-                  readOnly
-                  value={respuestaRecursoTexto}
-                  rows={12}
-                  className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed"
-                />
-              </div>
-            )}
-          </div>
-
         </div>
       )}
 
@@ -2088,6 +2020,309 @@ export default function DetalleExpediente() {
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* TAB: Comunicaciones */}
+      {tab === 'comunicaciones' && (
+        <div className="space-y-5">
+
+          {/* Cabecera + filtros + botón nueva */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex gap-2">
+              {['todas', 'entrante', 'saliente'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setFiltroCom(f)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors capitalize ${
+                    filtroCom === f
+                      ? 'bg-green-700 text-white border-green-700'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-green-400'
+                  }`}
+                >{f === 'todas' ? 'Todas' : f === 'entrante' ? '← Entrantes' : 'Salientes →'}</button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={async () => {
+                  const next = !mostrarInactivas;
+                  setMostrarInactivas(next);
+                  if (next && comunicacionesInactivas.length === 0) {
+                    try {
+                      const { data } = await apiService.get(`/ambiental/expedientes/${id}/comunicaciones/inactivas`);
+                      setComunicacionesInactivas(data);
+                    } catch { toast.error('Error al cargar eliminadas.'); }
+                  }
+                }}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500 transition-colors"
+              >
+                <Trash2 size={12} /> {mostrarInactivas ? 'Ocultar eliminadas' : 'Ver eliminadas'}
+              </button>
+              <button
+                onClick={() => setMostrarFormCom(v => !v)}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-700 text-white hover:bg-green-800 transition-colors"
+              >
+                <Plus size={13} /> Nueva comunicación
+              </button>
+            </div>
+          </div>
+
+          {/* Formulario colapsable */}
+          {mostrarFormCom && (
+            <div className="bg-white border border-green-200 rounded-2xl p-5 space-y-4">
+              <h3 className="text-sm font-bold text-gray-800">Registrar comunicación</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Dirección *</label>
+                  <select
+                    value={formCom.direccion}
+                    onChange={e => setFormCom(p => ({ ...p, direccion: e.target.value }))}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                  >
+                    <option value="entrante">← Entrante (de la entidad)</option>
+                    <option value="saliente">Saliente → (de Enel)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Fecha del documento *</label>
+                  <input
+                    type="date"
+                    value={formCom.fecha}
+                    onChange={e => setFormCom(p => ({ ...p, fecha: e.target.value }))}
+                    className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Asunto *</label>
+                <input
+                  type="text"
+                  value={formCom.asunto}
+                  onChange={e => setFormCom(p => ({ ...p, asunto: e.target.value }))}
+                  placeholder="Ej: Requerimiento de información adicional"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Descripción (opcional)</label>
+                <input
+                  type="text"
+                  value={formCom.descripcion}
+                  onChange={e => setFormCom(p => ({ ...p, descripcion: e.target.value }))}
+                  placeholder="Nota breve sobre el contenido"
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Archivo PDF / Word (opcional)</label>
+                <label className="flex items-center gap-3 cursor-pointer border-2 border-dashed border-gray-200 hover:border-green-400 rounded-xl px-4 py-3 transition-colors">
+                  <Upload size={15} className="text-gray-400 shrink-0" />
+                  <span className="text-sm text-gray-500 truncate">
+                    {archivoCom ? archivoCom.name : 'Seleccionar archivo'}
+                  </span>
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    className="hidden"
+                    onChange={e => setArchivoCom(e.target.files?.[0] || null)}
+                  />
+                </label>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => { setMostrarFormCom(false); setFormCom({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '' }); setArchivoCom(null); }}
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
+                >Cancelar</button>
+                <button
+                  disabled={guardandoCom || !formCom.asunto.trim() || !formCom.fecha}
+                  onClick={async () => {
+                    setGuardandoCom(true);
+                    try {
+                      const fd = new FormData();
+                      fd.append('direccion', formCom.direccion);
+                      fd.append('asunto', formCom.asunto);
+                      fd.append('fecha', formCom.fecha);
+                      if (formCom.descripcion) fd.append('descripcion', formCom.descripcion);
+                      if (archivoCom) fd.append('file', archivoCom);
+                      const { data } = await apiService.post(`/ambiental/expedientes/${id}/comunicaciones`, fd);
+                      setComunicaciones(prev => [...prev, data].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)));
+                      setMostrarFormCom(false);
+                      setFormCom({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '' });
+                      setArchivoCom(null);
+                      toast.success('Comunicación registrada.');
+                    } catch { toast.error('Error al guardar.'); }
+                    finally { setGuardandoCom(false); }
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-bold px-4 py-1.5 rounded-lg bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 transition-colors"
+                >
+                  {guardandoCom ? <Loader size={12} className="animate-spin" /> : <Plus size={12} />}
+                  Guardar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Panel de eliminadas */}
+          {mostrarInactivas && (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 space-y-3">
+              <p className="text-xs font-bold text-red-500 uppercase tracking-wider">Comunicaciones eliminadas</p>
+              {comunicacionesInactivas.length === 0 ? (
+                <p className="text-sm text-gray-400">No hay comunicaciones eliminadas.</p>
+              ) : (
+                <div className="space-y-2">
+                  {comunicacionesInactivas.map(com => (
+                    <div key={com.id} className="flex items-center justify-between bg-white border border-red-100 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-xs font-bold text-gray-700">{com.asunto}</p>
+                        <p className="text-[10px] text-gray-400">
+                          {com.direccion === 'saliente' ? 'Saliente →' : '← Entrante'} · {new Date(com.fecha).toLocaleDateString('es-CO')}
+                          {com.nombre_archivo && ` · ${com.nombre_archivo}`}
+                        </p>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await apiService.patch(`/ambiental/expedientes/${id}/comunicaciones/${com.id}/reactivar`);
+                            setComunicacionesInactivas(prev => prev.filter(c => c.id !== com.id));
+                            const { data } = await apiService.get(`/ambiental/expedientes/${id}/comunicaciones`);
+                            setComunicaciones(data);
+                            toast.success('Comunicación restaurada.');
+                          } catch { toast.error('Error al restaurar.'); }
+                        }}
+                        className="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors shrink-0"
+                      >
+                        ↩ Restaurar
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Timeline */}
+          {loadingComs ? (
+            <div className="flex justify-center py-10"><Loader size={20} className="animate-spin text-green-600" /></div>
+          ) : (
+            (() => {
+              const filtradas = comunicaciones.filter(c => filtroCom === 'todas' || c.direccion === filtroCom);
+              if (!filtradas.length) return (
+                <div className="text-center py-12 text-gray-400 text-sm">
+                  No hay comunicaciones registradas{filtroCom !== 'todas' ? ` (${filtroCom}s)` : ''}.
+                </div>
+              );
+              return (
+                <div className="relative">
+                  {/* Línea vertical central */}
+                  <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gray-200 -translate-x-1/2" />
+                  <div className="space-y-6">
+                    {filtradas.map(com => {
+                      const esEnel = com.direccion === 'saliente';
+                      const expanded = expandedCom === com.id;
+                      return (
+                        <div key={com.id} className={`flex ${esEnel ? 'flex-row-reverse' : 'flex-row'} items-start gap-4`}>
+                          {/* Burbuja */}
+                          <div className={`w-[46%] ${esEnel ? 'items-end' : 'items-start'} flex flex-col`}>
+                            <div
+                              className={`w-full rounded-2xl border p-4 cursor-pointer transition-shadow hover:shadow-md ${
+                                esEnel
+                                  ? 'bg-blue-50 border-blue-200'
+                                  : 'bg-emerald-50 border-emerald-200'
+                              }`}
+                              onClick={() => setExpandedCom(expanded ? null : com.id)}
+                            >
+                              {/* Meta */}
+                              <div className="flex items-center justify-between mb-2">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  esEnel ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+                                }`}>
+                                  {esEnel ? 'Enel →' : '← Entidad'}
+                                </span>
+                                <span className="text-[10px] text-gray-400">
+                                  {new Date(com.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </span>
+                              </div>
+                              <p className="text-sm font-bold text-gray-800 leading-snug">{com.asunto}</p>
+                              {com.descripcion && <p className="text-xs text-gray-500 mt-1">{com.descripcion}</p>}
+                              {com.nombre_archivo && (
+                                <div className={`inline-flex items-center gap-1.5 mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  esEnel ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+                                }`}>
+                                  <FileText size={10} /> {com.nombre_archivo}
+                                </div>
+                              )}
+                              {com.texto_extraido && (
+                                <p className="text-[10px] text-gray-400 mt-1">{expanded ? '▲ Ocultar texto' : '▼ Ver texto extraído'}</p>
+                              )}
+                            </div>
+
+                            {/* Texto expandido */}
+                            {expanded && com.texto_extraido && (
+                              <div className="w-full mt-2 bg-white border border-gray-200 rounded-xl p-3 space-y-2">
+                                <div className="flex justify-end">
+                                  <button
+                                    onClick={() => {
+                                      const doc = new jsPDF();
+                                      const color = esEnel ? [37, 99, 235] : [5, 150, 105];
+                                      doc.setFillColor(...color);
+                                      doc.rect(0, 0, 210, 28, 'F');
+                                      doc.setTextColor(255, 255, 255);
+                                      doc.setFontSize(13);
+                                      doc.setFont('helvetica', 'bold');
+                                      doc.text(com.asunto.toUpperCase().slice(0, 60), 14, 12);
+                                      doc.setFontSize(9);
+                                      doc.setFont('helvetica', 'normal');
+                                      doc.text(`${esEnel ? 'Saliente — Enel Colombia' : 'Entrante — Entidad'}  ·  ${new Date(com.fecha).toLocaleDateString('es-CO')}`, 14, 20);
+                                      let y = 36;
+                                      doc.setTextColor(30, 30, 30);
+                                      doc.setFontSize(10);
+                                      doc.splitTextToSize(com.texto_extraido, 182).forEach(line => {
+                                        if (y > 280) { doc.addPage(); y = 14; }
+                                        doc.text(line, 14, y); y += 5;
+                                      });
+                                      doc.save(`comunicacion-${com.id.slice(0, 8)}.pdf`);
+                                    }}
+                                    className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-700 text-white hover:bg-gray-800"
+                                  ><Download size={10} /> Exportar PDF</button>
+                                </div>
+                                <textarea
+                                  readOnly
+                                  value={com.texto_extraido}
+                                  rows={8}
+                                  className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-2 resize-none font-mono leading-relaxed"
+                                />
+                              </div>
+                            )}
+
+                            {/* Eliminar */}
+                            <button
+                              onClick={async () => {
+                                if (!window.confirm('¿Eliminar esta comunicación?')) return;
+                                try {
+                                  await apiService.delete(`/ambiental/expedientes/${id}/comunicaciones/${com.id}`);
+                                  setComunicaciones(prev => prev.filter(c => c.id !== com.id));
+                                  toast.success('Comunicación eliminada.');
+                                } catch { toast.error('Error al eliminar.'); }
+                              }}
+                              className="mt-1 text-[10px] text-gray-400 hover:text-red-500 flex items-center gap-1 transition-colors"
+                            ><Trash2 size={10} /> Eliminar</button>
+                          </div>
+
+                          {/* Punto central en la línea */}
+                          <div className="relative flex items-start justify-center w-8 shrink-0 pt-4">
+                            <div className={`w-3 h-3 rounded-full border-2 border-white ${esEnel ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                          </div>
+
+                          {/* Espacio opuesto */}
+                          <div className="w-[46%]" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()
+          )}
         </div>
       )}
 
