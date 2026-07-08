@@ -4,7 +4,8 @@ import apiService from '../../../services/apiService';
 import {
   ChevronLeft, FileText, AlertTriangle, CheckCircle, Clock,
   Zap, Archive, Copy, Check, Send, Loader, Download, Trash2,
-  Shield, Calendar, Building2, Upload, ChevronRight, ChevronDown, Plus, Pencil, Scale
+  Shield, Calendar, Building2, Upload, ChevronRight, ChevronDown, Plus, Pencil, Scale,
+  ExternalLink, Link as LinkIcon
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
@@ -983,6 +984,34 @@ export default function DetalleExpediente() {
               <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Registrado</p>
                 <p className="text-sm font-semibold text-gray-700">{new Date(expediente.created_at).toLocaleDateString('es-CO')}</p>
+              </div>
+
+              {/* Enlace al PDF original */}
+              <div className="col-span-2">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5"><LinkIcon size={10} className="inline mr-1" />Enlace PDF original</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    defaultValue={expediente.enlace_pdf || ''}
+                    placeholder="https://..."
+                    className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:ring-2 focus:ring-green-600"
+                    onBlur={async (e) => {
+                      const val = e.target.value.trim();
+                      if (val === (expediente.enlace_pdf || '')) return;
+                      try {
+                        await apiService.patch(`/ambiental/expedientes/${id}`, { enlace_pdf: val || null });
+                        setExpediente(prev => ({ ...prev, enlace_pdf: val || null }));
+                        toast.success('Enlace guardado.');
+                      } catch { toast.error('URL inválida o error al guardar.'); }
+                    }}
+                  />
+                  {expediente.enlace_pdf && (
+                    <a href={expediente.enlace_pdf} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors shrink-0">
+                      <ExternalLink size={11} /> Abrir
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
