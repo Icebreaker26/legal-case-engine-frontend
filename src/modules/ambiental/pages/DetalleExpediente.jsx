@@ -5,7 +5,7 @@ import {
   ChevronLeft, FileText, AlertTriangle, CheckCircle, Clock,
   Zap, Archive, Copy, Check, Send, Loader, Download, Trash2,
   Shield, Calendar, Building2, Upload, ChevronRight, ChevronDown, Plus, Pencil, Scale,
-  ExternalLink, Link as LinkIcon
+  ExternalLink, Link as LinkIcon, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
