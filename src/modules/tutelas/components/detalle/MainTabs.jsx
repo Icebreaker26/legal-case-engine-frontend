@@ -91,8 +91,14 @@ export default function MainTabs({
         if (!jsonLlm.trim()) return toast.error('Pega el JSON del LLM primero.');
         setGuardandoRespuesta(true);
         try {
+            // Strip markdown code fences that LLMs often add around JSON
+            let cleanJson = jsonLlm.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+            const start = cleanJson.indexOf('{');
+            const end = cleanJson.lastIndexOf('}');
+            if (start !== -1 && end !== -1) cleanJson = cleanJson.slice(start, end + 1);
+
             await apiService.post(`/tutelas/${id}/respuesta-peticion`, {
-                resultado_llm_json: jsonLlm,
+                resultado_llm_json: cleanJson,
                 modo,
                 parte_index: parteActual,
             });
