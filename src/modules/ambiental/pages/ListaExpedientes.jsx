@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const ESTADOS = ['Todos', 'Pendiente', 'Analizado', 'Revisado', 'Archivado'];
+const ESTADOS = ['Todos', 'Pendiente', 'Analizado', 'Revisado', 'Archivado', 'Cerrado'];
 const TIPOS = ['Todos', 'expediente', 'auto', 'resolución', 'concepto'];
 const ORDENES = [
   { value: 'reciente',    label: 'Más reciente' },
@@ -27,10 +27,11 @@ function urgencyScore(exp) {
 }
 
 const estadoConfig = {
-  'Pendiente':  { bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-400', icon: <Clock size={11} /> },
+  'Pendiente':  { bg: 'bg-amber-100',  text: 'text-amber-700',  dot: 'bg-amber-400',  icon: <Clock size={11} /> },
   'Analizado':  { bg: 'bg-blue-100',   text: 'text-blue-700',   dot: 'bg-blue-400',   icon: <Zap size={11} /> },
   'Revisado':   { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-400',  icon: <CheckCircle size={11} /> },
   'Archivado':  { bg: 'bg-gray-100',   text: 'text-gray-500',   dot: 'bg-gray-400',   icon: <Archive size={11} /> },
+  'Cerrado':    { bg: 'bg-slate-100',  text: 'text-slate-500',  dot: 'bg-slate-400',  icon: <CheckCircle size={11} /> },
 };
 
 const riesgoConfig = {
@@ -450,7 +451,7 @@ export default function ListaExpedientes() {
                   )}
                   {!exp.responsable_nombre && !exp.proyecto_nombre && <div className="mb-3" />}
 
-                  {exp.fecha_vencimiento && (() => {
+                  {exp.fecha_vencimiento && !['Cerrado', 'Archivado'].includes(exp.estado) && (() => {
                     const dias = Math.ceil((new Date(exp.fecha_vencimiento) - new Date()) / 86400000);
                     const vencido = dias < 0;
                     const urgente = dias >= 0 && dias <= 7;
