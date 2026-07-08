@@ -533,6 +533,8 @@ export default function DetalleExpediente() {
   const [errorParseRecurso, setErrorParseRecurso] = useState('');
   const [guardandoRecursoJson, setGuardandoRecursoJson] = useState(false);
   const [exportandoRecurso, setExportandoRecurso] = useState(false);
+  const [subiendoRespuestaRecurso, setSubiendoRespuestaRecurso] = useState(false);
+  const [respuestaRecursoTexto, setRespuestaRecursoTexto] = useState('');
 
   // Tab Respuesta entidad
   const [procesandoRespuesta, setProcesandoRespuesta] = useState(false);
@@ -569,6 +571,7 @@ export default function DetalleExpediente() {
       setCambioEstado(exp.estado || 'Pendiente');
       setArgumentosRecurso(exp.argumentos_recurso || '');
       setHallazgosSeleccionados(new Set(exp.hallazgos_recurso_ids || []));
+      setRespuestaRecursoTexto(exp.respuesta_recurso_texto || '');
       if (exp.recurso_llm_json) {
         setJsonRecurso(exp.recurso_llm_json);
         try { setRecursoParseado(JSON.parse(exp.recurso_llm_json)); } catch { /* json corrupto */ }
@@ -1674,6 +1677,94 @@ export default function DetalleExpediente() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Respuesta enviada por el equipo (PDF real) */}
+          <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-indigo-50 flex items-center justify-center">
+                <Upload size={13} className="text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-800">Respuesta enviada por el equipo</h3>
+                <p className="text-xs text-gray-400">Sube el PDF del recurso que efectivamente se radicó. Solo lectura.</p>
+              </div>
+            </div>
+
+            {/* Upload */}
+            <label className="flex items-center gap-3 cursor-pointer border-2 border-dashed border-gray-200 hover:border-indigo-400 rounded-xl px-4 py-3 transition-colors">
+              <Upload size={16} className="text-gray-400 shrink-0" />
+              <span className="text-sm text-gray-500">
+                {subiendoRespuestaRecurso ? 'Procesando...' : 'Seleccionar PDF o Word del recurso enviado'}
+              </span>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="hidden"
+                disabled={subiendoRespuestaRecurso}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setSubiendoRespuestaRecurso(true);
+                  try {
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    const { data } = await apiService.post(`/ambiental/expedientes/${id}/recurso/respuesta-pdf`, fd);
+                    setRespuestaRecursoTexto(data.respuesta_recurso_texto);
+                    toast.success('Respuesta del recurso guardada.');
+                  } catch {
+                    toast.error('Error al procesar el archivo.');
+                  } finally {
+                    setSubiendoRespuestaRecurso(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </label>
+
+            {/* Texto extraído */}
+            {respuestaRecursoTexto && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Texto extraído</p>
+                  <button
+                    onClick={() => {
+                      const doc = new jsPDF();
+                      const verde = [67, 56, 202];
+                      doc.setFillColor(...verde);
+                      doc.rect(0, 0, 210, 28, 'F');
+                      doc.setTextColor(255, 255, 255);
+                      doc.setFontSize(14);
+                      doc.setFont('helvetica', 'bold');
+                      doc.text('RECURSO ENVIADO', 14, 12);
+                      doc.setFontSize(9);
+                      doc.setFont('helvetica', 'normal');
+                      doc.text(expediente.titulo || '', 14, 20);
+                      doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 150, 20);
+                      let y = 36;
+                      doc.setTextColor(30, 30, 30);
+                      doc.setFontSize(10);
+                      const lines = doc.splitTextToSize(respuestaRecursoTexto, 182);
+                      lines.forEach(line => {
+                        if (y > 280) { doc.addPage(); y = 14; }
+                        doc.text(line, 14, y);
+                        y += 5;
+                      });
+                      doc.save(`recurso-enviado-${expediente.numero_expediente || id.slice(0, 8)}.pdf`);
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    <Download size={12} /> Exportar PDF
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  value={respuestaRecursoTexto}
+                  rows={12}
+                  className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed"
+                />
               </div>
             )}
           </div>
