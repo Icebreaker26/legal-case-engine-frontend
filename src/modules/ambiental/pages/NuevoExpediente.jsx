@@ -4,7 +4,7 @@ import apiService from '../../../services/apiService';
 import { Upload, ChevronLeft, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const TIPOS = ['expediente', 'auto', 'resolución', 'concepto'];
+const TIPOS = ['expediente', 'auto', 'resolución', 'concepto', 'otros'];
 
 export default function NuevoExpediente() {
   const navigate = useNavigate();
