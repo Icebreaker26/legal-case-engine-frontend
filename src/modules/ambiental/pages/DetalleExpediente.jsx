@@ -560,6 +560,9 @@ export default function DetalleExpediente() {
   const [copiadoPrompt, setCopiadoPrompt] = useState(false);
   const [mostrarConsolidar, setMostrarConsolidar] = useState(false);
   const [resumenConsolidado, setResumenConsolidado] = useState('');
+  const [editandoResumen, setEditandoResumen] = useState(false);
+  const [resumenEdit, setResumenEdit] = useState('');
+  const [guardandoResumenEdit, setGuardandoResumenEdit] = useState(false);
   const [guardandoResumen, setGuardandoResumen] = useState(false);
   const [seccionPrompt, setSeccionPrompt] = useState(0);
   const [copiadoSeccion, setCopiadoSeccion] = useState({});
@@ -1186,16 +1189,69 @@ export default function DetalleExpediente() {
               <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                 <Zap size={13} /> Resumen ejecutivo
               </h2>
-              {analisis.resumen?.includes('[Sección adicional]') && (
+              <div className="flex items-center gap-2">
+                {analisis.resumen?.includes('[Sección adicional]') && !editandoResumen && (
+                  <button
+                    onClick={() => setMostrarConsolidar(v => !v)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                  >
+                    {mostrarConsolidar ? 'Cancelar' : 'Consolidar resumen'}
+                  </button>
+                )}
                 <button
-                  onClick={() => setMostrarConsolidar(v => !v)}
-                  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                  onClick={() => {
+                    if (editandoResumen) {
+                      setEditandoResumen(false);
+                    } else {
+                      setResumenEdit(analisis.resumen || '');
+                      setEditandoResumen(true);
+                      setMostrarConsolidar(false);
+                    }
+                  }}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-green-700 hover:bg-green-50 transition-colors"
+                  title={editandoResumen ? 'Cancelar edición' : 'Editar resumen'}
                 >
-                  {mostrarConsolidar ? 'Cancelar' : 'Consolidar resumen'}
+                  <Pencil size={13} />
                 </button>
-              )}
+              </div>
             </div>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{analisis.resumen}</p>
+
+            {editandoResumen ? (
+              <div className="space-y-2">
+                <textarea
+                  autoFocus
+                  value={resumenEdit}
+                  onChange={e => setResumenEdit(e.target.value)}
+                  rows={6}
+                  className="w-full text-sm text-gray-700 border border-green-300 rounded-xl p-3 resize-none focus:ring-2 focus:ring-green-500 focus:outline-none leading-relaxed"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setEditandoResumen(false)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+                  >Cancelar</button>
+                  <button
+                    disabled={guardandoResumenEdit || !resumenEdit.trim()}
+                    onClick={async () => {
+                      setGuardandoResumenEdit(true);
+                      try {
+                        await apiService.patch(`/ambiental/expedientes/${id}/analisis/resumen`, { resumen: resumenEdit.trim() });
+                        setAnalisis(prev => ({ ...prev, resumen: resumenEdit.trim() }));
+                        setEditandoResumen(false);
+                        toast.success('Resumen actualizado.');
+                      } catch { toast.error('Error al guardar.'); }
+                      finally { setGuardandoResumenEdit(false); }
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 transition-colors"
+                  >
+                    {guardandoResumenEdit ? <Loader size={12} className="animate-spin" /> : null}
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{analisis.resumen}</p>
+            )}
 
             {mostrarConsolidar && (
               <div className="border-t border-amber-100 pt-3 space-y-3">
