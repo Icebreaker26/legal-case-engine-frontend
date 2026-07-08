@@ -3240,12 +3240,124 @@ export default function DetalleExpediente() {
                             </ol>
                           </div>
                         )}
-                        <button
-                          onClick={() => setResultadoComparativo('')}
-                          className="text-xs text-gray-500 hover:text-gray-300 underline"
-                        >
-                          Reanálizar (limpiar resultado)
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => {
+                              const doc = new jsPDF();
+                              const W = 210, M = 14, CW = W - M * 2;
+                              const verde = [5, 150, 105];
+                              const verdeO = [209, 250, 229];
+                              const gris  = [71, 85, 105];
+                              const negro = [15, 23, 42];
+
+                              const checkY = (y, h = 10) => { if (y + h > 278) { doc.addPage(); return 20; } return y; };
+
+                              // ── Cabecera ──────────────────────────────────────────
+                              doc.setFillColor(...verde);
+                              doc.rect(0, 0, W, 36, 'F');
+                              doc.setTextColor(255, 255, 255);
+                              doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+                              doc.text('ENEL COLOMBIA — ÁREA AMBIENTAL', M, 10);
+                              doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+                              doc.text('ANÁLISIS COMPARATIVO DE PRECEDENTES', M, 20);
+                              doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+                              doc.text(expediente?.titulo || '', M, 28);
+                              doc.setFontSize(7);
+                              doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, W - M, 28, { align: 'right' });
+
+                              // ── Badges riesgo / precedente ────────────────────────
+                              doc.setFillColor(248, 250, 252);
+                              doc.rect(0, 36, W, 14, 'F');
+                              let bx = M;
+                              if (parsed.riesgo_sugerido) {
+                                doc.setFillColor(...verdeO);
+                                doc.roundedRect(bx, 38, 52, 10, 2, 2, 'F');
+                                doc.setTextColor(...verde);
+                                doc.setFontSize(6); doc.setFont('helvetica', 'bold');
+                                doc.text('RIESGO SUGERIDO', bx + 26, 42, { align: 'center' });
+                                doc.setFontSize(8);
+                                doc.text(parsed.riesgo_sugerido, bx + 26, 47, { align: 'center' });
+                                bx += 56;
+                              }
+                              if (parsed.precedente_mas_relevante) {
+                                doc.setFillColor(219, 234, 254);
+                                doc.roundedRect(bx, 38, CW - (bx - M), 10, 2, 2, 'F');
+                                doc.setTextColor(29, 78, 216);
+                                doc.setFontSize(6); doc.setFont('helvetica', 'bold');
+                                doc.text('PRECEDENTE MÁS RELEVANTE', bx + 4, 42);
+                                doc.setFontSize(8);
+                                const refLines = doc.splitTextToSize(parsed.precedente_mas_relevante, CW - (bx - M) - 8);
+                                doc.text(refLines[0], bx + 4, 47);
+                              }
+
+                              let y = 58;
+
+                              const seccion = (titulo, contenido) => {
+                                if (!contenido) return;
+                                y = checkY(y, 16);
+                                doc.setFillColor(...verde);
+                                doc.rect(M, y, 3, 10, 'F');
+                                doc.setTextColor(...verde);
+                                doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+                                doc.text(titulo, M + 6, y + 7);
+                                y += 13;
+                                y = pdfMarkdown(doc, contenido, { startY: y, M, CW, accent: verde, textCol: negro, mutedCol: gris });
+                                y += 2;
+                              };
+
+                              seccion('PATRONES IDENTIFICADOS', parsed.patrones);
+                              seccion('COMPARACIÓN DE RIESGO', parsed.comparacion_riesgo);
+                              seccion('ARGUMENTOS QUE HAN FUNCIONADO', parsed.argumentos_efectivos);
+                              seccion('DIFERENCIAS CLAVE', parsed.diferencias_clave);
+
+                              if (parsed.recomendaciones?.length) {
+                                y = checkY(y, 16);
+                                doc.setFillColor(16, 185, 129);
+                                doc.rect(M, y, 3, 10, 'F');
+                                doc.setTextColor(16, 185, 129);
+                                doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+                                doc.text('RECOMENDACIONES ESTRATÉGICAS', M + 6, y + 7);
+                                y += 14;
+                                parsed.recomendaciones.forEach((r, i) => {
+                                  y = checkY(y, 10);
+                                  doc.setFillColor(209, 250, 229);
+                                  doc.circle(M + 3, y + 3, 3, 'F');
+                                  doc.setTextColor(...verde);
+                                  doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+                                  doc.text(String(i + 1), M + 3, y + 4.5, { align: 'center' });
+                                  doc.setTextColor(...negro);
+                                  doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+                                  const lines = doc.splitTextToSize(r, CW - 10);
+                                  doc.text(lines, M + 9, y + 4);
+                                  y += lines.length * 5 + 4;
+                                });
+                              }
+
+                              // ── Footer en todas las páginas ───────────────────────
+                              const totalPages = doc.getNumberOfPages();
+                              for (let p = 1; p <= totalPages; p++) {
+                                doc.setPage(p);
+                                doc.setFillColor(248, 250, 252);
+                                doc.rect(0, 285, W, 12, 'F');
+                                doc.setTextColor(...gris);
+                                doc.setFontSize(6); doc.setFont('helvetica', 'normal');
+                                doc.text('Enel Colombia — Área Ambiental — Documento de uso interno', M, 291);
+                                doc.text(`Pág. ${p} / ${totalPages}`, W - M, 291, { align: 'right' });
+                              }
+
+                              doc.save(`comparativo_${(expediente?.titulo || 'expediente').replace(/\s+/g, '_').slice(0, 40)}.pdf`);
+                            }}
+                            className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-700 text-white hover:bg-green-800 transition-colors"
+                          >
+                            <Download size={12} /> Exportar PDF
+                          </button>
+                          <button
+                            onClick={() => setResultadoComparativo('')}
+                            className="text-xs text-gray-500 hover:text-gray-300 underline"
+                          >
+                            Reanálizar (limpiar resultado)
+                          </button>
+                        </div>
                       </div>
                     );
                   }
