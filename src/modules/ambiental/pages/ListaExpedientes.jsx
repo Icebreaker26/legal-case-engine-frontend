@@ -478,11 +478,13 @@ export default function ListaExpedientes() {
                   )}
 
                   {exp.resumen_analisis && (() => {
-                    // Omite la primera oración (identificación del acto) — ya está en la card
-                    const primerPunto = exp.resumen_analisis.indexOf('. ');
-                    const preview = primerPunto !== -1 && primerPunto < 200
-                      ? exp.resumen_analisis.slice(primerPunto + 2).trim()
-                      : exp.resumen_analisis;
+                    // Omite la primera oración (identificación del acto) — ya está en la card.
+                    // Busca ". " seguido de mayúscula después de 120 chars para saltar abreviaciones (No., S.A., E.S.P.)
+                    const texto = exp.resumen_analisis;
+                    const match = texto.slice(120).search(/\.\s+[A-ZÁÉÍÓÚ]/);
+                    const preview = match !== -1
+                      ? texto.slice(120 + match + 2).trim()
+                      : texto;
                     return (
                       <p className="text-xs text-gray-500 leading-relaxed line-clamp-3 mb-3 border-l-2 border-green-200 pl-2">
                         {preview}
