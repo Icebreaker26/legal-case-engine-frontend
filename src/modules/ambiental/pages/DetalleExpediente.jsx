@@ -541,6 +541,7 @@ export default function DetalleExpediente() {
   const [similares, setSimilares] = useState([]);
   const [loadingSimilares, setLoadingSimilares] = useState(false);
   const [similaresError, setSimilaresError] = useState(null);
+  const [similaresBuscados, setSimilaresBuscados] = useState(false);
   const [seleccionados, setSeleccionados] = useState(new Set());
   const [promptComparativo, setPromptComparativo] = useState('');
   const [resultadoComparativo, setResultadoComparativo] = useState('');
@@ -633,6 +634,7 @@ export default function DetalleExpediente() {
     try {
       const { data } = await apiService.get(`/ambiental/expedientes/${id}/similares`);
       setSimilares(data);
+      setSimilaresBuscados(true);
       setSeleccionados(new Set(data.slice(0, 3).map(s => s.id)));
     } catch (err) {
       if (err?.response?.status === 404) {
@@ -648,6 +650,7 @@ export default function DetalleExpediente() {
   const generarEmbedding = async () => {
     setLoadingSimilares(true);
     setSimilaresError(null);
+    setSimilaresBuscados(false);
     try {
       await apiService.post(`/ambiental/expedientes/${id}/generar-embedding`);
       await cargarSimilares();
@@ -2480,7 +2483,7 @@ export default function DetalleExpediente() {
       {/* ── TAB PRECEDENTES ─────────────────────────────────────── */}
       {tab === 'precedentes' && (
         <div className="space-y-5">
-          {similares.length === 0 && !loadingSimilares && !similaresError && !promptComparativo && (
+          {!similaresBuscados && !loadingSimilares && !similaresError && (
             <div className="text-center py-10">
               <button
                 onClick={cargarSimilares}
@@ -2489,6 +2492,15 @@ export default function DetalleExpediente() {
                 <Search size={16} /> Buscar precedentes similares
               </button>
               <p className="text-xs text-gray-400 mt-2">Busca expedientes con análisis similar en el sistema</p>
+            </div>
+          )}
+
+          {similaresBuscados && similares.length === 0 && !loadingSimilares && (
+            <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+              <Search size={28} className="mx-auto text-gray-300 mb-3" />
+              <p className="font-bold text-gray-400">Sin precedentes similares</p>
+              <p className="text-xs text-gray-400 mt-1">No se encontraron expedientes con similitud suficiente (mínimo 65%)</p>
+              <button onClick={cargarSimilares} className="mt-3 text-xs text-green-700 hover:underline">Buscar de nuevo</button>
             </div>
           )}
 
