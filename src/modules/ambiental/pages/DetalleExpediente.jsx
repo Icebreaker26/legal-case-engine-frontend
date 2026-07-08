@@ -831,6 +831,12 @@ export default function DetalleExpediente() {
               Riesgo {analisis.nivel_riesgo}
             </span>
           )}
+          {expediente.enlace_pdf && (
+            <a href={expediente.enlace_pdf} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-[11px] font-bold hover:bg-green-100 transition-colors">
+              <ExternalLink size={10} /> Ver PDF
+            </a>
+          )}
         </div>
 
 
