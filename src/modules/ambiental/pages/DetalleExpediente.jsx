@@ -4,12 +4,102 @@ import apiService from '../../../services/apiService';
 import {
   ChevronLeft, FileText, AlertTriangle, CheckCircle, Clock,
   Zap, Archive, Copy, Check, Send, Loader, Download, Trash2,
-  Shield, Calendar, Building2, Upload, ChevronRight, ChevronDown, Plus, Pencil, Scale
+  Shield, Calendar, Building2, Upload, ChevronRight, ChevronDown, Plus, Pencil, Scale,
+  ExternalLink, Link as LinkIcon, Search, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SearchableSelect from '../components/SearchableSelect';
+
+// ── Markdown → jsPDF renderer ────────────────────────────────────────────────
+function pdfMarkdown(doc, text, { startY, M, CW, accent, textCol, mutedCol }) {
+  let y = startY;
+  const guard = (h = 7) => { if (y + h > 278) { doc.addPage(); y = 20; } };
+
+  const parseInline = (str) => {
+    const parts = [];
+    const re = /\*\*(.+?)\*\*|\*(.+?)\*/g;
+    let li = 0, m;
+    while ((m = re.exec(str)) !== null) {
+      if (m.index > li) parts.push({ t: str.slice(li, m.index), s: 'normal' });
+      parts.push({ t: m[1] ?? m[2], s: m[1] ? 'bold' : 'italic' });
+      li = m.index + m[0].length;
+    }
+    if (li < str.length) parts.push({ t: str.slice(li), s: 'normal' });
+    return parts.length ? parts : [{ t: str, s: 'normal' }];
+  };
+
+  const renderInline = (str, x0, lineY, fs, col) => {
+    let x = x0;
+    parseInline(str).forEach(({ t, s }) => {
+      doc.setFont('helvetica', s);
+      doc.setFontSize(fs);
+      doc.setTextColor(...col);
+      t.split(' ').forEach((word, wi) => {
+        const token = wi === 0 ? word : ' ' + word;
+        const tw = doc.getTextWidth(token);
+        if (x + tw > M + CW + 1 && x > x0) {
+          lineY += fs * 0.52;
+          if (lineY > 278) { doc.addPage(); lineY = 20; }
+          x = x0;
+          doc.text(word, x, lineY);
+          x += doc.getTextWidth(word);
+        } else {
+          doc.text(token, x, lineY);
+          x += tw;
+        }
+      });
+    });
+    return lineY;
+  };
+
+  for (const raw of text.split('\n')) {
+    const line = raw.trimEnd();
+    if (!line.trim()) { y += 3; continue; }
+
+    if (/^# /.test(line)) {
+      guard(16);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13); doc.setTextColor(...accent);
+      doc.splitTextToSize(line.slice(2), CW).forEach(l => { doc.text(l, M, y); y += 7; });
+      doc.setFillColor(...accent); doc.rect(M, y, CW, 0.4, 'F'); y += 5;
+      continue;
+    }
+    if (/^## /.test(line)) {
+      guard(12);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.setTextColor(...accent);
+      doc.splitTextToSize(line.slice(3), CW).forEach(l => { doc.text(l, M, y); y += 6; });
+      y += 2; continue;
+    }
+    if (/^### /.test(line)) {
+      guard(9);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(10); doc.setTextColor(...textCol);
+      doc.splitTextToSize(line.slice(4), CW).forEach(l => { doc.text(l, M, y); y += 5.5; });
+      y += 2; continue;
+    }
+    if (/^-{3,}$/.test(line.trim())) {
+      guard(6); doc.setFillColor(...mutedCol); doc.rect(M, y - 2, CW, 0.3, 'F'); y += 5; continue;
+    }
+
+    const bul = line.match(/^[\-\*] (.*)/);
+    if (bul) {
+      guard(7);
+      doc.setFillColor(...accent); doc.circle(M + 2, y - 1.5, 1.2, 'F');
+      y = renderInline(bul[1], M + 7, y, 9.5, textCol) + 6; continue;
+    }
+    const num = line.match(/^(\d+)\. (.*)/);
+    if (num) {
+      guard(7);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8.5); doc.setTextColor(...accent);
+      doc.text(`${num[1]}.`, M, y);
+      y = renderInline(num[2], M + 9, y, 9.5, textCol) + 6; continue;
+    }
+
+    guard(7);
+    y = renderInline(line, M, y, 9.5, textCol) + 6;
+  }
+  return y;
+}
 
 const CHARS_POR_PAGINA = 8000;
 
@@ -537,21 +627,29 @@ export default function DetalleExpediente() {
   // Tab Comunicaciones
   const [comunicaciones, setComunicaciones] = useState([]);
   const [loadingComs, setLoadingComs] = useState(false);
+  const [similares, setSimilares] = useState([]);
+  const [loadingSimilares, setLoadingSimilares] = useState(false);
+  const [similaresError, setSimilaresError] = useState(null);
+  const [similaresBuscados, setSimilaresBuscados] = useState(false);
+  const [seleccionados, setSeleccionados] = useState(new Set());
+  const [promptComparativo, setPromptComparativo] = useState('');
+  const [resultadoComparativo, setResultadoComparativo] = useState('');
+  const [generandoComparativo, setGenerandoComparativo] = useState(false);
   const [expandedCom, setExpandedCom] = useState(null);
   const [filtroCom, setFiltroCom] = useState('todas');
-  const [formCom, setFormCom] = useState({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '' });
+  const [formCom, setFormCom] = useState({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '', enlace: '' });
   const [archivoCom, setArchivoCom] = useState(null);
   const [guardandoCom, setGuardandoCom] = useState(false);
   const [mostrarFormCom, setMostrarFormCom] = useState(false);
   const [comunicacionesInactivas, setComunicacionesInactivas] = useState([]);
   const [mostrarInactivas, setMostrarInactivas] = useState(false);
+  const [comAnalisis, setComAnalisis] = useState({});   // keyed by com.id
+  const [comModalId, setComModalId] = useState(null);   // com.id abierto en modal
 
   // Tab Respuesta entidad
   const [procesandoRespuesta, setProcesandoRespuesta] = useState(false);
   const [promptRespuesta, setPromptRespuesta] = useState('');
   const [copiadoPromptRespuesta, setCopiadoPromptRespuesta] = useState(false);
-  const [jsonRespuesta, setJsonRespuesta] = useState('');
-  const [respuestaParseada, setRespuestaParseada] = useState(null);
   const [errorParseRespuesta, setErrorParseRespuesta] = useState('');
   const [cerrandoTramite, setCerrandoTramite] = useState(false);
   const fileRespuestaRef = useRef(null);
@@ -560,6 +658,9 @@ export default function DetalleExpediente() {
   const [copiadoPrompt, setCopiadoPrompt] = useState(false);
   const [mostrarConsolidar, setMostrarConsolidar] = useState(false);
   const [resumenConsolidado, setResumenConsolidado] = useState('');
+  const [editandoResumen, setEditandoResumen] = useState(false);
+  const [resumenEdit, setResumenEdit] = useState('');
+  const [guardandoResumenEdit, setGuardandoResumenEdit] = useState(false);
   const [guardandoResumen, setGuardandoResumen] = useState(false);
   const [seccionPrompt, setSeccionPrompt] = useState(0);
   const [copiadoSeccion, setCopiadoSeccion] = useState({});
@@ -585,10 +686,7 @@ export default function DetalleExpediente() {
         setJsonRecurso(exp.recurso_llm_json);
         try { setRecursoParseado(JSON.parse(exp.recurso_llm_json)); } catch { /* json corrupto */ }
       }
-      if (exp.respuesta_llm_json) {
-        setJsonRespuesta(exp.respuesta_llm_json);
-        try { setRespuestaParseada(JSON.parse(exp.respuesta_llm_json)); } catch { /* json corrupto */ }
-      }
+
       try {
         const { data: an } = await apiService.get(`/ambiental/expedientes/${id}/analisis`);
         setAnalisis(an);
@@ -614,6 +712,60 @@ export default function DetalleExpediente() {
       setComunicaciones(data);
     } catch { /* silencioso */ }
     finally { setLoadingComs(false); }
+  };
+
+  const cargarSimilares = async () => {
+    setLoadingSimilares(true);
+    setSimilaresError(null);
+    try {
+      const { data } = await apiService.get(`/ambiental/expedientes/${id}/similares`);
+      setSimilares(data);
+      setSimilaresBuscados(true);
+      setSeleccionados(new Set(data.slice(0, 3).map(s => s.id)));
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        setSimilaresError('sin-embedding');
+      } else {
+        setSimilaresError('error');
+      }
+    } finally {
+      setLoadingSimilares(false);
+    }
+  };
+
+  const generarEmbedding = async () => {
+    setLoadingSimilares(true);
+    setSimilaresError(null);
+    setSimilaresBuscados(false);
+    try {
+      await apiService.post(`/ambiental/expedientes/${id}/generar-embedding`);
+      await cargarSimilares();
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Error al generar embedding.';
+      toast.error(msg);
+      setLoadingSimilares(false);
+    }
+  };
+
+  const generarPromptComparativo = async () => {
+    const seleccionadosList = similares.filter(s => seleccionados.has(s.id));
+    if (!seleccionadosList.length) return toast.error('Selecciona al menos un precedente.');
+    setGenerandoComparativo(true);
+    try {
+      const { data } = await apiService.post(`/ambiental/expedientes/${id}/prompt-comparativo`, {
+        precedentes_ids: seleccionadosList.map(s => s.id),
+      });
+      setPromptComparativo(data.prompt);
+    } catch { toast.error('Error al generar el prompt comparativo.'); }
+    finally { setGenerandoComparativo(false); }
+  };
+
+  const toggleSeleccionado = (sId) => {
+    setSeleccionados(prev => {
+      const next = new Set(prev);
+      next.has(sId) ? next.delete(sId) : next.add(sId);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -764,18 +916,16 @@ export default function DetalleExpediente() {
   const cfgEstado = estadoConfig[expediente.estado] || estadoConfig['Pendiente'];
 
   // Stepper: progreso del expediente
-  const pasoDocumento  = !!expediente.contenido_texto;
-  const pasoAnalisis   = !!analisis;
-  const pasoRespuesta  = !!expediente.respuesta_entidad_texto;
-  const pasoCerrado    = expediente.estado === 'Cerrado';
+  const pasoDocumento = !!expediente.contenido_texto;
+  const pasoAnalisis  = !!analisis;
 
   const pasos = [
-    { key: 'documento', num: 1, label: 'Documento',  desc: 'Subir y procesar el archivo',        done: pasoDocumento },
-    { key: 'llm',       num: 2, label: 'Analizar',   desc: 'Generar prompt y guardar resultados', done: pasoAnalisis },
-    { key: 'analisis',  num: 3, label: 'Resultados', desc: 'Ver análisis y hallazgos',            done: pasoAnalisis },
-    { key: 'recurso',   num: 4, label: 'Recurso',    desc: 'Opcional · solo si aplica',           done: !!recursoParseado, optional: true },
-    { key: 'respuesta',      num: 5, label: 'Respuesta',      desc: 'Registrar respuesta recibida',        done: pasoRespuesta },
-    { key: 'comunicaciones', num: 6, label: 'Comunicaciones', desc: 'Historial de intercambios con la entidad', done: comunicaciones.length > 0 },
+    { key: 'documento',      num: 1, label: 'Documento',      desc: 'Subir y procesar el archivo',              done: pasoDocumento },
+    { key: 'llm',            num: 2, label: 'Analizar',       desc: 'Generar prompt y guardar resultados',       done: pasoAnalisis },
+    { key: 'analisis',       num: 3, label: 'Resultados',     desc: 'Ver análisis y hallazgos',                  done: pasoAnalisis },
+    { key: 'recurso',        num: 4, label: 'Recurso',        desc: 'Opcional · solo si aplica',                 done: !!recursoParseado, optional: true },
+    { key: 'comunicaciones', num: 5, label: 'Comunicaciones', desc: 'Historial de intercambios con la entidad',  done: comunicaciones.length > 0 },
+    { key: 'precedentes',    num: 6, label: 'Precedentes',    desc: 'Expedientes similares en el sistema',       done: false },
   ];
 
   return (
@@ -826,6 +976,12 @@ export default function DetalleExpediente() {
             <span className={`px-2 py-0.5 rounded-md text-[11px] font-semibold ${analisis.nivel_riesgo === 'Crítico' || analisis.nivel_riesgo === 'Alto' ? 'bg-red-50 text-red-500' : analisis.nivel_riesgo === 'Medio' ? 'bg-orange-50 text-orange-500' : 'bg-green-50 text-green-600'}`}>
               Riesgo {analisis.nivel_riesgo}
             </span>
+          )}
+          {expediente.enlace_pdf && (
+            <a href={expediente.enlace_pdf} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-[11px] font-bold hover:bg-green-100 transition-colors">
+              <ExternalLink size={10} /> Ver PDF
+            </a>
           )}
         </div>
 
@@ -980,6 +1136,34 @@ export default function DetalleExpediente() {
               <div>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Registrado</p>
                 <p className="text-sm font-semibold text-gray-700">{new Date(expediente.created_at).toLocaleDateString('es-CO')}</p>
+              </div>
+
+              {/* Enlace al PDF original */}
+              <div className="col-span-2">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5"><LinkIcon size={10} className="inline mr-1" />Enlace PDF original</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="url"
+                    defaultValue={expediente.enlace_pdf || ''}
+                    placeholder="https://..."
+                    className="flex-1 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:ring-2 focus:ring-green-600"
+                    onBlur={async (e) => {
+                      const val = e.target.value.trim();
+                      if (val === (expediente.enlace_pdf || '')) return;
+                      try {
+                        await apiService.patch(`/ambiental/expedientes/${id}`, { enlace_pdf: val || null });
+                        setExpediente(prev => ({ ...prev, enlace_pdf: val || null }));
+                        toast.success('Enlace guardado.');
+                      } catch { toast.error('URL inválida o error al guardar.'); }
+                    }}
+                  />
+                  {expediente.enlace_pdf && (
+                    <a href={expediente.enlace_pdf} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg bg-green-50 text-green-700 hover:bg-green-100 transition-colors shrink-0">
+                      <ExternalLink size={11} /> Abrir
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1186,16 +1370,69 @@ export default function DetalleExpediente() {
               <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
                 <Zap size={13} /> Resumen ejecutivo
               </h2>
-              {analisis.resumen?.includes('[Sección adicional]') && (
+              <div className="flex items-center gap-2">
+                {analisis.resumen?.includes('[Sección adicional]') && !editandoResumen && (
+                  <button
+                    onClick={() => setMostrarConsolidar(v => !v)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                  >
+                    {mostrarConsolidar ? 'Cancelar' : 'Consolidar resumen'}
+                  </button>
+                )}
                 <button
-                  onClick={() => setMostrarConsolidar(v => !v)}
-                  className="text-xs font-bold px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors"
+                  onClick={() => {
+                    if (editandoResumen) {
+                      setEditandoResumen(false);
+                    } else {
+                      setResumenEdit(analisis.resumen || '');
+                      setEditandoResumen(true);
+                      setMostrarConsolidar(false);
+                    }
+                  }}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-green-700 hover:bg-green-50 transition-colors"
+                  title={editandoResumen ? 'Cancelar edición' : 'Editar resumen'}
                 >
-                  {mostrarConsolidar ? 'Cancelar' : 'Consolidar resumen'}
+                  <Pencil size={13} />
                 </button>
-              )}
+              </div>
             </div>
-            <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{analisis.resumen}</p>
+
+            {editandoResumen ? (
+              <div className="space-y-2">
+                <textarea
+                  autoFocus
+                  value={resumenEdit}
+                  onChange={e => setResumenEdit(e.target.value)}
+                  rows={6}
+                  className="w-full text-sm text-gray-700 border border-green-300 rounded-xl p-3 resize-none focus:ring-2 focus:ring-green-500 focus:outline-none leading-relaxed"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setEditandoResumen(false)}
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"
+                  >Cancelar</button>
+                  <button
+                    disabled={guardandoResumenEdit || !resumenEdit.trim()}
+                    onClick={async () => {
+                      setGuardandoResumenEdit(true);
+                      try {
+                        await apiService.patch(`/ambiental/expedientes/${id}/analisis/resumen`, { resumen: resumenEdit.trim() });
+                        setAnalisis(prev => ({ ...prev, resumen: resumenEdit.trim() }));
+                        setEditandoResumen(false);
+                        toast.success('Resumen actualizado.');
+                      } catch { toast.error('Error al guardar.'); }
+                      finally { setGuardandoResumenEdit(false); }
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-700 text-white hover:bg-green-800 disabled:opacity-50 transition-colors"
+                  >
+                    {guardandoResumenEdit ? <Loader size={12} className="animate-spin" /> : null}
+                    Guardar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{analisis.resumen}</p>
+            )}
 
             {mostrarConsolidar && (
               <div className="border-t border-amber-100 pt-3 space-y-3">
@@ -1704,9 +1941,9 @@ export default function DetalleExpediente() {
         </div>
       )}
 
-      {/* TAB: Respuesta de la entidad */}
-      {tab === 'respuesta' && (
-        <div className="space-y-6">
+      {/* TAB: Respuesta eliminada — datos migrados a Comunicaciones */}
+      {false && (
+        <div className="space-y-6 hidden">
 
           {/* Texto ya guardado */}
           {expediente?.respuesta_entidad_texto && (
@@ -2114,6 +2351,16 @@ export default function DetalleExpediente() {
                 />
               </div>
               <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Enlace al original (opcional)</label>
+                <input
+                  type="url"
+                  value={formCom.enlace}
+                  onChange={e => setFormCom(p => ({ ...p, enlace: e.target.value }))}
+                  placeholder="https://..."
+                  className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-green-500 focus:outline-none"
+                />
+              </div>
+              <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Archivo PDF / Word (opcional)</label>
                 <label className="flex items-center gap-3 cursor-pointer border-2 border-dashed border-gray-200 hover:border-green-400 rounded-xl px-4 py-3 transition-colors">
                   <Upload size={15} className="text-gray-400 shrink-0" />
@@ -2130,7 +2377,7 @@ export default function DetalleExpediente() {
               </div>
               <div className="flex gap-2 justify-end">
                 <button
-                  onClick={() => { setMostrarFormCom(false); setFormCom({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '' }); setArchivoCom(null); }}
+                  onClick={() => { setMostrarFormCom(false); setFormCom({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '', enlace: '' }); setArchivoCom(null); }}
                   className="text-xs font-bold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50"
                 >Cancelar</button>
                 <button
@@ -2143,11 +2390,12 @@ export default function DetalleExpediente() {
                       fd.append('asunto', formCom.asunto);
                       fd.append('fecha', formCom.fecha);
                       if (formCom.descripcion) fd.append('descripcion', formCom.descripcion);
+                      if (formCom.enlace) fd.append('enlace', formCom.enlace);
                       if (archivoCom) fd.append('file', archivoCom);
                       const { data } = await apiService.post(`/ambiental/expedientes/${id}/comunicaciones`, fd);
                       setComunicaciones(prev => [...prev, data].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)));
                       setMostrarFormCom(false);
-                      setFormCom({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '' });
+                      setFormCom({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '', enlace: '' });
                       setArchivoCom(null);
                       toast.success('Comunicación registrada.');
                     } catch { toast.error('Error al guardar.'); }
@@ -2251,6 +2499,17 @@ export default function DetalleExpediente() {
                                   <FileText size={10} /> {com.nombre_archivo}
                                 </div>
                               )}
+                              {com.enlace && (
+                                <a
+                                  href={com.enlace}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className={`inline-flex items-center gap-1.5 mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full underline-offset-2 hover:underline ${esEnel ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}
+                                >
+                                  <ExternalLink size={10} /> Ver original
+                                </a>
+                              )}
                               {com.texto_extraido && (
                                 <p className="text-[10px] text-gray-400 mt-1">{expanded ? '▲ Ocultar texto' : '▼ Ver texto extraído'}</p>
                               )}
@@ -2263,23 +2522,100 @@ export default function DetalleExpediente() {
                                   <button
                                     onClick={() => {
                                       const doc = new jsPDF();
-                                      const color = esEnel ? [37, 99, 235] : [5, 150, 105];
+                                      const W = 210, M = 14, CW = W - M * 2;
+                                      const azul   = [37, 99, 235];
+                                      const verde  = [5, 150, 105];
+                                      const color  = esEnel ? azul : verde;
+                                      const colorO = esEnel ? [219, 234, 254] : [209, 250, 229];
+                                      const gris   = [71, 85, 105];
+                                      const negro  = [15, 23, 42];
+
+                                      // ── Cabecera ──────────────────────────────
                                       doc.setFillColor(...color);
-                                      doc.rect(0, 0, 210, 28, 'F');
+                                      doc.rect(0, 0, W, 38, 'F');
+                                      doc.setFillColor(255, 255, 255);
+                                      doc.setGState(doc.GState({ opacity: 0.08 }));
+                                      doc.rect(0, 0, 4, 38, 'F');
+                                      doc.setGState(doc.GState({ opacity: 1 }));
+
                                       doc.setTextColor(255, 255, 255);
-                                      doc.setFontSize(13);
-                                      doc.setFont('helvetica', 'bold');
-                                      doc.text(com.asunto.toUpperCase().slice(0, 60), 14, 12);
-                                      doc.setFontSize(9);
-                                      doc.setFont('helvetica', 'normal');
-                                      doc.text(`${esEnel ? 'Saliente — Enel Colombia' : 'Entrante — Entidad'}  ·  ${new Date(com.fecha).toLocaleDateString('es-CO')}`, 14, 20);
-                                      let y = 36;
-                                      doc.setTextColor(30, 30, 30);
-                                      doc.setFontSize(10);
-                                      doc.splitTextToSize(com.texto_extraido, 182).forEach(line => {
-                                        if (y > 280) { doc.addPage(); y = 14; }
-                                        doc.text(line, 14, y); y += 5;
+                                      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+                                      doc.text('ENEL COLOMBIA — ÁREA AMBIENTAL', M, 10);
+
+                                      const dirLabel = esEnel ? 'COMUNICACIÓN SALIENTE' : 'COMUNICACIÓN ENTRANTE';
+                                      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+                                      doc.text(dirLabel, M, 20);
+
+                                      doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+                                      const fechaStr = new Date(com.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
+                                      doc.text(`${esEnel ? 'Enel → Entidad' : 'Entidad → Enel'}  ·  ${fechaStr}`, M, 29);
+                                      doc.setFontSize(7);
+                                      doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, W - M, 29, { align: 'right' });
+
+                                      // ── Asunto ────────────────────────────────
+                                      doc.setFillColor(248, 250, 252);
+                                      doc.rect(0, 38, W, 16, 'F');
+                                      doc.setTextColor(...gris);
+                                      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+                                      doc.text('ASUNTO', M, 44);
+                                      doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+                                      doc.setTextColor(...negro);
+                                      const asuntoLines = doc.splitTextToSize(com.asunto, CW);
+                                      doc.text(asuntoLines[0], M, 50);
+
+                                      // ── Metadatos (chips) ─────────────────────
+                                      let y = 62;
+                                      const chips = [
+                                        com.nombre_archivo ? `Archivo: ${com.nombre_archivo}` : null,
+                                        com.enlace ? `Enlace: ${com.enlace}` : null,
+                                        com.descripcion ? `Nota: ${com.descripcion}` : null,
+                                      ].filter(Boolean);
+
+                                      if (chips.length) {
+                                        chips.forEach(chip => {
+                                          const lines = doc.splitTextToSize(chip, CW - 8);
+                                          const h = lines.length * 5 + 6;
+                                          doc.setFillColor(...colorO);
+                                          doc.roundedRect(M, y, CW, h, 2, 2, 'F');
+                                          doc.setTextColor(...color);
+                                          doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+                                          lines.forEach((l, i) => doc.text(l, M + 4, y + 5 + i * 5));
+                                          y += h + 3;
+                                        });
+                                        y += 2;
+                                      }
+
+                                      // ── Separador ─────────────────────────────
+                                      doc.setFillColor(...color);
+                                      doc.rect(M, y, CW, 0.5, 'F');
+                                      y += 6;
+
+                                      // ── Título sección texto ──────────────────
+                                      doc.setFillColor(...color);
+                                      doc.rect(M, y, 3, 9, 'F');
+                                      doc.setTextColor(...color);
+                                      doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+                                      doc.text('CONTENIDO DEL DOCUMENTO', M + 6, y + 6.5);
+                                      y += 13;
+
+                                      // ── Cuerpo del texto (con markdown) ───────
+                                      y = pdfMarkdown(doc, com.texto_extraido, {
+                                        startY: y, M, CW,
+                                        accent: color, textCol: negro, mutedCol: gris,
                                       });
+
+                                      // ── Pie de página ─────────────────────────
+                                      const pages = doc.getNumberOfPages();
+                                      for (let p = 1; p <= pages; p++) {
+                                        doc.setPage(p);
+                                        doc.setFillColor(248, 250, 252);
+                                        doc.rect(0, 285, W, 12, 'F');
+                                        doc.setTextColor(...gris);
+                                        doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+                                        doc.text('Enel Colombia — Gestión Ambiental', M, 291);
+                                        doc.text(`Página ${p} de ${pages}`, W - M, 291, { align: 'right' });
+                                      }
+
                                       doc.save(`comunicacion-${com.id.slice(0, 8)}.pdf`);
                                     }}
                                     className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-700 text-white hover:bg-gray-800"
@@ -2291,8 +2627,67 @@ export default function DetalleExpediente() {
                                   rows={8}
                                   className="w-full text-xs text-gray-700 bg-gray-50 border border-gray-100 rounded-lg p-2 resize-none font-mono leading-relaxed"
                                 />
+
+                                {/* Botón abrir modal de análisis */}
+                                {com.texto_extraido && (
+                                  <div className="border-t border-gray-100 pt-2 flex items-center justify-between">
+                                    {com.resultado_llm && (
+                                      <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1"><Check size={10} /> Análisis guardado</span>
+                                    )}
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setComModalId(com.id); }}
+                                      className={`ml-auto flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-lg transition-colors ${com.resultado_llm ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-emerald-700 text-white hover:bg-emerald-800'}`}
+                                    >
+                                      <Zap size={10} /> {com.resultado_llm ? 'Ver / actualizar análisis' : 'Analizar con LLM'}
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
+
+                            {/* Enlace editable */}
+                            {expanded && (() => {
+                              const ca2 = comAnalisis[com.id] || {};
+                              const editandoEnlace = ca2.editandoEnlace;
+                              return (
+                                <div className="mt-2">
+                                  {editandoEnlace ? (
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="url"
+                                        defaultValue={com.enlace || ''}
+                                        id={`enlace-${com.id}`}
+                                        placeholder="https://..."
+                                        className="flex-1 text-[10px] border border-gray-200 rounded-lg px-2 py-1 focus:ring-1 focus:ring-emerald-500 outline-none"
+                                      />
+                                      <button
+                                        onClick={async () => {
+                                          const val = document.getElementById(`enlace-${com.id}`).value.trim();
+                                          try {
+                                            await apiService.patch(`/ambiental/expedientes/${id}/comunicaciones/${com.id}/enlace`, { enlace: val });
+                                            setComunicaciones(prev => prev.map(c => c.id === com.id ? { ...c, enlace: val || null } : c));
+                                            toast.success('Enlace guardado');
+                                          } catch { toast.error('Error al guardar enlace'); }
+                                          setComAnalisis(p => ({ ...p, [com.id]: { ...p[com.id], editandoEnlace: false } }));
+                                        }}
+                                        className="text-[10px] font-bold px-2 py-1 rounded-lg bg-emerald-700 text-white hover:bg-emerald-800"
+                                      ><Check size={10} /></button>
+                                      <button
+                                        onClick={() => setComAnalisis(p => ({ ...p, [com.id]: { ...p[com.id], editandoEnlace: false } }))}
+                                        className="text-[10px] font-bold px-2 py-1 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                      ><X size={10} /></button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      onClick={() => setComAnalisis(p => ({ ...p, [com.id]: { ...p[com.id], editandoEnlace: true } }))}
+                                      className="text-[10px] text-gray-400 hover:text-emerald-600 flex items-center gap-1 transition-colors"
+                                    >
+                                      <LinkIcon size={10} /> {com.enlace ? 'Editar enlace' : 'Añadir enlace'}
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })()}
 
                             {/* Eliminar */}
                             <button
@@ -2322,6 +2717,495 @@ export default function DetalleExpediente() {
                 </div>
               );
             })()
+          )}
+        </div>
+      )}
+
+      {/* ── MODAL ANÁLISIS COMUNICACIÓN ─────────────────────────── */}
+      {comModalId && (() => {
+        const com = comunicaciones.find(c => c.id === comModalId);
+        if (!com) return null;
+        const ca = comAnalisis[comModalId] || {};
+        const savedResult = com.resultado_llm;
+        let parsed = null;
+        try { if (savedResult) parsed = JSON.parse(savedResult); } catch {}
+        const valoracionColor = { Favorable: 'bg-green-100 text-green-700', Desfavorable: 'bg-red-100 text-red-700', Parcial: 'bg-yellow-100 text-yellow-700' };
+        const procedeColor    = { 'Sí': 'bg-red-100 text-red-700', 'No': 'bg-green-100 text-green-700', Evaluar: 'bg-yellow-100 text-yellow-700' };
+
+        const exportarPDF = () => {
+          const doc = new jsPDF();
+          const W = 210, M = 14, CW = W - M * 2;
+          const verde  = [5, 150, 105];
+          const verdeO = [209, 250, 229];
+          const gris   = [71, 85, 105];
+          const negro  = [15, 23, 42];
+          const ambar  = [251, 191, 36];
+          const ambarO = [255, 251, 235];
+
+          const addPage = () => { doc.addPage(); return 20; };
+          const checkY = (y, h = 10) => y + h > 278 ? addPage() : y;
+
+          // ── Cabecera ──────────────────────────────────────────────
+          doc.setFillColor(...verde);
+          doc.rect(0, 0, W, 36, 'F');
+          // Acento lateral
+          doc.setFillColor(255, 255, 255, 0.15);
+          doc.rect(0, 0, 4, 36, 'F');
+
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+          doc.text('ENEL COLOMBIA — ÁREA AMBIENTAL', M, 10);
+
+          doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+          doc.text('ANÁLISIS DE COMUNICACIÓN', M, 20);
+
+          doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+          const dir = com.direccion === 'saliente' ? 'Saliente (Enel → Entidad)' : 'Entrante (Entidad → Enel)';
+          doc.text(`${dir}  ·  ${new Date(com.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}`, M, 28);
+
+          // Fecha generación (esquina derecha)
+          doc.setFontSize(7);
+          doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, W - M, 28, { align: 'right' });
+
+          // ── Asunto ────────────────────────────────────────────────
+          doc.setFillColor(248, 250, 252);
+          doc.rect(0, 36, W, 14, 'F');
+          doc.setTextColor(...gris);
+          doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+          doc.text('ASUNTO', M, 42);
+          doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...negro);
+          const asuntoLines = doc.splitTextToSize(com.asunto, CW);
+          doc.text(asuntoLines[0], M, 47);
+
+          let y = 58;
+
+          if (parsed) {
+            // ── Indicadores ───────────────────────────────────────
+            const indicadores = [
+              parsed.valoracion    ? { label: 'VALORACIÓN',     value: parsed.valoracion }    : null,
+              parsed.cumplimiento  ? { label: 'CUMPLIMIENTO',   value: parsed.cumplimiento }  : null,
+              parsed.procede_recurso ? { label: 'RECURSO',      value: parsed.procede_recurso } : null,
+            ].filter(Boolean);
+
+            if (indicadores.length) {
+              y = checkY(y, 20);
+              const boxW = (CW - (indicadores.length - 1) * 4) / indicadores.length;
+              indicadores.forEach((ind, i) => {
+                const bx = M + i * (boxW + 4);
+                doc.setFillColor(...verdeO);
+                doc.roundedRect(bx, y, boxW, 16, 2, 2, 'F');
+                doc.setTextColor(...verde);
+                doc.setFontSize(6); doc.setFont('helvetica', 'bold');
+                doc.text(ind.label, bx + boxW / 2, y + 5.5, { align: 'center' });
+                doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+                doc.text(ind.value, bx + boxW / 2, y + 12, { align: 'center' });
+              });
+              y += 22;
+            }
+
+            // ── Sección helper (con markdown en el contenido) ─────
+            const seccion = (titulo, contenido) => {
+              if (!contenido) return;
+              y = checkY(y, 16);
+              doc.setFillColor(...verde);
+              doc.rect(M, y, 3, 10, 'F');
+              doc.setTextColor(...verde);
+              doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+              doc.text(titulo, M + 6, y + 7);
+              y += 13;
+              y = pdfMarkdown(doc, contenido, { startY: y, M, CW, accent: verde, textCol: negro, mutedCol: gris });
+              y += 2;
+            };
+
+            // ── Resumen ───────────────────────────────────────────
+            seccion('RESUMEN', parsed.resumen);
+
+            // ── Recurso (bloque destacado) ────────────────────────
+            if (parsed.procede_recurso !== 'No' && parsed.tipo_recurso && parsed.tipo_recurso !== 'No aplica') {
+              y = checkY(y, 16);
+              doc.setFillColor(...ambarO);
+              doc.roundedRect(M, y, CW, 12, 2, 2, 'F');
+              doc.setFillColor(...ambar);
+              doc.rect(M, y, 3, 12, 'F');
+              doc.setTextColor(146, 64, 14);
+              doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+              doc.text('RECURSO LEGAL', M + 6, y + 5);
+              doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+              doc.text(`${parsed.tipo_recurso}${parsed.plazo_recurso ? '  ·  ' + parsed.plazo_recurso : ''}`, M + 6, y + 10);
+              y += 15;
+              if (parsed.fundamentos_recurso) {
+                y = pdfMarkdown(doc, parsed.fundamentos_recurso, { startY: y, M: M + 4, CW: CW - 4, accent: [146, 64, 14], textCol: [146, 64, 14], mutedCol: gris });
+              }
+              y += 4;
+            }
+
+            // ── Recomendaciones ───────────────────────────────────
+            if (parsed.recomendaciones?.length) {
+              y = checkY(y, 14);
+              doc.setFillColor(...verde);
+              doc.rect(M, y, 3, 10, 'F');
+              doc.setTextColor(...verde);
+              doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+              doc.text('RECOMENDACIONES', M + 6, y + 7);
+              y += 13;
+              parsed.recomendaciones.forEach((r, i) => {
+                y = checkY(y, 10);
+                doc.setFillColor(...verdeO);
+                doc.circle(M + 3, y + 2.5, 3, 'F');
+                doc.setTextColor(...verde);
+                doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+                doc.text(`${i + 1}`, M + 3, y + 3.5, { align: 'center' });
+                y = pdfMarkdown(doc, r, { startY: y, M: M + 10, CW: CW - 10, accent: verde, textCol: negro, mutedCol: gris });
+                y += 2;
+              });
+              y += 4;
+            }
+
+            // ── Observaciones ─────────────────────────────────────
+            seccion('OBSERVACIONES', parsed.observaciones);
+
+          } else {
+            // Fallback: texto plano con markdown
+            y = pdfMarkdown(doc, savedResult || '', { startY: y, M, CW, accent: verde, textCol: negro, mutedCol: gris });
+          }
+
+          // ── Pie de página ─────────────────────────────────────────
+          const pages = doc.getNumberOfPages();
+          for (let p = 1; p <= pages; p++) {
+            doc.setPage(p);
+            doc.setFillColor(248, 250, 252);
+            doc.rect(0, 285, W, 12, 'F');
+            doc.setTextColor(...gris);
+            doc.setFontSize(7); doc.setFont('helvetica', 'normal');
+            doc.text('Enel Colombia — Gestión Ambiental', M, 291);
+            doc.text(`Página ${p} de ${pages}`, W - M, 291, { align: 'right' });
+          }
+
+          doc.save(`analisis-comunicacion-${com.id.slice(0, 8)}.pdf`);
+        };
+
+        const cerrar = () => setComModalId(null);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={cerrar}>
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between px-6 py-4 border-b border-gray-100">
+                <div>
+                  <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-0.5">
+                    {com.direccion === 'saliente' ? 'Saliente — Enel →' : '← Entrante — Entidad'}
+                    {' · '}{new Date(com.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                  <h3 className="text-base font-bold text-gray-800">{com.asunto}</h3>
+                </div>
+                <button onClick={cerrar} className="text-gray-400 hover:text-gray-600 ml-4 shrink-0"><X size={18} /></button>
+              </div>
+
+              {/* Body scrollable */}
+              <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+
+                {/* — Sin resultado aún: generar prompt — */}
+                {!savedResult && !ca.prompt && (
+                  <div className="text-center py-8 space-y-3">
+                    <p className="text-sm text-gray-500">No hay análisis para esta comunicación.</p>
+                    <button
+                      disabled={ca.generando}
+                      onClick={async () => {
+                        setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], generando: true } }));
+                        try {
+                          const { data } = await apiService.post(`/ambiental/expedientes/${id}/comunicaciones/${comModalId}/prompt-analisis`);
+                          setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], generando: false, prompt: data.prompt } }));
+                        } catch {
+                          toast.error('Error al generar el prompt');
+                          setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], generando: false } }));
+                        }
+                      }}
+                      className="flex items-center gap-2 mx-auto px-5 py-2.5 bg-emerald-700 text-white rounded-xl font-bold hover:bg-emerald-800 disabled:opacity-50 transition-colors"
+                    >
+                      {ca.generando ? <Loader size={14} className="animate-spin" /> : <Zap size={14} />}
+                      {ca.generando ? 'Generando prompt...' : 'Generar prompt de análisis'}
+                    </button>
+                  </div>
+                )}
+
+                {/* — Prompt generado, esperando resultado — */}
+                {ca.prompt && (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Prompt para el LLM</p>
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(ca.prompt); setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], copiado: true } })); setTimeout(() => setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], copiado: false } })), 2000); }}
+                          className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${ca.copiado ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        >
+                          {ca.copiado ? <><Check size={12} /> Copiado</> : <><Copy size={12} /> Copiar</>}
+                        </button>
+                      </div>
+                      <textarea readOnly value={ca.prompt} rows={7} className="w-full text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl p-3 resize-none font-mono leading-relaxed" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Resultado del LLM</p>
+                      <textarea
+                        value={ca.resultado || ''}
+                        onChange={e => setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], resultado: e.target.value } }))}
+                        rows={6}
+                        placeholder='Pega aquí el JSON que devolvió el LLM...'
+                        className="w-full text-xs text-gray-700 bg-white border border-gray-200 rounded-xl p-3 resize-none font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                      <button
+                        disabled={!ca.resultado?.trim() || ca.guardando}
+                        onClick={async () => {
+                          setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], guardando: true } }));
+                          try {
+                            await apiService.patch(`/ambiental/expedientes/${id}/comunicaciones/${comModalId}/resultado-llm`, { resultado_llm: ca.resultado });
+                            setComunicaciones(prev => prev.map(c => c.id === comModalId ? { ...c, resultado_llm: ca.resultado } : c));
+                            toast.success('Análisis guardado');
+                            setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], guardando: false, prompt: null } }));
+                          } catch {
+                            toast.error('Error al guardar');
+                            setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], guardando: false } }));
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-700 text-white rounded-xl text-sm font-bold hover:bg-emerald-800 disabled:opacity-50 transition-colors"
+                      >
+                        {ca.guardando ? <Loader size={14} className="animate-spin" /> : <Check size={14} />}
+                        Guardar análisis
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* — Resultado guardado — */}
+                {savedResult && !ca.prompt && (
+                  <div className="space-y-4">
+                    {/* Badges */}
+                    {parsed && (
+                      <div className="flex flex-wrap gap-2">
+                        {parsed.valoracion    && <span className={`text-xs font-bold px-3 py-1 rounded-full ${valoracionColor[parsed.valoracion] || 'bg-gray-100 text-gray-600'}`}>{parsed.valoracion}</span>}
+                        {parsed.cumplimiento  && <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">{parsed.cumplimiento}</span>}
+                        {parsed.procede_recurso && <span className={`text-xs font-bold px-3 py-1 rounded-full ${procedeColor[parsed.procede_recurso] || 'bg-gray-100 text-gray-600'}`}>Recurso: {parsed.procede_recurso}</span>}
+                      </div>
+                    )}
+
+                    {parsed ? (
+                      <div className="space-y-4">
+                        {parsed.resumen && (
+                          <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Resumen</p>
+                            <p className="text-sm text-gray-700 leading-relaxed">{parsed.resumen}</p>
+                          </div>
+                        )}
+                        {parsed.procede_recurso !== 'No' && parsed.tipo_recurso && parsed.tipo_recurso !== 'No aplica' && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+                            <p className="text-sm font-bold text-amber-800">Recurso: {parsed.tipo_recurso}</p>
+                            {parsed.plazo_recurso && <p className="text-xs text-amber-700">⏳ {parsed.plazo_recurso}</p>}
+                            {parsed.fundamentos_recurso && <p className="text-xs text-amber-700 leading-relaxed">{parsed.fundamentos_recurso}</p>}
+                          </div>
+                        )}
+                        {parsed.recomendaciones?.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Recomendaciones</p>
+                            <ul className="space-y-2">
+                              {parsed.recomendaciones.map((r, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                                  <span className="mt-0.5 w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0 text-[10px]">{i+1}</span>{r}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {parsed.observaciones && (
+                          <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Observaciones</p>
+                            <p className="text-sm text-gray-600 leading-relaxed">{parsed.observaciones}</p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <pre className="text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-4 whitespace-pre-wrap leading-relaxed overflow-auto">{savedResult}</pre>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50">
+                <div className="flex gap-2">
+                  {savedResult && (
+                    <>
+                      <button onClick={exportarPDF} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-gray-700 text-white hover:bg-gray-800 transition-colors">
+                        <Download size={13} /> Exportar PDF
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], generando: true } }));
+                          try {
+                            const { data } = await apiService.post(`/ambiental/expedientes/${id}/comunicaciones/${comModalId}/prompt-analisis`);
+                            setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], generando: false, prompt: data.prompt } }));
+                          } catch {
+                            toast.error('Error al generar el prompt');
+                            setComAnalisis(p => ({ ...p, [comModalId]: { ...p[comModalId], generando: false } }));
+                          }
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors"
+                      >
+                        <Zap size={13} /> Reanálizar
+                      </button>
+                    </>
+                  )}
+                </div>
+                <button onClick={cerrar} className="text-xs font-bold px-4 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-100 transition-colors">Cerrar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ── TAB PRECEDENTES ─────────────────────────────────────── */}
+      {tab === 'precedentes' && (
+        <div className="space-y-5">
+          {!similaresBuscados && !loadingSimilares && !similaresError && (
+            <div className="text-center py-10">
+              <button
+                onClick={cargarSimilares}
+                className="flex items-center gap-2 mx-auto bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-green-800 transition-colors"
+              >
+                <Search size={16} /> Buscar precedentes similares
+              </button>
+              <p className="text-xs text-gray-400 mt-2">Busca expedientes con análisis similar en el sistema</p>
+            </div>
+          )}
+
+          {similaresBuscados && similares.length === 0 && !loadingSimilares && (
+            <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+              <Search size={28} className="mx-auto text-gray-300 mb-3" />
+              <p className="font-bold text-gray-400">Sin precedentes similares</p>
+              <p className="text-xs text-gray-400 mt-1">No se encontraron expedientes con similitud suficiente (mínimo 65%)</p>
+              <button onClick={cargarSimilares} className="mt-3 text-xs text-green-700 hover:underline">Buscar de nuevo</button>
+            </div>
+          )}
+
+          {loadingSimilares && (
+            <div className="flex items-center justify-center py-16 gap-3">
+              <div className="w-6 h-6 border-2 border-green-700 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-gray-400">Buscando precedentes...</span>
+            </div>
+          )}
+
+          {similaresError === 'sin-embedding' && (
+            <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+              <FileText size={32} className="mx-auto text-gray-300 mb-3" />
+              <p className="font-bold text-gray-400">Este expediente aún no tiene índice semántico</p>
+              <p className="text-xs text-gray-400 mt-1 mb-4">Genera el índice para poder buscar precedentes similares</p>
+              <button
+                onClick={generarEmbedding}
+                className="flex items-center gap-2 mx-auto bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-green-800 transition-colors text-sm"
+              >
+                <Zap size={15} /> Generar índice semántico
+              </button>
+            </div>
+          )}
+
+          {similaresError === 'error' && (
+            <div className="text-center py-8 text-red-400 text-sm">Error al buscar precedentes.</div>
+          )}
+
+          {similares.length > 0 && (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-gray-700">{similares.length} expediente{similares.length !== 1 ? 's' : ''} similar{similares.length !== 1 ? 'es' : ''} encontrado{similares.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-gray-400">{seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''} para comparar</p>
+              </div>
+
+              <div className="space-y-3">
+                {similares.map(s => {
+                  const sel = seleccionados.has(s.id);
+                  const pct = Math.round(s.similitud * 100);
+                  const color = pct >= 85 ? 'text-green-700 bg-green-50' : pct >= 70 ? 'text-amber-700 bg-amber-50' : 'text-gray-500 bg-gray-100';
+                  const riesgoCfg = { 'Crítico': 'text-red-700 bg-red-50', 'Alto': 'text-orange-700 bg-orange-50', 'Medio': 'text-yellow-700 bg-yellow-50', 'Bajo': 'text-green-700 bg-green-50' };
+                  return (
+                    <div
+                      key={s.id}
+                      className={`rounded-2xl border p-4 transition-all cursor-pointer ${sel ? 'border-green-500 bg-green-50/30' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                      onClick={() => toggleSeleccionado(s.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${sel ? 'bg-green-700 border-green-700' : 'border-gray-300'}`}>
+                          {sel && <Check size={11} className="text-white" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className={`text-xs font-black px-2 py-0.5 rounded-full ${color}`}>{pct}% similitud</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">{s.tipo_instrumento}</span>
+                            {s.nivel_riesgo && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${riesgoCfg[s.nivel_riesgo] || 'text-gray-500 bg-gray-100'}`}>Riesgo {s.nivel_riesgo}</span>}
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{s.estado}</span>
+                          </div>
+                          <p className="text-sm font-bold text-gray-800 truncate">{s.titulo}</p>
+                          {s.entidad_nombre && <p className="text-xs text-gray-500">{s.entidad_nombre}</p>}
+                          {s.resumen && (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{s.resumen.slice(0, 180)}{s.resumen.length > 180 ? '…' : ''}</p>
+                          )}
+                        </div>
+                        <a
+                          href={`/ambiental/expediente/${s.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-green-700 hover:bg-green-50 transition-colors"
+                          title="Abrir expediente"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={generarPromptComparativo}
+                disabled={generandoComparativo || seleccionados.size === 0}
+                className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-xl font-bold hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generandoComparativo
+                  ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generando...</>
+                  : <><Zap size={16} /> Generar prompt comparativo ({seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''})</>
+                }
+              </button>
+            </>
+          )}
+
+          {promptComparativo && (
+            <div className="space-y-4">
+              <div className="bg-gray-900 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Prompt comparativo</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(promptComparativo); toast.success('Copiado al portapapeles'); }}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-700 text-white hover:bg-green-800 transition-colors"
+                  >
+                    <Copy size={12} /> Copiar
+                  </button>
+                </div>
+                <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">{promptComparativo}</pre>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Resultado del análisis comparativo</p>
+                <textarea
+                  value={resultadoComparativo}
+                  onChange={e => setResultadoComparativo(e.target.value)}
+                  placeholder="Pega aquí la respuesta de Copilot..."
+                  rows={12}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white outline-none focus:ring-2 focus:ring-green-600 resize-none font-mono"
+                />
+              </div>
+            </div>
           )}
         </div>
       )}

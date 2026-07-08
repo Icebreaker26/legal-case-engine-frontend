@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const ESTADOS = ['Todos', 'Pendiente', 'Analizado', 'Revisado', 'Archivado'];
-const TIPOS = ['Todos', 'expediente', 'auto', 'resolución', 'concepto'];
+const ESTADOS = ['Todos', 'Pendiente', 'Analizado', 'Revisado', 'Archivado', 'Cerrado'];
+const TIPOS = ['Todos', 'expediente', 'auto', 'resolución', 'concepto', 'otros'];
 const ORDENES = [
   { value: 'reciente',    label: 'Más reciente' },
   { value: 'urgencia',   label: 'Urgencia' },
@@ -18,8 +18,9 @@ const ORDENES = [
 const RIESGO_PESO = { 'Crítico': 0, 'Alto': 1, 'Medio': 2, 'Bajo': 3 };
 
 function urgencyScore(exp) {
+  if (['Cerrado', 'Archivado'].includes(exp.estado)) return 9999999;
   const hoy = new Date();
-  let diasScore = exp.fecha_vencimiento
+  const diasScore = exp.fecha_vencimiento
     ? Math.ceil((new Date(exp.fecha_vencimiento) - hoy) / 86400000)
     : 99999;
   const riesgoScore = RIESGO_PESO[exp.nivel_riesgo] ?? 4;
@@ -27,10 +28,11 @@ function urgencyScore(exp) {
 }
 
 const estadoConfig = {
-  'Pendiente':  { bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-400', icon: <Clock size={11} /> },
+  'Pendiente':  { bg: 'bg-amber-100',  text: 'text-amber-700',  dot: 'bg-amber-400',  icon: <Clock size={11} /> },
   'Analizado':  { bg: 'bg-blue-100',   text: 'text-blue-700',   dot: 'bg-blue-400',   icon: <Zap size={11} /> },
   'Revisado':   { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-400',  icon: <CheckCircle size={11} /> },
   'Archivado':  { bg: 'bg-gray-100',   text: 'text-gray-500',   dot: 'bg-gray-400',   icon: <Archive size={11} /> },
+  'Cerrado':    { bg: 'bg-slate-100',  text: 'text-slate-500',  dot: 'bg-slate-400',  icon: <CheckCircle size={11} /> },
 };
 
 const riesgoConfig = {
@@ -167,6 +169,8 @@ export default function ListaExpedientes() {
   const [filtroResponsable, setFiltroResponsable] = useState('Todos');
   const [filtroProyecto, setFiltroProyecto] = useState('Todos');
   const [ordenar, setOrdenar] = useState('reciente');
+  const [porPagina, setPorPagina] = useState(25);
+  const [pagina, setPagina] = useState(1);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -214,7 +218,8 @@ export default function ListaExpedientes() {
         e.numero_expediente?.toLowerCase().includes(q) ||
         e.entidad_nombre?.toLowerCase().includes(q) ||
         e.responsable_nombre?.toLowerCase().includes(q) ||
-        e.proyecto_nombre?.toLowerCase().includes(q);
+        e.proyecto_nombre?.toLowerCase().includes(q) ||
+        e.resumen_analisis?.toLowerCase().includes(q);
       const matchEstado = filtroEstado === 'Todos' || (e.estado || 'Pendiente') === filtroEstado;
       const matchTipo = filtroTipo === 'Todos' || e.tipo_instrumento === filtroTipo;
       const matchEntidad = filtroEntidad === 'Todas' || e.entidad_nombre === filtroEntidad;
@@ -244,8 +249,15 @@ export default function ListaExpedientes() {
   const limpiar = () => {
     setBusqueda(''); setFiltroEstado('Todos'); setFiltroTipo('Todos');
     setFiltroEntidad('Todas'); setFiltroResponsable('Todos'); setFiltroProyecto('Todos');
-    setOrdenar('reciente');
+    setOrdenar('reciente'); setPagina(1);
   };
+
+  const totalPaginas = porPagina === 0 ? 1 : Math.ceil(filtrados.length / porPagina);
+  const paginaActual = Math.min(pagina, totalPaginas || 1);
+  const paginados = porPagina === 0 ? filtrados : filtrados.slice((paginaActual - 1) * porPagina, paginaActual * porPagina);
+
+  // reset página cuando cambian filtros
+  useEffect(() => { setPagina(1); }, [busqueda, filtroEstado, filtroTipo, filtroEntidad, filtroResponsable, filtroProyecto, ordenar, porPagina]);
 
   return (
     <div className="space-y-8">
@@ -281,7 +293,7 @@ export default function ListaExpedientes() {
             <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Buscar por título, número, entidad, responsable o proyecto..."
+              placeholder="Buscar por título, número, entidad, responsable, proyecto o resumen..."
               className="w-full pl-10 pr-9 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 outline-none focus:ring-2 focus:ring-green-600 focus:bg-white transition-all"
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
@@ -295,95 +307,34 @@ export default function ListaExpedientes() {
         </div>
 
         {/* Fila de filtros */}
-        <div className="flex flex-wrap items-center px-2 py-1 gap-x-1 gap-y-1">
-
-          {/* Estado */}
-          <div className="flex items-center gap-1.5 px-2 py-2">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">Estado</span>
-            {ESTADOS.map(e => (
-              <button
-                key={e}
-                onClick={() => setFiltroEstado(e)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  filtroEstado === e
-                    ? 'bg-green-700 text-white'
-                    : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
-                }`}
-              >
-                {e}
-              </button>
-            ))}
-          </div>
-
-          <div className="w-px h-5 bg-gray-200 shrink-0" />
-
-          {/* Tipo */}
-          <div className="flex items-center gap-1.5 px-2 py-2">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0">Tipo</span>
-            {TIPOS.map(t => (
-              <button
-                key={t}
-                onClick={() => setFiltroTipo(t)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all capitalize ${
-                  filtroTipo === t
-                    ? 'bg-green-700 text-white'
-                    : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          <div className="w-px h-5 bg-gray-200 shrink-0" />
-
-          {/* Entidad / Responsable / Proyecto */}
+        <div className="flex flex-wrap items-center px-4 py-2 gap-3 border-b border-gray-100">
+          <FilterSelect label="Estado" options={ESTADOS} value={filtroEstado} onChange={setFiltroEstado} />
+          <FilterSelect label="Tipo" options={TIPOS} value={filtroTipo} onChange={setFiltroTipo} />
           {entidades.length > 1 && (
-            <div className="px-2 py-2">
-              <FilterSelect label="Entidad" options={entidades} value={filtroEntidad} onChange={setFiltroEntidad} allLabel="Todas" />
-            </div>
+            <FilterSelect label="Entidad" options={entidades} value={filtroEntidad} onChange={setFiltroEntidad} allLabel="Todas" />
           )}
           {responsables.length > 1 && (
-            <div className="px-2 py-2">
-              <FilterSelect label="Responsable" options={responsables} value={filtroResponsable} onChange={setFiltroResponsable} />
-            </div>
+            <FilterSelect label="Responsable" options={responsables} value={filtroResponsable} onChange={setFiltroResponsable} />
           )}
           {proyectos.length > 1 && (
-            <div className="px-2 py-2">
-              <FilterSelect label="Proyecto" options={proyectos} value={filtroProyecto} onChange={setFiltroProyecto} />
-            </div>
+            <FilterSelect label="Proyecto" options={proyectos} value={filtroProyecto} onChange={setFiltroProyecto} />
           )}
-
-          <div className="w-px h-5 bg-gray-200 shrink-0" />
-
-          {/* Orden */}
-          <div className="flex items-center gap-1.5 px-2 py-2">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest shrink-0 flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-1">
               <ArrowUpDown size={11} /> Orden
             </span>
-            {ORDENES.map(o => (
-              <button
-                key={o.value}
-                onClick={() => setOrdenar(o.value)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  ordenar === o.value
-                    ? 'bg-green-700 text-white'
-                    : 'text-gray-500 hover:text-green-700 hover:bg-green-50'
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
+            <select
+              value={ordenar}
+              onChange={e => setOrdenar(e.target.value)}
+              className="text-xs font-semibold px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-600 outline-none focus:ring-2 focus:ring-green-600 cursor-pointer"
+            >
+              {ORDENES.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
           </div>
-
-          {/* Limpiar */}
           {hayFiltros && (
-            <>
-              <div className="w-px h-5 bg-gray-200 shrink-0" />
-              <button onClick={limpiar} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all">
-                <X size={11} /> Limpiar
-              </button>
-            </>
+            <button onClick={limpiar} className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all ml-auto">
+              <X size={11} /> Limpiar
+            </button>
           )}
         </div>
       </div>
@@ -410,11 +361,25 @@ export default function ListaExpedientes() {
         </div>
       ) : (
         <>
-          <p className="text-xs text-gray-400 -mt-4">
-            Mostrando {filtrados.length} de {expedientes.length}
-          </p>
+          <div className="flex items-center justify-between -mt-4">
+            <p className="text-xs text-gray-400">
+              Mostrando {paginados.length} de {filtrados.length}{filtrados.length !== expedientes.length ? ` (${expedientes.length} total)` : ''}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Por página</span>
+              {[10, 25, 50, 0].map(n => (
+                <button
+                  key={n}
+                  onClick={() => setPorPagina(n)}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-semibold transition-all ${porPagina === n ? 'bg-green-700 text-white' : 'text-gray-500 hover:bg-green-50 hover:text-green-700'}`}
+                >
+                  {n === 0 ? 'Todos' : n}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filtrados.map(exp => {
+            {paginados.map(exp => {
               const cfg = estadoConfig[exp.estado] || estadoConfig['Pendiente'];
               return (
                 <div
@@ -450,7 +415,7 @@ export default function ListaExpedientes() {
                   )}
                   {!exp.responsable_nombre && !exp.proyecto_nombre && <div className="mb-3" />}
 
-                  {exp.fecha_vencimiento && (() => {
+                  {exp.fecha_vencimiento && !['Cerrado', 'Archivado'].includes(exp.estado) && (() => {
                     const dias = Math.ceil((new Date(exp.fecha_vencimiento) - new Date()) / 86400000);
                     const vencido = dias < 0;
                     const urgente = dias >= 0 && dias <= 7;
@@ -475,6 +440,21 @@ export default function ListaExpedientes() {
                     </p>
                   )}
 
+                  {exp.resumen_analisis && (() => {
+                    // Omite la primera oración (identificación del acto) — ya está en la card.
+                    // Busca ". " seguido de mayúscula después de 120 chars para saltar abreviaciones (No., S.A., E.S.P.)
+                    const texto = exp.resumen_analisis;
+                    const match = texto.slice(120).search(/\.\s+[A-ZÁÉÍÓÚ]/);
+                    const preview = match !== -1
+                      ? texto.slice(120 + match + 2).trim()
+                      : texto;
+                    return (
+                      <p className="text-xs text-gray-500 leading-relaxed line-clamp-3 mb-3 border-l-2 border-green-200 pl-2">
+                        {preview}
+                      </p>
+                    );
+                  })()}
+
                   <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                     <span className="flex items-center gap-1 text-[11px] text-gray-400">
                       <Calendar size={11} />
@@ -486,6 +466,40 @@ export default function ListaExpedientes() {
               );
             })}
           </div>
+
+          {totalPaginas > 1 && (
+            <div className="flex items-center justify-center gap-1 pt-2">
+              <button
+                onClick={() => setPagina(p => Math.max(1, p - 1))}
+                disabled={paginaActual === 1}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                ← Anterior
+              </button>
+              {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+                .filter(n => n === 1 || n === totalPaginas || Math.abs(n - paginaActual) <= 1)
+                .reduce((acc, n, i, arr) => {
+                  if (i > 0 && n - arr[i - 1] > 1) acc.push('…');
+                  acc.push(n);
+                  return acc;
+                }, [])
+                .map((n, i) => n === '…'
+                  ? <span key={`e${i}`} className="px-2 text-gray-300 text-xs">…</span>
+                  : <button
+                      key={n}
+                      onClick={() => setPagina(n)}
+                      className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${paginaActual === n ? 'bg-green-700 text-white' : 'text-gray-500 hover:bg-green-50 hover:text-green-700'}`}
+                    >{n}</button>
+                )}
+              <button
+                onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
+                disabled={paginaActual === totalPaginas}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                Siguiente →
+              </button>
+            </div>
+          )}
         </>
       )}
     </div>
