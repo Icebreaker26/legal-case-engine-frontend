@@ -1652,10 +1652,12 @@ export default function DetalleExpediente() {
                     ['Fundamentos de derecho', recursoParseado.fundamentos_derecho],
                     ['Pretensiones', recursoParseado.pretensiones],
                     ['Conclusión y solicitud', recursoParseado.conclusion],
-                  ].filter(([, v]) => v?.trim()).map(([titulo, texto]) => (
+                  ].filter(([, v]) => v != null && v !== '').map(([titulo, texto]) => (
                     <div key={titulo} className="px-4 py-3">
                       <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">{titulo}</p>
-                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{texto}</p>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
+                        {Array.isArray(texto) ? texto.join('\n') : String(texto)}
+                      </p>
                     </div>
                   ))}
                   {recursoParseado.argumentos_por_cargo?.length > 0 && (
