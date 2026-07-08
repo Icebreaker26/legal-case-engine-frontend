@@ -538,6 +538,13 @@ export default function DetalleExpediente() {
   // Tab Comunicaciones
   const [comunicaciones, setComunicaciones] = useState([]);
   const [loadingComs, setLoadingComs] = useState(false);
+  const [similares, setSimilares] = useState([]);
+  const [loadingSimilares, setLoadingSimilares] = useState(false);
+  const [similaresError, setSimilaresError] = useState(null);
+  const [seleccionados, setSeleccionados] = useState(new Set());
+  const [promptComparativo, setPromptComparativo] = useState('');
+  const [resultadoComparativo, setResultadoComparativo] = useState('');
+  const [generandoComparativo, setGenerandoComparativo] = useState(false);
   const [expandedCom, setExpandedCom] = useState(null);
   const [filtroCom, setFiltroCom] = useState('todas');
   const [formCom, setFormCom] = useState({ direccion: 'entrante', asunto: '', fecha: '', descripcion: '' });
@@ -618,6 +625,46 @@ export default function DetalleExpediente() {
       setComunicaciones(data);
     } catch { /* silencioso */ }
     finally { setLoadingComs(false); }
+  };
+
+  const cargarSimilares = async () => {
+    setLoadingSimilares(true);
+    setSimilaresError(null);
+    try {
+      const { data } = await apiService.get(`/ambiental/expedientes/${id}/similares`);
+      setSimilares(data);
+      // Top 3 seleccionados por defecto
+      setSeleccionados(new Set(data.slice(0, 3).map(s => s.id)));
+    } catch (err) {
+      if (err?.response?.status === 404) {
+        setSimilaresError('sin-embedding');
+      } else {
+        setSimilaresError('error');
+      }
+    } finally {
+      setLoadingSimilares(false);
+    }
+  };
+
+  const generarPromptComparativo = async () => {
+    const seleccionadosList = similares.filter(s => seleccionados.has(s.id));
+    if (!seleccionadosList.length) return toast.error('Selecciona al menos un precedente.');
+    setGenerandoComparativo(true);
+    try {
+      const { data } = await apiService.post(`/ambiental/expedientes/${id}/prompt-comparativo`, {
+        precedentes_ids: seleccionadosList.map(s => s.id),
+      });
+      setPromptComparativo(data.prompt);
+    } catch { toast.error('Error al generar el prompt comparativo.'); }
+    finally { setGenerandoComparativo(false); }
+  };
+
+  const toggleSeleccionado = (sId) => {
+    setSeleccionados(prev => {
+      const next = new Set(prev);
+      next.has(sId) ? next.delete(sId) : next.add(sId);
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -780,6 +827,7 @@ export default function DetalleExpediente() {
     { key: 'recurso',   num: 4, label: 'Recurso',    desc: 'Opcional · solo si aplica',           done: !!recursoParseado, optional: true },
     { key: 'respuesta',      num: 5, label: 'Respuesta',      desc: 'Registrar respuesta recibida',        done: pasoRespuesta },
     { key: 'comunicaciones', num: 6, label: 'Comunicaciones', desc: 'Historial de intercambios con la entidad', done: comunicaciones.length > 0 },
+    { key: 'precedentes',   num: 7, label: 'Precedentes',    desc: 'Expedientes similares en el sistema',      done: false },
   ];
 
   return (
@@ -2413,6 +2461,135 @@ export default function DetalleExpediente() {
                 </div>
               );
             })()
+          )}
+        </div>
+      )}
+
+      {/* ── TAB PRECEDENTES ─────────────────────────────────────── */}
+      {tab === 'precedentes' && (
+        <div className="space-y-5">
+          {similares.length === 0 && !loadingSimilares && !similaresError && !promptComparativo && (
+            <div className="text-center py-10">
+              <button
+                onClick={cargarSimilares}
+                className="flex items-center gap-2 mx-auto bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-green-800 transition-colors"
+              >
+                <Search size={16} /> Buscar precedentes similares
+              </button>
+              <p className="text-xs text-gray-400 mt-2">Busca expedientes con análisis similar en el sistema</p>
+            </div>
+          )}
+
+          {loadingSimilares && (
+            <div className="flex items-center justify-center py-16 gap-3">
+              <div className="w-6 h-6 border-2 border-green-700 border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-gray-400">Buscando precedentes...</span>
+            </div>
+          )}
+
+          {similaresError === 'sin-embedding' && (
+            <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+              <FileText size={32} className="mx-auto text-gray-300 mb-3" />
+              <p className="font-bold text-gray-400">Sin embedding disponible</p>
+              <p className="text-xs text-gray-400 mt-1">Procesa el documento y guarda el análisis para activar precedentes</p>
+            </div>
+          )}
+
+          {similaresError === 'error' && (
+            <div className="text-center py-8 text-red-400 text-sm">Error al buscar precedentes.</div>
+          )}
+
+          {similares.length > 0 && (
+            <>
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-bold text-gray-700">{similares.length} expediente{similares.length !== 1 ? 's' : ''} similar{similares.length !== 1 ? 'es' : ''} encontrado{similares.length !== 1 ? 's' : ''}</p>
+                <p className="text-xs text-gray-400">{seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''} para comparar</p>
+              </div>
+
+              <div className="space-y-3">
+                {similares.map(s => {
+                  const sel = seleccionados.has(s.id);
+                  const pct = Math.round(s.similitud * 100);
+                  const color = pct >= 85 ? 'text-green-700 bg-green-50' : pct >= 70 ? 'text-amber-700 bg-amber-50' : 'text-gray-500 bg-gray-100';
+                  const riesgoCfg = { 'Crítico': 'text-red-700 bg-red-50', 'Alto': 'text-orange-700 bg-orange-50', 'Medio': 'text-yellow-700 bg-yellow-50', 'Bajo': 'text-green-700 bg-green-50' };
+                  return (
+                    <div
+                      key={s.id}
+                      className={`rounded-2xl border p-4 transition-all cursor-pointer ${sel ? 'border-green-500 bg-green-50/30' : 'border-gray-200 bg-white hover:border-gray-300'}`}
+                      onClick={() => toggleSeleccionado(s.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${sel ? 'bg-green-700 border-green-700' : 'border-gray-300'}`}>
+                          {sel && <Check size={11} className="text-white" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <span className={`text-xs font-black px-2 py-0.5 rounded-full ${color}`}>{pct}% similitud</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">{s.tipo_instrumento}</span>
+                            {s.nivel_riesgo && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${riesgoCfg[s.nivel_riesgo] || 'text-gray-500 bg-gray-100'}`}>Riesgo {s.nivel_riesgo}</span>}
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{s.estado}</span>
+                          </div>
+                          <p className="text-sm font-bold text-gray-800 truncate">{s.titulo}</p>
+                          {s.entidad_nombre && <p className="text-xs text-gray-500">{s.entidad_nombre}</p>}
+                          {s.resumen && (
+                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{s.resumen.slice(0, 180)}{s.resumen.length > 180 ? '…' : ''}</p>
+                          )}
+                        </div>
+                        <a
+                          href={`/ambiental/expediente/${s.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="shrink-0 p-1.5 rounded-lg text-gray-400 hover:text-green-700 hover:bg-green-50 transition-colors"
+                          title="Abrir expediente"
+                        >
+                          <ExternalLink size={14} />
+                        </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={generarPromptComparativo}
+                disabled={generandoComparativo || seleccionados.size === 0}
+                className="w-full flex items-center justify-center gap-2 bg-green-700 text-white py-3 rounded-xl font-bold hover:bg-green-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generandoComparativo
+                  ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Generando...</>
+                  : <><Zap size={16} /> Generar prompt comparativo ({seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''})</>
+                }
+              </button>
+            </>
+          )}
+
+          {promptComparativo && (
+            <div className="space-y-4">
+              <div className="bg-gray-900 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Prompt comparativo</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(promptComparativo); toast.success('Copiado al portapapeles'); }}
+                    className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-700 text-white hover:bg-green-800 transition-colors"
+                  >
+                    <Copy size={12} /> Copiar
+                  </button>
+                </div>
+                <pre className="text-xs text-gray-300 whitespace-pre-wrap font-mono max-h-64 overflow-y-auto">{promptComparativo}</pre>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest">Resultado del análisis comparativo</p>
+                <textarea
+                  value={resultadoComparativo}
+                  onChange={e => setResultadoComparativo(e.target.value)}
+                  placeholder="Pega aquí la respuesta de Copilot..."
+                  rows={12}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm bg-white outline-none focus:ring-2 focus:ring-green-600 resize-none font-mono"
+                />
+              </div>
+            </div>
           )}
         </div>
       )}
