@@ -477,6 +477,12 @@ export default function ListaExpedientes() {
                     </p>
                   )}
 
+                  {exp.resumen_analisis && (
+                    <p className="text-xs text-gray-500 leading-relaxed line-clamp-3 mb-3 border-l-2 border-green-200 pl-2">
+                      {exp.resumen_analisis}
+                    </p>
+                  )}
+
                   <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                     <span className="flex items-center gap-1 text-[11px] text-gray-400">
                       <Calendar size={11} />
