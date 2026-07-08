@@ -633,7 +633,6 @@ export default function DetalleExpediente() {
     try {
       const { data } = await apiService.get(`/ambiental/expedientes/${id}/similares`);
       setSimilares(data);
-      // Top 3 seleccionados por defecto
       setSeleccionados(new Set(data.slice(0, 3).map(s => s.id)));
     } catch (err) {
       if (err?.response?.status === 404) {
@@ -642,6 +641,19 @@ export default function DetalleExpediente() {
         setSimilaresError('error');
       }
     } finally {
+      setLoadingSimilares(false);
+    }
+  };
+
+  const generarEmbedding = async () => {
+    setLoadingSimilares(true);
+    setSimilaresError(null);
+    try {
+      await apiService.post(`/ambiental/expedientes/${id}/generar-embedding`);
+      await cargarSimilares();
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Error al generar embedding.';
+      toast.error(msg);
       setLoadingSimilares(false);
     }
   };
@@ -2490,8 +2502,14 @@ export default function DetalleExpediente() {
           {similaresError === 'sin-embedding' && (
             <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
               <FileText size={32} className="mx-auto text-gray-300 mb-3" />
-              <p className="font-bold text-gray-400">Sin embedding disponible</p>
-              <p className="text-xs text-gray-400 mt-1">Procesa el documento y guarda el análisis para activar precedentes</p>
+              <p className="font-bold text-gray-400">Este expediente aún no tiene índice semántico</p>
+              <p className="text-xs text-gray-400 mt-1 mb-4">Genera el índice para poder buscar precedentes similares</p>
+              <button
+                onClick={generarEmbedding}
+                className="flex items-center gap-2 mx-auto bg-green-700 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-green-800 transition-colors text-sm"
+              >
+                <Zap size={15} /> Generar índice semántico
+              </button>
             </div>
           )}
 
