@@ -1225,7 +1225,7 @@ export default function DetalleExpediente() {
       </div>
 
       {/* ── Card recurso / vencimiento ───────────────────────────────────── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* ¿Admite recurso? */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">¿Admite recurso?</p>
@@ -1318,21 +1318,22 @@ export default function DetalleExpediente() {
       )}
 
       {/* ── Stepper ──────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-6 py-4">
-        <div className="flex items-start">
-          {pasos.map((paso, i) => {
-            const isActive = tab === paso.key;
-            const isDone   = paso.done;
-            const isLast   = i === pasos.length - 1;
-            return (
-              <div key={paso.key} className="flex-1 flex items-start">
-                {/* Paso */}
-                <button
-                  onClick={() => setTab(paso.key)}
-                  className="flex flex-col items-center gap-1.5 w-full group"
-                >
-                  {/* Círculo + línea conectora */}
-                  <div className="flex items-center w-full">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 sm:px-6 py-4">
+        {/* Mobile: scroll horizontal para que quepan todos los pasos */}
+        <div className="overflow-x-auto -mx-1 px-1">
+          <div className="flex items-start min-w-max sm:min-w-0">
+            {pasos.map((paso, i) => {
+              const isActive = tab === paso.key;
+              const isDone   = paso.done;
+              const isLast   = i === pasos.length - 1;
+              return (
+                <div key={paso.key} className="flex items-start">
+                  {/* Paso */}
+                  <button
+                    onClick={() => setTab(paso.key)}
+                    className="flex flex-col items-center gap-1.5 group"
+                  >
+                    {/* Círculo */}
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shrink-0 transition-all border-2 ${
                       isActive ? 'border-green-700 bg-green-700 text-white' :
                       isDone   ? 'border-green-600 bg-green-50 text-green-700' :
@@ -1340,23 +1341,26 @@ export default function DetalleExpediente() {
                     }`}>
                       {isDone && !isActive ? <Check size={12} /> : paso.num}
                     </div>
-                    {!isLast && (
-                      <div className={`flex-1 h-px mx-2 ${isDone ? 'bg-green-300' : 'bg-gray-200'}`} />
-                    )}
-                  </div>
-                  {/* Label */}
-                  <div className="text-left w-full pl-0.5">
-                    <p className={`text-xs font-bold leading-none ${isActive ? 'text-green-700' : isDone ? 'text-green-600' : 'text-gray-400'}`}>
-                      {paso.label}
-                    </p>
-                    {paso.optional && !isDone && (
-                      <p className="text-[10px] text-gray-300 mt-0.5">opcional</p>
-                    )}
-                  </div>
-                </button>
-              </div>
-            );
-          })}
+                    {/* Label — oculto en móvil salvo el activo */}
+                    <div className="text-center">
+                      <p className={`text-xs font-bold leading-none whitespace-nowrap ${
+                        isActive ? 'text-green-700' : isDone ? 'text-green-600' : 'text-gray-400'
+                      } ${!isActive ? 'hidden sm:block' : ''}`}>
+                        {paso.label}
+                      </p>
+                      {paso.optional && !isDone && (
+                        <p className="text-[10px] text-gray-300 mt-0.5 hidden sm:block">opcional</p>
+                      )}
+                    </div>
+                  </button>
+                  {/* Línea conectora */}
+                  {!isLast && (
+                    <div className={`w-8 sm:w-12 h-px mt-3.5 mx-1 shrink-0 ${isDone ? 'bg-green-300' : 'bg-gray-200'}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -2308,7 +2312,7 @@ export default function DetalleExpediente() {
           {mostrarFormCom && (
             <div className="bg-white border border-green-200 rounded-2xl p-5 space-y-4">
               <h3 className="text-sm font-bold text-gray-800">Registrar comunicación</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1">Dirección *</label>
                   <select
@@ -2470,7 +2474,7 @@ export default function DetalleExpediente() {
                       return (
                         <div key={com.id} className={`flex ${esEnel ? 'flex-row-reverse' : 'flex-row'} items-start gap-4`}>
                           {/* Burbuja */}
-                          <div className={`w-[46%] ${esEnel ? 'items-end' : 'items-start'} flex flex-col`}>
+                          <div className={`w-[85%] sm:w-[46%] ${esEnel ? 'items-end' : 'items-start'} flex flex-col`}>
                             <div
                               className={`w-full rounded-2xl border p-4 cursor-pointer transition-shadow hover:shadow-md ${
                                 esEnel
