@@ -216,9 +216,9 @@ function StatsBar({ stats, loading }) {
     { label: 'Alto riesgo', value: stats.criticos, sub: 'urgentes', icon: <AlertTriangle size={22} />, color: 'text-red-600', dot: 'bg-red-400' },
   ];
   return (
-    <div className="bg-white border border-gray-100 shadow-sm rounded-2xl flex divide-x divide-gray-100 overflow-hidden">
+    <div className="bg-white border border-gray-100 shadow-sm rounded-2xl overflow-hidden grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 divide-x-0 sm:divide-x divide-gray-100">
       {items.map((item, i) => (
-        <div key={i} className="flex-1 flex items-center gap-3 px-5 py-4">
+        <div key={i} className={`flex items-center gap-3 px-4 sm:px-5 py-4 ${i % 2 === 0 ? 'border-r border-gray-100 sm:border-r-0' : ''}`}>
           <div className={`p-2 rounded-lg bg-gray-50 ${item.color} shrink-0`}>{item.icon}</div>
           <div className="min-w-0">
             <p className={`text-2xl font-black tracking-tight leading-none ${item.color}`}>{item.value}</p>
