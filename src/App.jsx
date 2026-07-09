@@ -60,6 +60,7 @@ import NuevoExpediente from './modules/ambiental/pages/NuevoExpediente';
 import DetalleExpediente from './modules/ambiental/pages/DetalleExpediente';
 import CalendarioAmbiental from './modules/ambiental/pages/CalendarioAmbiental';
 import DashboardAmbiental from './modules/ambiental/pages/DashboardAmbiental';
+import BibliotecaAmbiental from './modules/ambiental/pages/BibliotecaAmbiental';
 import ReportesLayout from './modules/reportes/components/ReportesLayout';
 import ReportesDashboard from './modules/reportes/pages/ReportesDashboard';
 
@@ -208,6 +209,7 @@ function App() {
               <Route path="nuevo" element={<NuevoExpediente />} />
               <Route path="dashboard" element={<DashboardAmbiental />} />
               <Route path="calendario" element={<CalendarioAmbiental />} />
+              <Route path="biblioteca" element={<BibliotecaAmbiental />} />
               <Route path="expediente/:id" element={<DetalleExpediente />} />
             </Route>
 

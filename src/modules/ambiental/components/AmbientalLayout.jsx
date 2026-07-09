@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import ProtectedRoute from '../../../components/ProtectedRoute';
 import { useAuth } from '../../../context/AuthContext';
 import { LogOut, LayoutGrid, Menu, X, Leaf } from 'lucide-react';
@@ -7,14 +7,19 @@ import NotificationBell from '../../../components/NotificationBell';
 
 export default function AmbientalLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
-    { to: '/ambiental',             label: 'Expedientes' },
-    { to: '/ambiental/dashboard',   label: 'Dashboard'   },
-    { to: '/ambiental/calendario',  label: 'Calendario'  },
+    { to: '/ambiental',              label: 'Expedientes', exact: true },
+    { to: '/ambiental/dashboard',    label: 'Dashboard'   },
+    { to: '/ambiental/calendario',   label: 'Calendario'  },
+    { to: '/ambiental/biblioteca',   label: 'Biblioteca'  },
   ];
+
+  const isActive = (link) =>
+    link.exact ? location.pathname === link.to : location.pathname.startsWith(link.to);
 
   return (
     <ProtectedRoute>
@@ -30,7 +35,9 @@ export default function AmbientalLayout() {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className="text-gray-600 font-bold hover:text-green-700 uppercase tracking-widest text-sm"
+                  className={`font-bold uppercase tracking-widest text-sm transition-colors ${
+                    isActive(link) ? 'text-green-700 border-b-2 border-green-700 pb-0.5' : 'text-gray-500 hover:text-green-700'
+                  }`}
                 >
                   {link.label}
                 </Link>
@@ -59,7 +66,7 @@ export default function AmbientalLayout() {
                 key={link.to}
                 to={link.to}
                 onClick={() => setIsOpen(false)}
-                className="text-gray-600 font-bold uppercase tracking-widest"
+                className={`font-bold uppercase tracking-widest ${isActive(link) ? 'text-green-700' : 'text-gray-600'}`}
               >
                 {link.label}
               </Link>
