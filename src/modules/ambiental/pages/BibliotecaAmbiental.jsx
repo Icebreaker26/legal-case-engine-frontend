@@ -34,7 +34,7 @@ function Skeleton({ className = '' }) {
 
 // ── Sección Estadísticas ──────────────────────────────────────────────────────
 
-function SeccionEstadisticas({ data, loading }) {
+function SeccionEstadisticas({ data, loading, onIgnorar }) {
   if (loading) return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -156,11 +156,18 @@ function SeccionEstadisticas({ data, loading }) {
               return (
                 <span
                   key={t.word}
-                  className="px-2.5 py-1 rounded-full border border-green-200 bg-green-50 text-green-800 font-semibold cursor-default"
+                  className="group inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-green-200 bg-green-50 text-green-800 font-semibold"
                   style={{ fontSize: `${size}px` }}
                   title={`${t.ndoc} documentos · ${t.nentry} ocurrencias`}
                 >
                   {t.word}
+                  <button
+                    onClick={() => onIgnorar(t.word)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity ml-0.5 text-green-400 hover:text-red-500 leading-none"
+                    title="Ignorar este término"
+                  >
+                    ✕
+                  </button>
                 </span>
               );
             })}
@@ -307,6 +314,7 @@ export default function BibliotecaAmbiental() {
   const [loadingClusters, setLoadingClusters] = useState(true);
   const [recalculando, setRecalculando]   = useState(false);
   const [clusterSeleccionado, setClusterSeleccionado] = useState(null);
+  const [terminosIgnorados, setTerminosIgnorados] = useState([]);
 
   const cargarEstadisticas = useCallback(async () => {
     try {
@@ -333,7 +341,27 @@ export default function BibliotecaAmbiental() {
   useEffect(() => {
     cargarEstadisticas();
     cargarClusters();
+    apiService.get('/ambiental/biblioteca/terminos-ignorados')
+      .then(r => setTerminosIgnorados(r.data.map(t => t.word)))
+      .catch(() => {});
   }, [cargarEstadisticas, cargarClusters]);
+
+  const ignorarTermino = async (word) => {
+    try {
+      await apiService.post('/ambiental/biblioteca/terminos-ignorados', { word });
+      setTerminosIgnorados(prev => [...prev, word]);
+      setEstadisticas(prev => prev ? {
+        ...prev,
+        top_terminos: prev.top_terminos.filter(t => t.word !== word),
+      } : prev);
+      toast.success(`"${word}" ignorado. Ya no aparecerá en la nube.`, {
+        duration: 4000,
+        icon: '🚫',
+      });
+    } catch {
+      toast.error('Error al ignorar el término');
+    }
+  };
 
   const recalcular = async () => {
     setRecalculando(true);
@@ -393,7 +421,7 @@ export default function BibliotecaAmbiental() {
       {/* Estadísticas del corpus */}
       <section>
         <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Panorama del corpus</h2>
-        <SeccionEstadisticas data={estadisticas} loading={loadingStats} />
+        <SeccionEstadisticas data={estadisticas} loading={loadingStats} onIgnorar={ignorarTermino} />
       </section>
 
       {/* Temas emergentes (clusters) */}
