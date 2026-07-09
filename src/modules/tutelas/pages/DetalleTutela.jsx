@@ -59,6 +59,7 @@ export default function DetalleTutela() {
   const [reqModalOpen, setReqModalOpen] = useState(false);
   const [viewOficio, setViewOficio] = useState(null);
   const [respReqModal, setRespReqModal] = useState(null);
+  const [respuestaAcumulada, setRespuestaAcumulada] = useState(null);
 
   if (loading) {
     return (
@@ -127,7 +128,7 @@ export default function DetalleTutela() {
         updating={updating}
         navigate={navigate}
         handleUpdateStatus={handleUpdateStatus}
-        onExportPDF={() => generarExpedientePDF({ tutela, historial, requerimientos, argumentos })}
+        onExportPDF={() => generarExpedientePDF({ tutela, historial, requerimientos, argumentos, respuestaAcumulada })}
         id={id}
         allAbogados={allAbogados}
         areasDinamicas={areasDinamicas}
@@ -165,6 +166,7 @@ export default function DetalleTutela() {
         openRespReqModal={setRespReqModal}
         setViewOficio={setViewOficio}
         fetchData={fetchData}
+        onRespuestaChange={setRespuestaAcumulada}
       />
       
       <div className="mt-16 pt-8 border-t border-red-100 flex justify-center">

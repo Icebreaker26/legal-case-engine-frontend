@@ -1,9 +1,196 @@
 import { useState, useCallback, useEffect } from 'react';
-import { History, ShieldCheck, Bookmark, ChevronRight, Edit, Trash2, AlertCircle, FileText, Maximize2, Send, Clock, Mail, Plus, Download, ThumbsUp, ThumbsDown, Loader2, Copy, Check, Layers } from 'lucide-react';
+import { History, ShieldCheck, Bookmark, ChevronRight, Edit, Trash2, AlertCircle, FileText, Maximize2, Send, Clock, Mail, Plus, Download, ThumbsUp, ThumbsDown, Loader2, Copy, Check, Layers, ChevronDown, ChevronUp } from 'lucide-react';
 import { generarBorradorPDF } from '../../utils/generarBorradorPDF';
 import toast from 'react-hot-toast';
 import apiService from '../../../../services/apiService';
 import { tutelaService } from '../../services/tutelaService';
+
+const RESULTADO_COLOR = {
+    favorable:    'bg-green-50 text-green-700 border-green-100',
+    desfavorable: 'bg-red-50 text-red-700 border-red-100',
+    referencia:   'bg-gray-50 text-gray-600 border-gray-100',
+};
+
+function PrecedentesRAG({ sugerencias, loadingSugerencias, handleVerDocumentoCompleto }) {
+    const [expandidos,  setExpandidos]  = useState({});  // fragmento legal
+    const [analisisOpen, setAnalisisOpen] = useState({}); // panel comprension
+    const [copiados,    setCopiados]    = useState({});
+
+    const toggleExpand  = (docId) => setExpandidos(p  => ({ ...p, [docId]: !p[docId] }));
+    const toggleAnalisis = (docId) => setAnalisisOpen(p => ({ ...p, [docId]: !p[docId] }));
+
+    const copiar = (docId, texto) => {
+        navigator.clipboard.writeText(texto);
+        setCopiados(prev => ({ ...prev, [docId]: true }));
+        setTimeout(() => setCopiados(prev => ({ ...prev, [docId]: false })), 2000);
+    };
+
+    return (
+        <div>
+            <div className="flex items-center gap-2 mb-4 px-1">
+                <Bookmark size={18} className="text-[#002E6D]" />
+                <h3 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Precedentes Similares</h3>
+            </div>
+            <div className="space-y-3">
+                {loadingSugerencias ? (
+                    <div className="p-12 text-center bg-white rounded-2xl border border-gray-100">
+                        <div className="w-8 h-8 border-4 border-[#002E6D] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                        <span className="text-gray-400 text-sm font-bold uppercase tracking-widest">Buscando precedentes...</span>
+                    </div>
+                ) : sugerencias.length > 0 ? sugerencias.map((sug) => {
+                    const docId      = sug.documento_id;
+                    const abierto    = expandidos[docId];
+                    const analAbierto = analisisOpen[docId];
+                    const copiado    = copiados[docId];
+                    const comp       = sug.comprension_doc || null;
+
+                    return (
+                        <div key={docId} className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-all border ${comp ? 'border-purple-100' : 'border-gray-200'}`}>
+                            {/* Cabecera — identidad del documento */}
+                            <div className="p-5">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-[10px] font-black text-white bg-[#002E6D] px-2 py-0.5 rounded-md uppercase tracking-widest">
+                                            {sug.categoria}
+                                        </span>
+                                        {comp && (
+                                            <button
+                                                onClick={() => toggleAnalisis(docId)}
+                                                className={`flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full border uppercase transition-colors ${
+                                                    analAbierto
+                                                        ? 'bg-purple-600 text-white border-purple-600'
+                                                        : 'bg-purple-50 text-purple-600 border-purple-200 hover:bg-purple-100'
+                                                }`}
+                                            >
+                                                RAG+ {analAbierto ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
+                                            </button>
+                                        )}
+                                    </div>
+                                    {sug.score && (
+                                        <span className="text-[10px] font-black text-gray-400 shrink-0">
+                                            {Math.round(sug.score * 100)}% relevancia
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Título = identidad del documento */}
+                                <p className="font-bold text-gray-800 text-sm leading-snug">{sug.titulo_referencia}</p>
+
+                                {/* Panel de análisis semántico */}
+                                {analAbierto && comp && (
+                                    <div className="mt-3 bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-3 animate-fade-in">
+                                        {comp.que_resuelve && (
+                                            <div>
+                                                <p className="text-[9px] font-black text-purple-600 uppercase tracking-widest mb-1">Qué resuelve</p>
+                                                <p className="text-sm text-gray-700 leading-relaxed">{comp.que_resuelve}</p>
+                                            </div>
+                                        )}
+                                        <div className="flex flex-wrap gap-3">
+                                            {comp.tipo_caso && (
+                                                <div>
+                                                    <p className="text-[9px] font-black text-purple-600 uppercase tracking-widest mb-1">Tipo de caso</p>
+                                                    <p className="text-xs text-gray-600">{comp.tipo_caso}</p>
+                                                </div>
+                                            )}
+                                            {comp.resultado && (
+                                                <div>
+                                                    <p className="text-[9px] font-black text-purple-600 uppercase tracking-widest mb-1">Resultado</p>
+                                                    <span className={`text-[10px] font-black px-2 py-0.5 rounded-full border uppercase ${RESULTADO_COLOR[comp.resultado] || RESULTADO_COLOR.referencia}`}>
+                                                        {comp.resultado}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        {comp.derechos_involucrados?.length > 0 && (
+                                            <div>
+                                                <p className="text-[9px] font-black text-purple-600 uppercase tracking-widest mb-1.5">Derechos / figuras jurídicas</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {comp.derechos_involucrados.map((d, i) => (
+                                                        <span key={i} className="text-[10px] px-2 py-0.5 bg-white border border-purple-100 text-gray-600 rounded-full">{d}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Toggle fragmento legal */}
+                                <button
+                                    onClick={() => toggleExpand(docId)}
+                                    className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-gray-500 hover:text-[#002E6D] transition-colors"
+                                >
+                                    {abierto ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                    {abierto ? 'Ocultar fragmento' : 'Ver fragmento relevante'}
+                                </button>
+
+                                {abierto && (
+                                    <div className="mt-3 bg-gray-50 p-4 rounded-xl border border-gray-100 animate-fade-in">
+                                        <p className="text-sm text-gray-600 italic leading-relaxed">"{sug.contenido_legal}"</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer — acciones */}
+                            <div className="px-5 pb-4 flex flex-wrap items-center justify-between gap-3 border-t border-gray-50 pt-3">
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => copiar(docId, sug.contenido_legal)}
+                                        className="text-[#002E6D] text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                                    >
+                                        {copiado ? <><Check size={12} className="text-green-600" /> Copiado</> : <><Copy size={12} /> Copiar argumento</>}
+                                    </button>
+                                    {docId && (
+                                        <button
+                                            onClick={() => handleVerDocumentoCompleto(sug)}
+                                            className="text-gray-500 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:text-[#002E6D] hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"
+                                        >
+                                            <Maximize2 size={12} /> Ver documento
+                                        </button>
+                                    )}
+                                </div>
+                                {docId && (
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-[9px] text-gray-400 uppercase tracking-widest mr-1">¿Útil?</span>
+                                        <button
+                                            onClick={async () => {
+                                                const { tutelaService } = await import('../../services/tutelaService');
+                                                await tutelaService.registrarFeedback(docId, true);
+                                                toast.success('Gracias por tu valoración');
+                                            }}
+                                            className="p-1.5 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors"
+                                        >
+                                            <ThumbsUp size={13} />
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                const { tutelaService } = await import('../../services/tutelaService');
+                                                await tutelaService.registrarFeedback(docId, false);
+                                                toast('Valoración registrada', { icon: '👎' });
+                                            }}
+                                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                                        >
+                                            <ThumbsDown size={13} />
+                                        </button>
+                                        {sug.relevancia_score !== undefined && sug.relevancia_score !== 0 && (
+                                            <span className={`text-[9px] font-black ml-1 ${sug.relevancia_score > 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                                {sug.relevancia_score > 0 ? `+${sug.relevancia_score}` : sug.relevancia_score}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                }) : (
+                    <div className="bg-white border border-dashed border-gray-300 p-12 text-center rounded-2xl">
+                        <Bookmark size={32} className="mx-auto text-gray-300 mb-4" />
+                        <p className="text-sm text-gray-400 font-bold">No se encontraron precedentes similares en la memoria.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 export default function MainTabs({
     id,
@@ -32,7 +219,8 @@ export default function MainTabs({
     openReqModal,
     openRespReqModal,
     setViewOficio,
-    fetchData
+    fetchData,
+    onRespuestaChange,
 }) {
     const [activeTab, setActiveTab] = useState('contexto');
     const [argEnEdicion, setArgEnEdicion] = useState(null);
@@ -43,7 +231,17 @@ export default function MainTabs({
     const [jsonLlm, setJsonLlm] = useState('');
     const [parteActual, setParteActual] = useState(0);
     const [guardandoRespuesta, setGuardandoRespuesta] = useState(false);
-    const [respuestaAcumulada, setRespuestaAcumulada] = useState(null);
+    const [respuestaAcumulada, setRespuestaAcumuladaInternal] = useState(null);
+    const setRespuestaAcumulada = useCallback((v) => {
+        setRespuestaAcumuladaInternal(v);
+        onRespuestaChange?.(v);
+    }, [onRespuestaChange]);
+
+    // ── Comprensión estructurada ──
+    const [promptComprension, setPromptComprension]         = useState('');
+    const [jsonComprension, setJsonComprension]             = useState('');
+    const [guardandoComprension, setGuardandoComprension]   = useState(false);
+    const [comprensionActiva, setComprensionActiva]         = useState(tutela?.analisis_comprension || null);
 
     const respuestaATexto = (resp) => {
         if (!resp?.items?.length) return '';
@@ -127,105 +325,300 @@ export default function MainTabs({
     const handleExportarPDF = useCallback(async () => {
         if (!respuestaAcumulada?.items?.length) return toast.error('No hay respuesta guardada para exportar.');
         const { default: jsPDF } = await import('jspdf');
-        const { default: autoTable } = await import('jspdf-autotable');
-        const doc = new jsPDF();
-        const azul = [0, 46, 109];
-        const gris = [75, 85, 99];
+        await import('jspdf-autotable');
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+        // ── Paleta ────────────────────────────────────────────────────────────
+        const C = {
+            azul:       [0,   46,  109],
+            azulClaro:  [0,   82,  165],
+            acento:     [230, 126,  34],
+            gris:       [55,  65,   81],
+            grisClaro:  [107, 114, 128],
+            grisFondo:  [248, 249, 250],
+            grisBorde:  [209, 213, 219],
+            amarillo:   [254, 243, 199],
+            amarilloBrd:[252, 211,  77],
+            blanco:     [255, 255, 255],
+        };
+
+        const PW = 210;           // page width mm
+        const ML = 14;            // margin left
+        const MR = 14;            // margin right
+        const W  = PW - ML - MR; // content width
+        const FOOTER_H = 12;
+        const PAGE_BOTTOM = 297 - FOOTER_H - 4;
+
+        let y = 0;
         const enc = respuestaAcumulada.encabezado || {};
 
-        // Encabezado corporativo
-        doc.setFillColor(...azul);
-        doc.rect(0, 0, 210, 28, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('RESPUESTA A DERECHO DE PETICIÓN', 14, 11);
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Enel Colombia S.A. E.S.P.', 14, 18);
-        doc.text(`Generado: ${new Date().toLocaleDateString('es-CO')}`, 150, 18);
+        // ── Helpers ───────────────────────────────────────────────────────────
+        const nuevaPagina = () => { doc.addPage(); y = 20; };
+        const checkY = (needed = 20) => { if (y + needed > PAGE_BOTTOM) nuevaPagina(); };
 
-        let y = 36;
-        const W = 182;
-
-        const escribir = (texto, fontSize = 9, bold = false, color = gris) => {
-            doc.setFontSize(fontSize);
+        const txt = (texto, x, yy, opts = {}) => {
+            const { size = 9, bold = false, color = C.gris, align = 'left', maxW = W } = opts;
+            doc.setFontSize(size);
             doc.setFont('helvetica', bold ? 'bold' : 'normal');
             doc.setTextColor(...color);
-            const lineas = doc.splitTextToSize(String(texto || '—'), W);
-            if (y + lineas.length * 5 > 280) { doc.addPage(); y = 16; }
-            doc.text(lineas, 14, y);
-            y += lineas.length * 5 + 2;
+            const lines = doc.splitTextToSize(String(texto || '—'), maxW);
+            doc.text(lines, x, yy, { align });
+            return lines.length;
         };
 
-        const titulo = (texto) => {
-            if (y > 260) { doc.addPage(); y = 16; }
-            y += 2;
-            doc.setFillColor(...azul);
-            doc.rect(14, y - 4, W, 7, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(9);
-            doc.setFont('helvetica', 'bold');
-            doc.text(texto.toUpperCase(), 16, y + 0.5);
-            y += 8;
+        const block = (texto, opts = {}) => {
+            const { size = 9, bold = false, color = C.gris, indent = 0, leading = 5 } = opts;
+            const lines = doc.splitTextToSize(String(texto || ''), W - indent);
+            checkY(lines.length * leading + 2);
+            doc.setFontSize(size);
+            doc.setFont('helvetica', bold ? 'bold' : 'normal');
+            doc.setTextColor(...color);
+            doc.text(lines, ML + indent, y);
+            y += lines.length * leading + 2;
         };
 
-        // Datos del encabezado
-        titulo('Datos de la comunicación');
-        [
-            ['Radicado', enc.radicado_peticion || tutela.radicado],
-            ['Para', enc.para || tutela.accionante],
-            ['Fecha', enc.ciudad_fecha || new Date().toLocaleDateString('es-CO')],
-            ['Asunto', enc.asunto || tutela.derecho_vulnerado],
-        ].forEach(([k, v]) => {
-            doc.setFontSize(9); doc.setTextColor(...gris);
-            doc.setFont('helvetica', 'bold'); doc.text(`${k}:`, 14, y);
-            doc.setFont('helvetica', 'normal'); doc.text(String(v || '—'), 50, y);
-            y += 5.5;
+        const hline = (color = C.grisBorde, x = ML, w = W, thickness = 0.2) => {
+            doc.setDrawColor(...color);
+            doc.setLineWidth(thickness);
+            doc.line(x, y, x + w, y);
+        };
+
+        // ── PORTADA / HEADER ──────────────────────────────────────────────────
+        // Franja azul oscuro
+        doc.setFillColor(...C.azul);
+        doc.rect(0, 0, PW, 32, 'F');
+        // Línea de acento naranja
+        doc.setFillColor(...C.acento);
+        doc.rect(0, 32, PW, 1.5, 'F');
+
+        // Título principal
+        doc.setFontSize(15);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...C.blanco);
+        doc.text('RESPUESTA A DERECHO DE PETICIÓN', ML, 13);
+
+        // Sub-línea empresa + fecha
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(180, 200, 230);
+        doc.text('Enel Colombia S.A. E.S.P.  ·  Defensa Jurídica', ML, 20);
+        doc.text('Equipo Jurídico Corporativo', ML, 26);
+        doc.setTextColor(...C.blanco);
+        doc.text(`Generado: ${new Date().toLocaleDateString('es-CO', { year:'numeric', month:'long', day:'numeric' })}`, PW - MR, 26, { align: 'right' });
+
+        y = 42;
+
+        // ── DATOS DE LA COMUNICACIÓN ──────────────────────────────────────────
+        // Fondo gris suave
+        doc.setFillColor(...C.grisFondo);
+        doc.setDrawColor(...C.grisBorde);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(ML, y, W, 34, 2, 2, 'FD');
+
+        // Label de sección encima
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...C.azulClaro);
+        doc.text('DATOS DE LA COMUNICACIÓN', ML + 3, y + 5);
+
+        const campos = [
+            ['Radicado',  enc.radicado_peticion || tutela.radicado],
+            ['Para',      enc.para              || tutela.accionante],
+            ['Fecha',     enc.ciudad_fecha      || new Date().toLocaleDateString('es-CO')],
+            ['Asunto',    enc.asunto            || tutela.derecho_vulnerado],
+        ];
+
+        // Dos columnas
+        const colW = (W - 6) / 2;
+        campos.forEach(([k, v], i) => {
+            const cx = ML + 3 + (i % 2) * (colW + 3);
+            const cy = y + 12 + Math.floor(i / 2) * 10;
+            doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.grisClaro);
+            doc.text(k.toUpperCase(), cx, cy);
+            doc.setFontSize(8.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.gris);
+            const val = doc.splitTextToSize(String(v || '—'), colW - 4);
+            doc.text(val[0] || '—', cx, cy + 5); // solo primera línea en la celda
         });
 
-        // Saludo e introducción
+        y += 40;
+
+        // ── INTRODUCCIÓN ──────────────────────────────────────────────────────
         if (respuestaAcumulada.introduccion) {
-            titulo('Introducción');
-            escribir(`Reciba un cordial saludo, Sr./Sra. ${enc.para || tutela.accionante}.`);
-            y += 1;
-            escribir(respuestaAcumulada.introduccion);
+            checkY(28);
+            // Pill encabezado
+            doc.setFillColor(...C.azul);
+            doc.setDrawColor(...C.azul);
+            doc.roundedRect(ML, y, W, 7, 1.5, 1.5, 'F');
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.blanco);
+            doc.text('INTRODUCCIÓN', ML + 4, y + 4.8);
+            y += 10;
+
+            block(`Reciba un cordial saludo, Sr./Sra. ${enc.para || tutela.accionante}.`, { bold: true, color: C.gris });
+            block(respuestaAcumulada.introduccion, { color: C.gris, leading: 5.2 });
+            y += 4;
         }
 
-        // Respuestas punto a punto
-        titulo('Respuesta de fondo');
+        // ── RESPUESTA DE FONDO ────────────────────────────────────────────────
+        checkY(20);
+        doc.setFillColor(...C.azul);
+        doc.roundedRect(ML, y, W, 7, 1.5, 1.5, 'F');
+        doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.blanco);
+        doc.text(`RESPUESTA DE FONDO  (${respuestaAcumulada.items.length} punto${respuestaAcumulada.items.length > 1 ? 's' : ''})`, ML + 4, y + 4.8);
+        y += 11;
+
         for (const item of respuestaAcumulada.items) {
-            if (y > 255) { doc.addPage(); y = 16; }
-            escribir(`${item.numero}.- ${item.solicitud}`, 9, true, azul);
-            y += 1;
-            escribir('Respuesta.', 9, true, gris);
-            escribir(item.respuesta);
-            if (item.normas_citadas?.length) {
-                escribir(`Normas: ${item.normas_citadas.join(' · ')}`, 8, false, [120, 120, 120]);
+            // Estimar altura necesaria para toda la tarjeta
+            const solicLns = doc.splitTextToSize(String(item.solicitud || ''), W - 20).length;
+            const respLns  = doc.splitTextToSize(String(item.respuesta  || ''), W - 8).length;
+            const normasH  = item.normas_citadas?.length ? 8 : 0;
+            const cardH    = 8 + solicLns * 4.8 + 4 + respLns * 5.2 + normasH + 6;
+
+            checkY(Math.min(cardH, PAGE_BOTTOM - 30));
+
+            const cardTop = y;
+
+            // ── Número circular ───────────────────────────────────────────────
+            doc.setFillColor(...C.azulClaro);
+            doc.circle(ML + 4.5, y + 4.5, 4.5, 'F');
+            doc.setFontSize(9); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.blanco);
+            doc.text(String(item.numero), ML + 4.5, y + 5.8, { align: 'center' });
+
+            // ── Etiqueta "Solicitud" ──────────────────────────────────────────
+            doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.azulClaro);
+            doc.text('SOLICITUD', ML + 12, y + 3.5);
+
+            // ── Texto de la solicitud ─────────────────────────────────────────
+            const solicLines = doc.splitTextToSize(String(item.solicitud || ''), W - 20);
+            doc.setFontSize(8.5); doc.setFont('helvetica', 'bolditalic'); doc.setTextColor(...C.gris);
+            doc.text(solicLines, ML + 12, y + 8);
+            y += 8 + solicLines.length * 4.8 + 3;
+
+            // Divisor sutil
+            hline(C.grisBorde, ML + 12, W - 12);
+            y += 3;
+
+            // ── Etiqueta "Respuesta" ──────────────────────────────────────────
+            doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.acento);
+            doc.text('RESPUESTA JURÍDICA', ML + 4, y);
+            y += 4;
+
+            // ── Texto de respuesta ────────────────────────────────────────────
+            const respLines = doc.splitTextToSize(String(item.respuesta || ''), W - 8);
+            doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.gris);
+
+            // Paginación dentro de respuestas largas
+            let linesLeft = respLines;
+            while (linesLeft.length > 0) {
+                const available = Math.floor((PAGE_BOTTOM - y) / 5.2);
+                if (available <= 0) { nuevaPagina(); continue; }
+                const chunk = linesLeft.slice(0, available);
+                doc.text(chunk, ML + 4, y);
+                y += chunk.length * 5.2;
+                linesLeft = linesLeft.slice(available);
+                if (linesLeft.length > 0) nuevaPagina();
             }
             y += 3;
+
+            // ── Normas citadas como chips ─────────────────────────────────────
+            if (item.normas_citadas?.length) {
+                checkY(8);
+                doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.grisClaro);
+                doc.text('NORMAS:', ML + 4, y);
+                let chipX = ML + 22;
+                for (const norma of item.normas_citadas) {
+                    const tw = doc.getTextWidth(norma) + 4;
+                    if (chipX + tw > PW - MR) { y += 6; chipX = ML + 22; }
+                    doc.setFillColor(235, 245, 255);
+                    doc.setDrawColor(...C.grisBorde);
+                    doc.setLineWidth(0.2);
+                    doc.roundedRect(chipX, y - 3.5, tw, 5, 1, 1, 'FD');
+                    doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.azulClaro);
+                    doc.text(norma, chipX + 2, y + 0.2);
+                    chipX += tw + 2;
+                }
+                y += 7;
+            }
+
+            // Borde izquierdo de la tarjeta (acento visual)
+            doc.setFillColor(...C.azulClaro);
+            doc.rect(ML, cardTop, 1, y - cardTop, 'F');
+
+            y += 5;
+            // Línea separadora entre tarjetas
+            if (item !== respuestaAcumulada.items.at(-1)) {
+                hline([220, 230, 240]);
+                y += 5;
+            }
         }
 
-        // Prescripción
+        // ── PRESCRIPCIÓN EXTINTIVA ────────────────────────────────────────────
         const presc = respuestaAcumulada.prescripcion;
         if (presc?.aplica && presc?.fundamento) {
-            titulo('Prescripción extintiva');
-            escribir(presc.fundamento);
-            if (presc.norma) escribir(`Fundamento: ${presc.norma}`, 8, false, [120, 120, 120]);
+            checkY(30);
+            y += 4;
+            // Caja ámbar
+            const prescLines = doc.splitTextToSize(String(presc.fundamento), W - 12);
+            const normaLines = presc.norma ? doc.splitTextToSize(`Base: ${presc.norma}`, W - 12) : [];
+            const boxH = 10 + (prescLines.length + normaLines.length) * 5 + 4;
+
+            doc.setFillColor(...C.amarillo);
+            doc.setDrawColor(...C.amarilloBrd);
+            doc.setLineWidth(0.4);
+            doc.roundedRect(ML, y, W, boxH, 2, 2, 'FD');
+
+            doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(146, 64, 14);
+            doc.text('⚖  PRESCRIPCIÓN EXTINTIVA APLICABLE', ML + 4, y + 6);
+            y += 10;
+
+            doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(92, 52, 10);
+            doc.text(prescLines, ML + 4, y);
+            y += prescLines.length * 5 + 2;
+
+            if (normaLines.length) {
+                doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(146, 64, 14);
+                doc.text(normaLines, ML + 4, y);
+                y += normaLines.length * 5;
+            }
+            y += 6;
         }
 
-        // Cierre
+        // ── CIERRE ────────────────────────────────────────────────────────────
         if (respuestaAcumulada.cierre) {
-            titulo('Posición institucional y cierre');
-            escribir(respuestaAcumulada.cierre);
+            checkY(24);
+            y += 4;
+            doc.setFillColor(...C.azul);
+            doc.roundedRect(ML, y, W, 7, 1.5, 1.5, 'F');
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.blanco);
+            doc.text('POSICIÓN INSTITUCIONAL Y CIERRE', ML + 4, y + 4.8);
+            y += 11;
+            block(respuestaAcumulada.cierre, { color: C.gris, leading: 5.2 });
+
+            // Firma
+            checkY(22);
+            y += 8;
+            hline(C.grisBorde, ML + 40, W - 80, 0.4);
+            y += 4;
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.azul);
+            doc.text('Enel Colombia S.A. E.S.P.', PW / 2, y, { align: 'center' });
+            y += 4;
+            doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.grisClaro);
+            doc.text('Defensa Jurídica — Equipo Jurídico Corporativo', PW / 2, y, { align: 'center' });
         }
 
-        // Pie de página
+        // ── PIE DE PÁGINA en todas las páginas ────────────────────────────────
         const totalPags = doc.internal.getNumberOfPages();
         for (let p = 1; p <= totalPags; p++) {
             doc.setPage(p);
-            doc.setFontSize(7); doc.setTextColor(160, 160, 160);
-            doc.text(`Enel Colombia S.A. E.S.P. — Documento generado automáticamente — Pág. ${p} de ${totalPags}`, 14, 292);
+            // Línea
+            doc.setDrawColor(...C.grisBorde);
+            doc.setLineWidth(0.3);
+            doc.line(ML, 285, PW - MR, 285);
+            // Texto izquierda
+            doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.grisClaro);
+            doc.text('Enel Colombia S.A. E.S.P.  ·  Documento generado por el sistema de gestión jurídica', ML, 290);
+            // Número derecha
+            doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.azul);
+            doc.text(`${p} / ${totalPags}`, PW - MR, 290, { align: 'right' });
         }
 
         doc.save(`respuesta_peticion_${tutela.radicado || id}.pdf`);
@@ -350,36 +743,319 @@ export default function MainTabs({
         element.click();
     };
 
-    const tabs = [
-        { key: 'contexto', label: 'Contexto Legal y RAG', icon: <Bookmark size={15} /> },
-        { key: 'solicitudes', label: 'Solicitudes Internas', icon: <Mail size={15} />, badge: requerimientos.filter(r => r.estado === 'Pendiente').length },
-        { key: 'borrador', label: 'Borrador & IA', icon: <ShieldCheck size={15} /> },
-        { key: 'trazabilidad', label: 'Trazabilidad y Gestión', icon: <History size={15} /> },
+    const handleGenerarPromptComprension = async () => {
+        try {
+            const { data } = await apiService.get(`/tutelas/${id}/prompt-comprension`);
+            setPromptComprension(data.prompt);
+        } catch {
+            toast.error('Error al generar el prompt de comprensión');
+        }
+    };
+
+    const handleGuardarComprension = async () => {
+        if (!jsonComprension.trim()) return toast.error('Pega el JSON del LLM primero.');
+        setGuardandoComprension(true);
+        try {
+            const { data } = await apiService.post(`/tutelas/${id}/comprension`, { json_comprension: jsonComprension });
+            setComprensionActiva(data.comprension);
+            setJsonComprension('');
+            setPromptComprension('');
+            toast.success('Análisis guardado — el RAG usará esta comprensión al generar prompts');
+        } catch (err) {
+            toast.error(err?.response?.data?.error || 'JSON inválido o estructura incorrecta.');
+        } finally {
+            setGuardandoComprension(false);
+        }
+    };
+
+    const handleExportarAnalisisPDF = async (comp) => {
+        if (!comp) return;
+        const { default: jsPDF } = await import('jspdf');
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+        const C = {
+            azul:      [0,   46,  109],
+            purpura:   [109,  40,  217],
+            purpClaro: [237, 233, 254],
+            purpBorde: [167, 139, 250],
+            acento:    [230, 126,  34],
+            gris:      [55,  65,   81],
+            grisClaro: [107, 114, 128],
+            grisFondo: [248, 249, 250],
+            grisBorde: [209, 213, 219],
+            blanco:    [255, 255, 255],
+            rojo:      [185,  28,  28],
+            amber:     [180, 100,   0],
+            verde:     [ 21, 128,  61],
+        };
+
+        const PW = 210;
+        const ML = 14;
+        const W  = PW - ML * 2;
+        const FOOTER_H = 12;
+        const PAGE_BOTTOM = 297 - FOOTER_H - 4;
+        let y = 0;
+
+        const checkY = (needed = 20) => { if (y + needed > PAGE_BOTTOM) { doc.addPage(); y = 20; } };
+
+        const block = (texto, opts = {}) => {
+            const { size = 9, bold = false, italic = false, color = C.gris, indent = 0, leading = 5.2 } = opts;
+            const style = bold && italic ? 'bolditalic' : bold ? 'bold' : italic ? 'italic' : 'normal';
+            const lines = doc.splitTextToSize(String(texto || ''), W - indent);
+            checkY(lines.length * leading + 2);
+            doc.setFontSize(size); doc.setFont('helvetica', style); doc.setTextColor(...color);
+            doc.text(lines, ML + indent, y);
+            y += lines.length * leading + 2;
+        };
+
+        const pill = (texto, opts = {}) => {
+            const { bg = C.purpClaro, border = C.purpBorde, color = C.purpura } = opts;
+            checkY(9);
+            doc.setFillColor(...bg); doc.setDrawColor(...border); doc.setLineWidth(0.3);
+            doc.roundedRect(ML, y, W, 7, 1.5, 1.5, 'FD');
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...color);
+            doc.text(texto.toUpperCase(), ML + 4, y + 4.8);
+            y += 10;
+        };
+
+        // ── Header ────────────────────────────────────────────────────────────
+        doc.setFillColor(...C.azul);
+        doc.rect(0, 0, PW, 32, 'F');
+        doc.setFillColor(...C.purpura);
+        doc.rect(0, 32, PW, 1.5, 'F');
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.blanco);
+        doc.text('ANÁLISIS SEMÁNTICO DE PETICIÓN', ML, 13);
+        doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(180, 200, 230);
+        doc.text('Enel Colombia S.A. E.S.P.  ·  Defensa Jurídica', ML, 20);
+        const radicado = tutela?.radicado || id;
+        doc.text(`Radicado: ${radicado}`, ML, 26);
+        doc.setTextColor(...C.blanco);
+        doc.text(new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' }), PW - ML, 26, { align: 'right' });
+        y = 42;
+
+        // ── Metadatos de la petición ──────────────────────────────────────────
+        doc.setFillColor(...C.grisFondo); doc.setDrawColor(...C.grisBorde); doc.setLineWidth(0.3);
+        doc.roundedRect(ML, y, W, 24, 2, 2, 'FD');
+        doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.purpura);
+        doc.text('DATOS DE LA PETICIÓN', ML + 3, y + 5);
+        const colW = (W - 6) / 2;
+        const meta = [
+            ['Peticionario', tutela?.accionante],
+            ['Materia',      tutela?.derecho_vulnerado],
+            ['Entidad',      tutela?.entidad_nombre || '—'],
+            ['Fecha límite', tutela?.fecha_vencimiento ? new Date(tutela.fecha_vencimiento).toLocaleDateString('es-CO') : '—'],
+        ];
+        meta.forEach(([k, v], i) => {
+            const cx = ML + 3 + (i % 2) * (colW + 3);
+            const cy = y + 11 + Math.floor(i / 2) * 8;
+            doc.setFontSize(6.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.grisClaro);
+            doc.text(k.toUpperCase(), cx, cy);
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.gris);
+            const val = doc.splitTextToSize(String(v || '—'), colW - 4);
+            doc.text(val[0], cx, cy + 4.5);
+        });
+        y += 28;
+
+        // ── Análisis ──────────────────────────────────────────────────────────
+        pill('Análisis semántico — resultado del LLM');
+
+        if (comp.tema_central) {
+            block('Tema central', { size: 7.5, bold: true, color: C.purpura });
+            block(comp.tema_central, { indent: 3, leading: 5.5 });
+            y += 2;
+        }
+
+        if (comp.extracto_clave) {
+            checkY(16);
+            doc.setFillColor(245, 243, 255); doc.setDrawColor(...C.purpBorde); doc.setLineWidth(0.25);
+            const extLines = doc.splitTextToSize(`"${comp.extracto_clave}"`, W - 12);
+            doc.roundedRect(ML, y, W, extLines.length * 5 + 8, 2, 2, 'FD');
+            doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.purpura);
+            doc.text('EXTRACTO CLAVE', ML + 4, y + 5);
+            doc.setFontSize(8.5); doc.setFont('helvetica', 'italic'); doc.setTextColor(...C.gris);
+            doc.text(extLines, ML + 4, y + 10);
+            y += extLines.length * 5 + 12;
+        }
+
+        if (comp.peticiones?.length > 0) {
+            checkY(14);
+            block('Peticiones detectadas', { size: 7.5, bold: true, color: C.purpura });
+            comp.peticiones.forEach((p, i) => {
+                checkY(12);
+                // Número circular
+                doc.setFillColor(...C.purpura); doc.circle(ML + 4, y + 2, 3, 'F');
+                doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.blanco);
+                doc.text(String(i + 1), ML + 4, y + 3, { align: 'center' });
+                // Texto
+                const pLines = doc.splitTextToSize(String(p), W - 14);
+                doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.gris);
+                doc.text(pLines, ML + 10, y + 2);
+                // Barra izquierda
+                doc.setFillColor(...C.purpura); doc.rect(ML, y - 1, 0.8, pLines.length * 5 + 2, 'F');
+                y += pLines.length * 5 + 5;
+            });
+        }
+
+        if (comp.derechos_invocados?.length > 0) {
+            checkY(14);
+            y += 2;
+            block('Derechos invocados', { size: 7.5, bold: true, color: C.purpura });
+            let chipX = ML;
+            for (const d of comp.derechos_invocados) {
+                const tw = doc.getTextWidth(d) + 6;
+                if (chipX + tw > PW - ML) { y += 7; chipX = ML; }
+                doc.setFillColor(245, 243, 255); doc.setDrawColor(...C.purpBorde); doc.setLineWidth(0.2);
+                doc.roundedRect(chipX, y - 3.5, tw, 5.5, 1.5, 1.5, 'FD');
+                doc.setFontSize(7.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.purpura);
+                doc.text(d, chipX + 3, y + 0.5);
+                chipX += tw + 3;
+            }
+            y += 9;
+        }
+
+        if (comp.urgencia_declarada) {
+            checkY(10);
+            const urgColor = comp.urgencia_declarada === 'alta'  ? C.rojo  :
+                             comp.urgencia_declarada === 'media' ? C.amber : C.verde;
+            const urgBg    = comp.urgencia_declarada === 'alta'  ? [254, 226, 226] :
+                             comp.urgencia_declarada === 'media' ? [254, 243, 199] : [220, 252, 231];
+            const urgLabel = `Urgencia declarada: ${comp.urgencia_declarada.toUpperCase()}`;
+            const tw = doc.getTextWidth(urgLabel) + 10;
+            doc.setFillColor(...urgBg); doc.setDrawColor(...urgColor); doc.setLineWidth(0.3);
+            doc.roundedRect(ML, y, tw, 6.5, 1.5, 1.5, 'FD');
+            doc.setFontSize(7.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(...urgColor);
+            doc.text(urgLabel, ML + 5, y + 4.5);
+            y += 10;
+        }
+
+        // ── Texto original de la petición ─────────────────────────────────────
+        if (tutela?.contenido_original) {
+            checkY(20);
+            y += 4;
+            doc.setFillColor(...C.azul);
+            doc.roundedRect(ML, y, W, 7, 1.5, 1.5, 'F');
+            doc.setFontSize(8); doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.blanco);
+            doc.text('TEXTO ORIGINAL DE LA PETICIÓN', ML + 4, y + 4.8);
+            y += 11;
+
+            const texto = String(tutela.contenido_original || '');
+            const lineas = doc.splitTextToSize(texto, W - 6);
+            let restantes = lineas;
+            while (restantes.length > 0) {
+                const disponibles = Math.floor((PAGE_BOTTOM - y) / 5);
+                if (disponibles <= 0) { doc.addPage(); y = 20; continue; }
+                const chunk = restantes.slice(0, disponibles);
+                doc.setFontSize(8.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.gris);
+                doc.text(chunk, ML + 3, y);
+                y += chunk.length * 5;
+                restantes = restantes.slice(disponibles);
+                if (restantes.length > 0) { doc.addPage(); y = 20; }
+            }
+        }
+
+        // ── Footer ────────────────────────────────────────────────────────────
+        const totalPags = doc.internal.getNumberOfPages();
+        for (let p = 1; p <= totalPags; p++) {
+            doc.setPage(p);
+            doc.setDrawColor(...C.grisBorde); doc.setLineWidth(0.3);
+            doc.line(ML, 285, PW - ML, 285);
+            doc.setFontSize(6.5); doc.setFont('helvetica', 'normal'); doc.setTextColor(...C.grisClaro);
+            doc.text('Enel Colombia S.A. E.S.P.  ·  Análisis generado por el sistema de gestión jurídica', ML, 290);
+            doc.setFont('helvetica', 'bold'); doc.setTextColor(...C.purpura);
+            doc.text(`${p} / ${totalPags}`, PW - ML, 290, { align: 'right' });
+        }
+
+        doc.save(`analisis_peticion_${tutela?.radicado || id}.pdf`);
+    };
+
+    const tabsSecundarias = [
+        { key: 'solicitudes', label: 'Solicitudes Internas', icon: <Mail size={13} />, badge: requerimientos.filter(r => r.estado === 'Pendiente').length },
+        { key: 'trazabilidad', label: 'Trazabilidad y Gestión', icon: <History size={13} /> },
     ];
+    const [menuSecundario, setMenuSecundario] = useState(false);
+    const tabSecActiva = tabsSecundarias.find(t => t.key === activeTab);
 
     return (
         <div className="space-y-6">
             {/* ——— Navegación de Pestañas ——— */}
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-xl shadow-inner overflow-x-auto">
-                {tabs.map(tab => (
+            <div className="flex items-center gap-2">
+                {/* Tabs principales — prominentes */}
+                <div className="flex gap-1.5 bg-gray-100 p-1 rounded-xl shadow-inner flex-1">
+                    {[
+                        { key: 'contexto', label: 'Contexto Legal y RAG', icon: <Bookmark size={15} /> },
+                        { key: 'borrador', label: 'Borrador & IA',        icon: <ShieldCheck size={15} /> },
+                    ].map(tab => (
+                        <button
+                            key={tab.key}
+                            onClick={() => setActiveTab(tab.key)}
+                            className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                                activeTab === tab.key
+                                ? 'bg-white text-[#002E6D] shadow-sm ring-1 ring-black/5'
+                                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                            }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Menú secundario — discreto */}
+                <div className="relative">
                     <button
-                        key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                            activeTab === tab.key
-                            ? 'bg-white text-[#002E6D] shadow-sm ring-1 ring-black/5'
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-200/50'
+                        onClick={() => setMenuSecundario(v => !v)}
+                        className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-[11px] font-bold transition-all border ${
+                            tabSecActiva
+                                ? 'bg-white text-gray-700 border-gray-300 shadow-sm'
+                                : 'text-gray-400 border-gray-200 hover:text-gray-600 hover:border-gray-300 bg-white'
                         }`}
+                        title="Otras secciones"
                     >
-                        {tab.icon}
-                        {tab.label}
-                        {tab.badge > 0 && (
-                            <span className="ml-1 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-                                {tab.badge}
+                        {tabSecActiva ? tabSecActiva.icon : <History size={13} />}
+                        <span className="hidden sm:inline">{tabSecActiva ? tabSecActiva.label : 'Más'}</span>
+                        {tabsSecundarias.some(t => t.badge > 0) && !tabSecActiva && (
+                            <span className="w-2 h-2 rounded-full bg-orange-500" />
+                        )}
+                        {tabSecActiva?.badge > 0 && (
+                            <span className="bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                                {tabSecActiva.badge}
                             </span>
                         )}
+                        <ChevronDown size={11} className={`transition-transform ${menuSecundario ? 'rotate-180' : ''}`} />
                     </button>
-                ))}
+
+                    {menuSecundario && (
+                        <div className="absolute right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg z-20 min-w-[190px] py-1 overflow-hidden">
+                            {tabsSecundarias.map(tab => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => { setActiveTab(tab.key); setMenuSecundario(false); }}
+                                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-xs font-bold transition-colors text-left ${
+                                        activeTab === tab.key
+                                            ? 'bg-gray-50 text-[#002E6D]'
+                                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                                    }`}
+                                >
+                                    {tab.icon}
+                                    {tab.label}
+                                    {tab.badge > 0 && (
+                                        <span className="ml-auto bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                                            {tab.badge}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                            {tabSecActiva && (
+                                <button
+                                    onClick={() => { setActiveTab('contexto'); setMenuSecundario(false); }}
+                                    className="w-full flex items-center gap-2.5 px-4 py-2 text-[10px] font-bold text-gray-400 hover:text-gray-600 border-t border-gray-100 mt-1 transition-colors"
+                                >
+                                    <ChevronUp size={11} /> Volver a vista principal
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* ═══════════════════════════════════════════════════════ */}
@@ -822,6 +1498,120 @@ export default function MainTabs({
             {/* ═══════════════════════════════════════════════════════ */}
             {activeTab === 'contexto' && (
                 <div className="space-y-8 animate-fade-in">
+                    {/* ── Panel: Comprensión Estructurada ── */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="p-5 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
+                            <h3 className="font-bold text-gray-800 flex items-center gap-2 text-sm">
+                                <Layers size={16} className="text-[#002E6D]" /> Análisis de Comprensión
+                                <span className="text-[10px] font-normal text-gray-400 ml-1">Opcional — mejora el RAG</span>
+                            </h3>
+                            {comprensionActiva && (
+                                <span className="text-[10px] font-black bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Activo</span>
+                            )}
+                        </div>
+
+                        <div className="p-6">
+                            {/* Estado C — comprensión guardada */}
+                            {comprensionActiva ? (
+                                <div className="space-y-4">
+                                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
+                                        <div>
+                                            <p className="text-[10px] font-black text-[#002E6D] uppercase tracking-widest mb-1">Tema central</p>
+                                            <p className="text-sm text-gray-700 leading-relaxed">{comprensionActiva.tema_central}</p>
+                                        </div>
+                                        {comprensionActiva.peticiones?.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-black text-[#002E6D] uppercase tracking-widest mb-1">Peticiones detectadas</p>
+                                                <ol className="list-decimal list-inside space-y-1">
+                                                    {comprensionActiva.peticiones.map((p, i) => (
+                                                        <li key={i} className="text-xs text-gray-600 leading-relaxed">{p}</li>
+                                                    ))}
+                                                </ol>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-4 pt-1">
+                                            {comprensionActiva.urgencia_declarada && (
+                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                                                    comprensionActiva.urgencia_declarada === 'alta'  ? 'bg-red-100 text-red-700'    :
+                                                    comprensionActiva.urgencia_declarada === 'media' ? 'bg-amber-100 text-amber-700' :
+                                                                                                       'bg-gray-100 text-gray-600'
+                                                }`}>
+                                                    Urgencia: {comprensionActiva.urgencia_declarada}
+                                                </span>
+                                            )}
+                                            {comprensionActiva.derechos_invocados?.length > 0 && (
+                                                <p className="text-[10px] text-gray-400">
+                                                    Derechos: {comprensionActiva.derechos_invocados.join(', ')}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between pt-1">
+                                        <button
+                                            onClick={() => { setComprensionActiva(null); setPromptComprension(''); }}
+                                            className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                                        >
+                                            Actualizar análisis
+                                        </button>
+                                        <button
+                                            onClick={() => handleExportarAnalisisPDF(comprensionActiva)}
+                                            className="flex items-center gap-1.5 text-[11px] font-bold text-purple-700 hover:bg-purple-50 px-3 py-1.5 rounded-lg transition-colors border border-purple-100"
+                                        >
+                                            <Download size={12} /> Exportar análisis + petición
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : promptComprension ? (
+                                /* Estado B — prompt generado, esperando JSON */
+                                <div className="space-y-4">
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-700 mb-2">Prompt generado — cópialo al LLM corporativo:</p>
+                                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 max-h-32 overflow-y-auto">
+                                            <pre className="text-[11px] text-gray-500 font-mono whitespace-pre-wrap leading-relaxed">{promptComprension}</pre>
+                                        </div>
+                                        <button
+                                            onClick={() => { navigator.clipboard.writeText(promptComprension); toast.success('Copiado al portapapeles'); }}
+                                            className="mt-2 flex items-center gap-1.5 text-xs font-bold text-[#002E6D] hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                                        >
+                                            <Copy size={12} /> Copiar al portapapeles
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-gray-700 mb-2">Pega aquí el JSON que devolvió el LLM:</p>
+                                        <textarea
+                                            className="w-full h-32 p-3 border border-gray-200 rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-[#002E6D] bg-gray-50/50 resize-none"
+                                            value={jsonComprension}
+                                            onChange={e => setJsonComprension(e.target.value)}
+                                            placeholder={'{\n  "tema_central": "...",\n  "peticiones": ["..."],\n  ...\n}'}
+                                        />
+                                        <button
+                                            onClick={handleGuardarComprension}
+                                            disabled={guardandoComprension || !jsonComprension.trim()}
+                                            className="mt-2 w-full py-2.5 bg-[#002E6D] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-[#001d4a] transition-colors disabled:opacity-50"
+                                        >
+                                            {guardandoComprension ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                            Guardar análisis → mejorar RAG
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Estado A — sin comprensión */
+                                <div className="text-center py-6">
+                                    <p className="text-sm text-gray-500 leading-relaxed mb-4">
+                                        Genera un prompt para que el LLM identifique el tema central y las peticiones del documento.<br />
+                                        <span className="text-xs text-gray-400">El resultado enriquece la búsqueda de precedentes en el RAG.</span>
+                                    </p>
+                                    <button
+                                        onClick={handleGenerarPromptComprension}
+                                        className="px-6 py-2.5 bg-[#002E6D] text-white rounded-xl text-sm font-bold hover:bg-[#001d4a] transition-colors flex items-center gap-2 mx-auto"
+                                    >
+                                        <Layers size={15} /> Generar prompt de análisis
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Texto Original */}
                     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
                         <div className="p-5 border-b border-gray-100 bg-gray-50/50">
@@ -863,86 +1653,11 @@ export default function MainTabs({
                     )}
 
                     {/* RAG Sugerencias */}
-                    <div>
-                        <div className="flex items-center gap-2 mb-4 px-1">
-                            <Bookmark size={18} className="text-[#002E6D]" />
-                            <h3 className="text-sm font-bold text-gray-800 uppercase tracking-widest">Precedentes Similares (IA)</h3>
-                        </div>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            {loadingSugerencias ? (
-                                <div className="col-span-1 lg:col-span-2 p-12 text-center">
-                                    <div className="w-8 h-8 border-4 border-[#002E6D] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                    <span className="text-gray-400 text-sm font-bold uppercase tracking-widest">Analizando precedentes en la base de datos...</span>
-                                </div>
-                            ) : sugerencias.length > 0 ? (
-                            sugerencias.map((sug, idx) => (
-                                <div key={sug.documento_id ? `${sug.documento_id}-${idx}` : idx} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col">
-                                    <span className="text-[10px] font-black text-white bg-[#002E6D] px-2 py-1 rounded-md w-fit uppercase tracking-widest mb-3">{sug.categoria}</span>
-                                    <h4 className="font-bold text-gray-800 text-sm mb-3">{sug.titulo_referencia}</h4>
-                                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 mb-4 flex-1">
-                                        <p className="text-sm text-gray-600 italic leading-relaxed">"{sug.contenido_legal}"</p>
-                                    </div>
-                                    <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => {
-                                                    navigator.clipboard.writeText(sug.contenido_legal);
-                                                    toast.success('Copiado');
-                                                }}
-                                                className="text-[#002E6D] text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
-                                            >
-                                                Copiar <ChevronRight size={12} />
-                                            </button>
-                                            {sug.documento_id && (
-                                                <button
-                                                    onClick={() => handleVerDocumentoCompleto(sug)}
-                                                    className="text-gray-500 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:text-[#002E6D] hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors"
-                                                >
-                                                    <Maximize2 size={12} /> Ver Expediente
-                                                </button>
-                                            )}
-                                        </div>
-                                        {sug.documento_id && (
-                                            <div className="flex items-center gap-1">
-                                                <span className="text-[9px] text-gray-400 uppercase tracking-widest mr-1">¿Útil?</span>
-                                                <button
-                                                    onClick={async () => {
-                                                        await tutelaService.registrarFeedback(sug.documento_id, true);
-                                                        toast.success('Gracias por tu valoración');
-                                                    }}
-                                                    title="Este precedente fue útil"
-                                                    className="p-1.5 rounded-lg hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors"
-                                                >
-                                                    <ThumbsUp size={13} />
-                                                </button>
-                                                <button
-                                                    onClick={async () => {
-                                                        await tutelaService.registrarFeedback(sug.documento_id, false);
-                                                        toast('Valoración registrada', { icon: '👎' });
-                                                    }}
-                                                    title="Este precedente no fue relevante"
-                                                    className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                                                >
-                                                    <ThumbsDown size={13} />
-                                                </button>
-                                                {sug.relevancia_score !== undefined && sug.relevancia_score !== 0 && (
-                                                    <span className={`text-[9px] font-black ml-1 ${sug.relevancia_score > 0 ? 'text-green-500' : 'text-red-400'}`}>
-                                                        {sug.relevancia_score > 0 ? `+${sug.relevancia_score}` : sug.relevancia_score}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                            ) : (
-                                <div className="col-span-1 lg:col-span-2 bg-white border border-dashed border-gray-300 p-12 text-center rounded-2xl">
-                                    <Bookmark size={32} className="mx-auto text-gray-300 mb-4" />
-                                    <p className="text-sm text-gray-400 font-bold">No se encontraron precedentes similares en la memoria.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    <PrecedentesRAG
+                        sugerencias={sugerencias}
+                        loadingSugerencias={loadingSugerencias}
+                        handleVerDocumentoCompleto={handleVerDocumentoCompleto}
+                    />
                 </div>
             )}
 
