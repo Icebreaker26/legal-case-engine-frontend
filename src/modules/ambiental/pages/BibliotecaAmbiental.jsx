@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, RefreshCw, BarChart2, Building2, Tag, Layers,
-  ExternalLink, Info, FileText, TrendingUp, Clock, Scatter
+  ExternalLink, Info, FileText, TrendingUp, Clock, Network
 } from 'lucide-react';
 import apiService from '../../../services/apiService.js';
 import toast from 'react-hot-toast';
@@ -343,7 +343,7 @@ function ScatterPlot({ puntos, clusters, onClickPunto }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
       <h3 className="text-sm font-bold text-gray-700 uppercase tracking-widest mb-1 flex items-center gap-2">
-        <Scatter size={14} className="text-green-700" /> Mapa semántico del corpus
+        <Network size={14} className="text-green-700" /> Mapa semántico del corpus
       </h3>
       <p className="text-xs text-gray-400 mb-4">
         Cada punto es un expediente. La distancia refleja similitud semántica — los más cercanos comparten contenido parecido. Proyección PCA 2D.
