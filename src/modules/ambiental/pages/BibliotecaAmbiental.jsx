@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, RefreshCw, BarChart2, Building2, Tag, Layers,
-  AlertTriangle, ChevronDown, ChevronUp, ExternalLink, Info,
-  FileText, TrendingUp, Clock
+  ExternalLink, Info, FileText, TrendingUp, Clock, Scatter
 } from 'lucide-react';
 import apiService from '../../../services/apiService.js';
 import toast from 'react-hot-toast';
@@ -305,9 +304,181 @@ function ClusterDrawer({ cluster, onClose }) {
   );
 }
 
+// ── Scatter Plot PCA ─────────────────────────────────────────────────────────
+
+const CLUSTER_PALETTE = [
+  '#22c55e', '#3b82f6', '#f59e0b', '#ef4444',
+  '#8b5cf6', '#ec4899', '#14b8a6',
+];
+
+function ScatterPlot({ puntos, clusters, onClickPunto }) {
+  const svgRef = useRef(null);
+  const [tooltip, setTooltip] = useState(null); // { x, y, punto }
+
+  if (!puntos?.length) return null;
+
+  const W = 700, H = 420;
+  const PAD = 40;
+  const innerW = W - PAD * 2;
+  const innerH = H - PAD * 2;
+
+  // Mapa cluster_index → label del representativo
+  const clusterLabel = {};
+  clusters?.forEach(c => { clusterLabel[c.cluster_index] = c.titulo; });
+
+  // Calcular centroides 2D de cada cluster (promedio de puntos miembros)
+  const centroidMap = {};
+  puntos.forEach(p => {
+    if (!centroidMap[p.cluster_index]) centroidMap[p.cluster_index] = { sx: 0, sy: 0, n: 0 };
+    centroidMap[p.cluster_index].sx += p.x;
+    centroidMap[p.cluster_index].sy += p.y;
+    centroidMap[p.cluster_index].n  += 1;
+  });
+
+  const toSvg = (nx, ny) => ({
+    cx: PAD + nx * innerW,
+    cy: PAD + (1 - ny) * innerH, // invertir Y para que "arriba" sea mayor
+  });
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+      <h3 className="text-sm font-bold text-gray-700 uppercase tracking-widest mb-1 flex items-center gap-2">
+        <Scatter size={14} className="text-green-700" /> Mapa semántico del corpus
+      </h3>
+      <p className="text-xs text-gray-400 mb-4">
+        Cada punto es un expediente. La distancia refleja similitud semántica — los más cercanos comparten contenido parecido. Proyección PCA 2D.
+      </p>
+
+      {/* Leyenda de clusters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        {clusters?.map(c => (
+          <span key={c.cluster_index} className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-600">
+            <span
+              className="w-3 h-3 rounded-full shrink-0"
+              style={{ backgroundColor: CLUSTER_PALETTE[c.cluster_index % CLUSTER_PALETTE.length] }}
+            />
+            <span className="truncate max-w-[160px]" title={c.titulo}>{c.titulo ?? `Tema ${c.cluster_index + 1}`}</span>
+            <span className="text-gray-400 font-normal">({c.miembros_count})</span>
+          </span>
+        ))}
+      </div>
+
+      {/* SVG scroll horizontal en mobile */}
+      <div className="overflow-x-auto -mx-1 px-1">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full"
+          style={{ minWidth: 320, maxWidth: W }}
+          onMouseLeave={() => setTooltip(null)}
+        >
+          {/* Grid suave */}
+          {[0.25, 0.5, 0.75].map(t => (
+            <g key={t}>
+              <line
+                x1={PAD} y1={PAD + t * innerH}
+                x2={PAD + innerW} y2={PAD + t * innerH}
+                stroke="#f1f5f9" strokeWidth="1"
+              />
+              <line
+                x1={PAD + t * innerW} y1={PAD}
+                x2={PAD + t * innerW} y2={PAD + innerH}
+                stroke="#f1f5f9" strokeWidth="1"
+              />
+            </g>
+          ))}
+
+          {/* Bordes del área */}
+          <rect
+            x={PAD} y={PAD} width={innerW} height={innerH}
+            fill="none" stroke="#e2e8f0" strokeWidth="1" rx="4"
+          />
+
+          {/* Elipses de zona por cluster (convex hull aproximado con círculo) */}
+          {Object.entries(centroidMap).map(([idx, { sx, sy, n }]) => {
+            const ci = parseInt(idx);
+            const color = CLUSTER_PALETTE[ci % CLUSTER_PALETTE.length];
+            const { cx, cy } = toSvg(sx / n, sy / n);
+
+            // Radio: promedio de distancias de miembros al centroide visual
+            const miembros = puntos.filter(p => p.cluster_index === ci);
+            const avgR = miembros.reduce((sum, p) => {
+              const { cx: px, cy: py } = toSvg(p.x, p.y);
+              return sum + Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+            }, 0) / (miembros.length || 1);
+
+            const r = Math.max(avgR * 1.3, 20);
+            return (
+              <ellipse
+                key={idx}
+                cx={cx} cy={cy}
+                rx={r} ry={r * 0.85}
+                fill={color} fillOpacity="0.06"
+                stroke={color} strokeOpacity="0.25" strokeWidth="1.5"
+                strokeDasharray="4 3"
+              />
+            );
+          })}
+
+          {/* Puntos */}
+          {puntos.map(p => {
+            const color = CLUSTER_PALETTE[p.cluster_index % CLUSTER_PALETTE.length];
+            const { cx, cy } = toSvg(p.x, p.y);
+            return (
+              <circle
+                key={p.expediente_id}
+                cx={cx} cy={cy} r={6}
+                fill={color} fillOpacity={0.85}
+                stroke="white" strokeWidth={1.5}
+                className="cursor-pointer transition-all hover:r-8"
+                style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' }}
+                onMouseEnter={(e) => setTooltip({ svgX: cx, svgY: cy, punto: p })}
+                onClick={() => onClickPunto(p)}
+              />
+            );
+          })}
+
+          {/* Etiquetas de centroides */}
+          {Object.entries(centroidMap).map(([idx, { sx, sy, n }]) => {
+            const ci = parseInt(idx);
+            const color = CLUSTER_PALETTE[ci % CLUSTER_PALETTE.length];
+            const { cx, cy } = toSvg(sx / n, sy / n);
+            const label = clusterLabel[ci] ?? `Tema ${ci + 1}`;
+            const short = label.length > 22 ? label.slice(0, 20) + '…' : label;
+            return (
+              <text
+                key={idx}
+                x={cx} y={cy - 14}
+                textAnchor="middle"
+                fontSize="10" fontWeight="700"
+                fill={color} opacity="0.8"
+              >
+                {short}
+              </text>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Tooltip */}
+      {tooltip && (
+        <div
+          className="mt-3 bg-gray-900 text-white text-xs rounded-xl px-3 py-2.5 max-w-xs shadow-lg pointer-events-none"
+          style={{ animationDuration: '100ms' }}
+        >
+          <p className="font-bold leading-snug mb-1">{tooltip.punto.titulo ?? 'Sin título'}</p>
+          <p className="text-gray-300">{tooltip.punto.tipo_instrumento} · <RiesgoBadge nivel={tooltip.punto.nivel_riesgo} /></p>
+          <p className="text-gray-400 mt-1 text-[10px]">Click para ver el expediente →</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function BibliotecaAmbiental() {
+  const navigate = useNavigate();
   const [estadisticas, setEstadisticas] = useState(null);
   const [clustersData, setClustersData]   = useState(null);
   const [loadingStats, setLoadingStats]   = useState(true);
@@ -315,6 +486,7 @@ export default function BibliotecaAmbiental() {
   const [recalculando, setRecalculando]   = useState(false);
   const [clusterSeleccionado, setClusterSeleccionado] = useState(null);
   const [terminosIgnorados, setTerminosIgnorados] = useState([]);
+  const [proyeccion, setProyeccion] = useState([]);
 
   const cargarEstadisticas = useCallback(async () => {
     try {
@@ -344,6 +516,9 @@ export default function BibliotecaAmbiental() {
     apiService.get('/ambiental/biblioteca/terminos-ignorados')
       .then(r => setTerminosIgnorados(r.data.map(t => t.word)))
       .catch(() => {});
+    apiService.get('/ambiental/biblioteca/proyeccion')
+      .then(r => setProyeccion(r.data))
+      .catch(() => {});
   }, [cargarEstadisticas, cargarClusters]);
 
   const ignorarTermino = async (word) => {
@@ -370,6 +545,7 @@ export default function BibliotecaAmbiental() {
       toast.success(`${res.data.clusters} temas generados a partir de ${res.data.expedientes} expedientes`);
       setLoadingClusters(true);
       await cargarClusters();
+      apiService.get('/ambiental/biblioteca/proyeccion').then(r => setProyeccion(r.data)).catch(() => {});
     } catch (err) {
       toast.error(err.response?.data?.error || 'Error al recalcular');
     } finally {
@@ -452,6 +628,17 @@ export default function BibliotecaAmbiental() {
               ))}
             </div>
           )}
+        </section>
+      )}
+
+      {/* Mapa semántico PCA */}
+      {proyeccion.length > 0 && (
+        <section>
+          <ScatterPlot
+            puntos={proyeccion}
+            clusters={clustersData?.clusters}
+            onClickPunto={p => navigate(`/ambiental/expediente/${p.expediente_id}`)}
+          />
         </section>
       )}
 
