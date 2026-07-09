@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, RefreshCw, BarChart2, Building2, Tag, Layers,
-  ExternalLink, Info, FileText, TrendingUp, Clock, Network
+  ExternalLink, Info, FileText, TrendingUp, Clock, Network,
+  Scale, ChevronDown, ChevronRight, Filter
 } from 'lucide-react';
 import apiService from '../../../services/apiService.js';
 import toast from 'react-hot-toast';
@@ -475,6 +476,149 @@ function ScatterPlot({ puntos, clusters, onClickPunto }) {
   );
 }
 
+// ── Sección Normas Recurrentes ────────────────────────────────────────────────
+
+function FilaArticulo({ art }) {
+  const total = art.frecuencia;
+  const maxRiesgo = Math.max(art.riesgo_alto, art.riesgo_medio, art.riesgo_bajo, 1);
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-t border-gray-50 first:border-0">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-gray-700">{art.articulo}</span>
+          <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+            ×{total}
+          </span>
+          {art.tipos_instrumento.slice(0, 2).map(t => (
+            <span key={t} className="text-[10px] text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full font-medium">
+              {t}
+            </span>
+          ))}
+        </div>
+        {art.descripcion && (
+          <p className="text-[11px] text-gray-500 leading-relaxed mt-1 line-clamp-2">{art.descripcion}</p>
+        )}
+        {/* Barra de riesgo A/M/B */}
+        <div className="flex gap-1.5 mt-1.5 items-center">
+          {art.riesgo_alto  > 0 && (
+            <div className="flex items-center gap-0.5">
+              <div className="h-1.5 rounded-full bg-red-400" style={{ width: `${Math.round((art.riesgo_alto / maxRiesgo) * 56) + 8}px` }} />
+              <span className="text-[10px] text-red-500 font-semibold">{art.riesgo_alto}A</span>
+            </div>
+          )}
+          {art.riesgo_medio > 0 && (
+            <div className="flex items-center gap-0.5">
+              <div className="h-1.5 rounded-full bg-amber-400" style={{ width: `${Math.round((art.riesgo_medio / maxRiesgo) * 56) + 8}px` }} />
+              <span className="text-[10px] text-amber-500 font-semibold">{art.riesgo_medio}M</span>
+            </div>
+          )}
+          {art.riesgo_bajo  > 0 && (
+            <div className="flex items-center gap-0.5">
+              <div className="h-1.5 rounded-full bg-green-400" style={{ width: `${Math.round((art.riesgo_bajo / maxRiesgo) * 56) + 8}px` }} />
+              <span className="text-[10px] text-green-600 font-semibold">{art.riesgo_bajo}B</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InstrumentoAccordion({ grupo }) {
+  const [abierto, setAbierto] = useState(false);
+  const pct_alto  = grupo.articulos.reduce((s, a) => s + a.riesgo_alto,  0);
+  const pct_medio = grupo.articulos.reduce((s, a) => s + a.riesgo_medio, 0);
+  const pct_bajo  = grupo.articulos.reduce((s, a) => s + a.riesgo_bajo,  0);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <button
+        onClick={() => setAbierto(v => !v)}
+        className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors text-left"
+      >
+        <Scale size={15} className="text-green-700 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-gray-800 truncate">{grupo.instrumento}</p>
+          <div className="flex gap-2 mt-0.5">
+            <span className="text-[10px] text-gray-400">{grupo.articulos.length} artículos · {grupo.total} citas</span>
+            {pct_alto  > 0 && <span className="text-[10px] text-red-500 font-semibold">{pct_alto}A</span>}
+            {pct_medio > 0 && <span className="text-[10px] text-amber-500 font-semibold">{pct_medio}M</span>}
+            {pct_bajo  > 0 && <span className="text-[10px] text-green-600 font-semibold">{pct_bajo}B</span>}
+          </div>
+        </div>
+        <span className="text-[11px] font-black text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-0.5 shrink-0">
+          {grupo.total}
+        </span>
+        {abierto
+          ? <ChevronDown size={15} className="text-gray-400 shrink-0" />
+          : <ChevronRight size={15} className="text-gray-400 shrink-0" />}
+      </button>
+
+      {abierto && grupo.articulos.length > 0 && (
+        <div className="px-5 pb-4 border-t border-gray-50">
+          {grupo.articulos.map(art => (
+            <FilaArticulo key={art.articulo} art={art} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SeccionNormas({ normas, loading, tiposDisponibles, filtroTipo, onFiltroTipo }) {
+  if (loading) return (
+    <div className="space-y-3">
+      {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-16" />)}
+    </div>
+  );
+
+  if (!normas) return null;
+
+  return (
+    <div className="space-y-4">
+      {/* Filtro por tipo de instrumento */}
+      {tiposDisponibles.length > 1 && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter size={13} className="text-gray-400" />
+          <button
+            onClick={() => onFiltroTipo('')}
+            className={`text-[11px] font-semibold px-3 py-1 rounded-full border transition-colors ${
+              !filtroTipo
+                ? 'bg-green-700 text-white border-green-700'
+                : 'text-gray-600 border-gray-200 hover:border-green-300'
+            }`}
+          >
+            Todos
+          </button>
+          {tiposDisponibles.map(t => (
+            <button
+              key={t}
+              onClick={() => onFiltroTipo(t)}
+              className={`text-[11px] font-semibold px-3 py-1 rounded-full border transition-colors ${
+                filtroTipo === t
+                  ? 'bg-green-700 text-white border-green-700'
+                  : 'text-gray-600 border-gray-200 hover:border-green-300'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {normas.length === 0 ? (
+        <p className="text-sm text-gray-400 py-6 text-center">Sin normas registradas en el corpus.</p>
+      ) : (
+        <div className="space-y-2">
+          {normas.map(grupo => (
+            <InstrumentoAccordion key={grupo.instrumento} grupo={grupo} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Página principal ──────────────────────────────────────────────────────────
 
 export default function BibliotecaAmbiental() {
@@ -487,6 +631,9 @@ export default function BibliotecaAmbiental() {
   const [clusterSeleccionado, setClusterSeleccionado] = useState(null);
   const [terminosIgnorados, setTerminosIgnorados] = useState([]);
   const [proyeccion, setProyeccion] = useState([]);
+  const [normas, setNormas] = useState(null);
+  const [loadingNormas, setLoadingNormas] = useState(true);
+  const [filtroTipoNormas, setFiltroTipoNormas] = useState('');
 
   const cargarEstadisticas = useCallback(async () => {
     try {
@@ -510,16 +657,38 @@ export default function BibliotecaAmbiental() {
     }
   }, []);
 
+  const cargarNormas = useCallback(async (tipo = '') => {
+    setLoadingNormas(true);
+    try {
+      const params = tipo ? { tipo_instrumento: tipo } : {};
+      const res = await apiService.get('/ambiental/biblioteca/normas', { params });
+      setNormas(res.data);
+    } catch {
+      toast.error('Error al cargar normas');
+    } finally {
+      setLoadingNormas(false);
+    }
+  }, []);
+
   useEffect(() => {
     cargarEstadisticas();
     cargarClusters();
+    cargarNormas();
     apiService.get('/ambiental/biblioteca/terminos-ignorados')
       .then(r => setTerminosIgnorados(r.data.map(t => t.word)))
       .catch(() => {});
     apiService.get('/ambiental/biblioteca/proyeccion')
       .then(r => setProyeccion(r.data))
       .catch(() => {});
-  }, [cargarEstadisticas, cargarClusters]);
+  }, [cargarEstadisticas, cargarClusters, cargarNormas]);
+
+  const handleFiltroTipoNormas = (tipo) => {
+    setFiltroTipoNormas(tipo);
+    cargarNormas(tipo);
+  };
+
+  // Tipos de instrumento disponibles extraídos del corpus estadístico
+  const tiposDisponibles = (estadisticas?.por_tipo ?? []).map(t => t.tipo_instrumento).filter(Boolean);
 
   const ignorarTermino = async (word) => {
     try {
@@ -641,6 +810,21 @@ export default function BibliotecaAmbiental() {
           />
         </section>
       )}
+
+      {/* Normas más citadas */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <Scale size={14} className="text-green-700" />
+          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">Normas más citadas</h2>
+        </div>
+        <SeccionNormas
+          normas={normas}
+          loading={loadingNormas}
+          tiposDisponibles={tiposDisponibles}
+          filtroTipo={filtroTipoNormas}
+          onFiltroTipo={handleFiltroTipoNormas}
+        />
+      </section>
 
       {/* Drawer de expedientes del cluster */}
       <ClusterDrawer
