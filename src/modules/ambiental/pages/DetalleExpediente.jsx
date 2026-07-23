@@ -611,6 +611,7 @@ export default function DetalleExpediente() {
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState('');
   const [guardandoProyecto, setGuardandoProyecto] = useState(false);
   const fileRef = useRef(null);
+  const [duplicadoArchivo, setDuplicadoArchivo] = useState(null); // { duplicado, patch }
 
   // Tab Recurso
   const [hallazgosSeleccionados, setHallazgosSeleccionados] = useState(new Set());
@@ -840,15 +841,19 @@ export default function DetalleExpediente() {
     }
   };
 
+  const aplicarProcesado = async (procesadoData, esArchivo = false) => {
+    const patch = { prompt_generado: procesadoData.prompt_generado };
+    if (esArchivo) patch.contenido_texto = procesadoData.contenido_texto;
+    await apiService.patch(`/ambiental/expedientes/${id}`, patch);
+    toast.success('Prompt generado');
+    await cargarDatos();
+  };
+
   const procesarYGuardar = async (fd, esArchivo = false) => {
     const { data } = await apiService.post('/ambiental/expedientes/procesar', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    const patch = { prompt_generado: data.prompt_generado };
-    if (esArchivo) patch.contenido_texto = data.contenido_texto;
-    await apiService.patch(`/ambiental/expedientes/${id}`, patch);
-    toast.success('Prompt generado');
-    await cargarDatos();
+    await aplicarProcesado(data, esArchivo);
   };
 
   const handleProcesarArchivo = async (e) => {
@@ -860,7 +865,14 @@ export default function DetalleExpediente() {
       fd.append('file', file);
       if (expediente.entidad_id) fd.append('entidad_id', expediente.entidad_id);
       if (expediente.fecha_documento) fd.append('fecha_documento', expediente.fecha_documento);
-      await procesarYGuardar(fd, true);
+      const { data } = await apiService.post('/ambiental/expedientes/procesar', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      if (data.duplicado) {
+        setDuplicadoArchivo({ duplicado: data.duplicado, procesadoData: data });
+        return;
+      }
+      await aplicarProcesado(data, true);
     } catch {
       toast.error('Error al procesar el archivo');
     } finally {
@@ -930,6 +942,53 @@ export default function DetalleExpediente() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-5">
+
+      {/* Modal duplicado en re-subida */}
+      {duplicadoArchivo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={22} className="text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <h3 className="font-bold text-gray-800 text-base">Documento ya registrado</h3>
+                <p className="text-sm text-gray-500 mt-1">Este archivo ya fue subido en el expediente:</p>
+                <p className="text-sm font-semibold text-gray-700 mt-1">
+                  "{duplicadoArchivo.duplicado.titulo}"
+                  {duplicadoArchivo.duplicado.numero_expediente && ` — ${duplicadoArchivo.duplicado.numero_expediente}`}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500">¿Deseas reemplazar el contenido de este expediente con el nuevo archivo?</p>
+            <div className="flex gap-3 justify-end pt-1">
+              <button
+                onClick={() => setDuplicadoArchivo(null)}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => navigate(`/ambiental/expediente/${duplicadoArchivo.duplicado.id}`)}
+                className="px-4 py-2 rounded-xl border border-green-600 text-sm font-bold text-green-700 hover:bg-green-50"
+              >
+                Ver expediente existente
+              </button>
+              <button
+                onClick={async () => {
+                  const d = duplicadoArchivo;
+                  setDuplicadoArchivo(null);
+                  setProcesandoArchivo(true);
+                  try { await aplicarProcesado(d.procesadoData, true); }
+                  catch { toast.error('Error al procesar el archivo'); }
+                  finally { setProcesandoArchivo(false); }
+                }}
+                className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600"
+              >
+                Reemplazar contenido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Cabecera ─────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

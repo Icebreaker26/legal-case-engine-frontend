@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../../../services/apiService';
-import { Upload, ChevronLeft, Loader } from 'lucide-react';
+import { Upload, ChevronLeft, Loader, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TIPOS = ['expediente', 'auto', 'resolución', 'concepto', 'otros'];
@@ -19,12 +19,18 @@ export default function NuevoExpediente() {
 
   const [archivo, setArchivo] = useState(null);
   const [guardando, setGuardando] = useState(false);
+  const [duplicadoPendiente, setDuplicadoPendiente] = useState(null); // { duplicado, payload }
+
+  const guardarExpediente = async (payload) => {
+    const { data } = await apiService.post('/ambiental/expedientes', payload);
+    navigate(`/ambiental/expediente/${data.id}`);
+  };
 
   const handleGuardar = async () => {
     if (!form.titulo.trim()) return toast.error('El título es obligatorio.');
     setGuardando(true);
     try {
-      let contenido_texto;
+      let extraCampos = {};
 
       if (archivo) {
         const fd = new FormData();
@@ -33,15 +39,17 @@ export default function NuevoExpediente() {
         const { data } = await apiService.post('/ambiental/expedientes/procesar', fd, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
-        contenido_texto = data.contenido_texto;
+        extraCampos.contenido_texto = data.contenido_texto;
+        if (data.file_hash)      extraCampos.file_hash      = data.file_hash;
+        if (data.contenido_hash) extraCampos.contenido_hash = data.contenido_hash;
+
+        if (data.duplicado) {
+          setDuplicadoPendiente({ duplicado: data.duplicado, payload: { ...form, ...extraCampos } });
+          return;
+        }
       }
 
-      const { data } = await apiService.post('/ambiental/expedientes', {
-        ...form,
-        contenido_texto: contenido_texto || undefined,
-      });
-
-      navigate(`/ambiental/expediente/${data.id}`);
+      await guardarExpediente({ ...form, ...extraCampos });
     } catch {
       toast.error('Error al guardar el expediente');
     } finally {
@@ -49,8 +57,65 @@ export default function NuevoExpediente() {
     }
   };
 
+  const confirmarDuplicado = async () => {
+    setGuardando(true);
+    try {
+      await guardarExpediente(duplicadoPendiente.payload);
+    } catch {
+      toast.error('Error al guardar el expediente');
+    } finally {
+      setGuardando(false);
+      setDuplicadoPendiente(null);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+
+      {/* Modal duplicado */}
+      {duplicadoPendiente && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-md w-full mx-4 space-y-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={22} className="text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <h3 className="font-bold text-gray-800 text-base">Documento ya registrado</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Este archivo ya fue subido en el expediente:
+                </p>
+                <p className="text-sm font-semibold text-gray-700 mt-1">
+                  "{duplicadoPendiente.duplicado.titulo}"
+                  {duplicadoPendiente.duplicado.numero_expediente && ` — ${duplicadoPendiente.duplicado.numero_expediente}`}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-500">¿Deseas registrarlo de todas formas como un expediente separado?</p>
+            <div className="flex gap-3 justify-end pt-1">
+              <button
+                onClick={() => { setDuplicadoPendiente(null); setGuardando(false); }}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-bold text-gray-600 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => navigate(`/ambiental/expediente/${duplicadoPendiente.duplicado.id}`)}
+                className="px-4 py-2 rounded-xl border border-green-600 text-sm font-bold text-green-700 hover:bg-green-50"
+              >
+                Ver expediente existente
+              </button>
+              <button
+                onClick={confirmarDuplicado}
+                disabled={guardando}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 disabled:opacity-50"
+              >
+                {guardando && <Loader size={14} className="animate-spin" />}
+                Registrar de todas formas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <button onClick={() => navigate('/ambiental')} className="text-gray-400 hover:text-green-700 transition-colors">
           <ChevronLeft size={22} />
