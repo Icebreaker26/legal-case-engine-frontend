@@ -1083,6 +1083,23 @@ export default function DetalleExpediente() {
                 )}
               </div>
 
+              {/* Tipo de instrumento */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Tipo de instrumento</p>
+                <select
+                  className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white outline-none focus:ring-2 focus:ring-green-600"
+                  defaultValue={expediente.tipo_instrumento || ''}
+                  onChange={async (e) => {
+                    const val = e.target.value;
+                    if (!val || val === expediente.tipo_instrumento) return;
+                    try { await apiService.patch(`/ambiental/expedientes/${id}`, { tipo_instrumento: val }); setExpediente(prev => ({ ...prev, tipo_instrumento: val })); toast.success('Tipo actualizado'); } catch { toast.error('Error al guardar'); }
+                  }}>
+                  {['expediente', 'auto', 'resolución', 'concepto', 'otros'].map(t => (
+                    <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Título */}
               <div className="col-span-2 md:col-span-3">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Título</p>
@@ -1570,14 +1587,28 @@ export default function DetalleExpediente() {
                 </p>
               )}
             </div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={procesandoArchivo}
-              className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-700 disabled:opacity-50 transition-all"
-            >
-              {procesandoArchivo ? <Loader size={13} className="animate-spin" /> : <Upload size={13} />}
-              {procesandoArchivo ? 'Procesando...' : 'Subir nuevo archivo'}
-            </button>
+            <div className="flex items-center gap-2">
+              {expediente.contenido_texto && (
+                <button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(expediente.contenido_texto);
+                    toast.success('Texto copiado al portapapeles');
+                  }}
+                  className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-700 transition-all"
+                >
+                  <Copy size={13} />
+                  Copiar texto
+                </button>
+              )}
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={procesandoArchivo}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-700 disabled:opacity-50 transition-all"
+              >
+                {procesandoArchivo ? <Loader size={13} className="animate-spin" /> : <Upload size={13} />}
+                {procesandoArchivo ? 'Procesando...' : 'Subir nuevo archivo'}
+              </button>
+            </div>
           </div>
           <input ref={fileRef} type="file" accept=".pdf,.docx,.txt" className="hidden" onChange={handleProcesarArchivo} />
 
