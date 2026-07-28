@@ -1323,6 +1323,7 @@ export default function DetalleExpediente() {
         <div className={`rounded-2xl border shadow-sm px-5 py-4 ${
           expediente.fecha_vencimiento
             ? (() => {
+                if (['Cerrado', 'Archivado'].includes(expediente.estado)) return 'bg-white border-gray-100';
                 const dias = Math.ceil((new Date(expediente.fecha_vencimiento) - new Date()) / 86400000);
                 return dias < 0 ? 'bg-red-50 border-red-200' : dias <= 7 ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-100';
               })()
@@ -1330,12 +1331,13 @@ export default function DetalleExpediente() {
         }`}>
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Vencimiento</p>
           {expediente.fecha_vencimiento ? (() => {
+            const cerrado = ['Cerrado', 'Archivado'].includes(expediente.estado);
             const dias = Math.ceil((new Date(expediente.fecha_vencimiento) - new Date()) / 86400000);
-            const vencido = dias < 0;
+            const vencido = !cerrado && dias < 0;
             return (
               <>
-                <p className={`text-2xl font-black ${vencido ? 'text-red-600' : dias <= 7 ? 'text-orange-600' : 'text-gray-700'}`}>
-                  {vencido ? `−${Math.abs(dias)}d` : `${dias}d`}
+                <p className={`text-2xl font-black ${cerrado ? 'text-gray-400' : vencido ? 'text-red-600' : dias <= 7 ? 'text-orange-600' : 'text-gray-700'}`}>
+                  {cerrado ? '—' : vencido ? `−${Math.abs(dias)}d` : `${dias}d`}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
                   {new Date(expediente.fecha_vencimiento).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })}
