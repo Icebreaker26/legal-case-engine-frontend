@@ -55,8 +55,8 @@ export const tutelaService = {
     return data;
   },
 
-  promoverArgumento: async (tutelaId, argId) => {
-    const { data } = await apiService.post(`${ENDPOINT}/${tutelaId}/argumentos/${argId}/promover`);
+  promoverArgumento: async (tutelaId, argId, { categoria_confirmada } = {}) => {
+    const { data } = await apiService.post(`${ENDPOINT}/${tutelaId}/argumentos/${argId}/promover`, { categoria_confirmada });
     return data;
   },
 
