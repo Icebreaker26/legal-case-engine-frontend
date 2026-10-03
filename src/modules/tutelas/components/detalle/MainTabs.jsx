@@ -4,6 +4,7 @@ import { generarBorradorPDF } from '../../utils/generarBorradorPDF';
 import toast from 'react-hot-toast';
 import apiService from '../../../../services/apiService';
 import { tutelaService } from '../../services/tutelaService';
+import ConfirmarCategoriaModal from './ConfirmarCategoriaModal';
 
 const RESULTADO_COLOR = {
     favorable:    'bg-green-50 text-green-700 border-green-100',
@@ -224,6 +225,8 @@ export default function MainTabs({
 }) {
     const [activeTab, setActiveTab] = useState('contexto');
     const [argEnEdicion, setArgEnEdicion] = useState(null);
+    const [argAPromover, setArgAPromover] = useState(null); // #44: arg pendiente de confirmar categoría antes de promover
+    const [promoviendoArgumento, setPromoviendoArgumento] = useState(false);
     const [nuevoArgumento, setNuevoArgumento] = useState({ titulo: '', contenido: '' });
     const [promptsGenerados, setPromptsGenerados] = useState([]);
     const [generandoPrompts, setGenerandoPrompts] = useState(false);
@@ -685,6 +688,24 @@ export default function MainTabs({
             setArgEnEdicion(null);
             toast.success('Argumento actualizado');
         } catch (error) { toast.error('Error al actualizar argumento'); }
+    };
+
+    // #44: confirmación de categoría antes de promover (gate #108 del backend)
+    const handleConfirmarPromoverArgumento = async () => {
+        if (!argAPromover) return;
+        setPromoviendoArgumento(true);
+        try {
+            await tutelaService.promoverArgumento(id, argAPromover.id, { categoria_confirmada: true });
+            setArgumentos(prev => prev.map(a =>
+                a.id === argAPromover.id ? { ...a, promovido_a_memoria: true } : a
+            ));
+            toast.success('Argumento promovido a la memoria legal del sistema');
+            setArgAPromover(null);
+        } catch (err) {
+            toast.error(err?.response?.data?.error || 'Error al promover el argumento');
+        } finally {
+            setPromoviendoArgumento(false);
+        }
     };
 
     const handleAddArgumento = async (e) => {
@@ -1331,17 +1352,7 @@ export default function MainTabs({
                                             </button>
                                             {!arg.promovido_a_memoria && (
                                                 <button
-                                                    onClick={async () => {
-                                                        try {
-                                                            await tutelaService.promoverArgumento(id, arg.id);
-                                                            setArgumentos(prev => prev.map(a =>
-                                                                a.id === arg.id ? { ...a, promovido_a_memoria: true } : a
-                                                            ));
-                                                            toast.success('Argumento promovido a la memoria legal del sistema');
-                                                        } catch {
-                                                            toast.error('Error al promover el argumento');
-                                                        }
-                                                    }}
+                                                    onClick={() => setArgAPromover(arg)}
                                                     title="Promover a Memoria Legal — estará disponible como precedente en casos futuros"
                                                     className="text-[10px] bg-green-50 text-green-700 px-2 py-1 rounded font-bold hover:bg-green-100 transition-colors"
                                                 >
@@ -1687,6 +1698,15 @@ export default function MainTabs({
                     </div>
                 </div>
             )}
+
+            <ConfirmarCategoriaModal
+                open={!!argAPromover}
+                categoria={tutela?.derecho_vulnerado}
+                editable={false}
+                loading={promoviendoArgumento}
+                onConfirm={handleConfirmarPromoverArgumento}
+                onClose={() => setArgAPromover(null)}
+            />
         </div>
     );
 }

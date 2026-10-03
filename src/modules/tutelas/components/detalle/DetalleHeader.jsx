@@ -16,6 +16,7 @@ const DERECHOS_VULNERADOS = [
 ];
 import { tutelaService } from '../../services/tutelaService';
 import toast from 'react-hot-toast';
+import ConfirmarCategoriaModal from './ConfirmarCategoriaModal';
 
 export default function DetalleHeader({
   tutela,
@@ -39,6 +40,10 @@ export default function DetalleHeader({
   // Editing state (migrado de SidebarInfo)
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
+
+  // #44: gate de confirmación de categoría antes de promover a memoria legal (#108)
+  const [promocionPendiente, setPromocionPendiente] = useState(null); // { motivo } | null
+  const [confirmandoPromocion, setConfirmandoPromocion] = useState(false);
 
   const onStatusClick = (nuevoEstado) => {
     if (nuevoEstado === tutela.estado) return;
@@ -90,12 +95,49 @@ export default function DetalleHeader({
             responsable_uuid: editForm.responsable_id,
             resultado_fallo: editForm.resultado_fallo || null
         };
-        await tutelaService.actualizarDatos(id, payload);
+        const data = await tutelaService.actualizarDatos(id, payload);
         toast.success('Datos actualizados');
         setIsEditing(false);
-        fetchData();
-    } catch (err) { 
-        toast.error('Error al actualizar'); 
+
+        // #44/#108: el backend responde 200 con promocion_pendiente=true en vez
+        // de error — sin leerlo, el abogado nunca se entera de que la respuesta
+        // Favorable quedó guardada pero NO se promovió a la memoria legal.
+        // fetchData() dispara setLoading(true) en useDetalleTutela —
+        // DetalleTutela.jsx reemplaza toda la página (incluido este
+        // componente) por un spinner mientras carga, lo que desmonta
+        // DetalleHeader y descarta cualquier setState posterior aunque se
+        // llame de forma síncrona. Por eso NO se llama fetchData() aquí
+        // cuando hay promoción pendiente: se difiere hasta que el modal se
+        // cierra, para que de verdad llegue a montarse y mostrarse.
+        if (data?.promocion_pendiente) {
+          setPromocionPendiente({ motivo: data.promocion_pendiente_motivo });
+        } else {
+          fetchData();
+        }
+    } catch (err) {
+        toast.error('Error al actualizar');
+    }
+  };
+
+  const confirmarPromocion = async (categoriaFinal) => {
+    setConfirmandoPromocion(true);
+    try {
+      // El backend solo promueve cuando resultado_fallo === 'Favorable' Y
+      // categoria_confirmada === true en el MISMO request — hay que
+      // reenviar resultado_fallo explícitamente, no alcanza con que ya
+      // esté guardado de la llamada anterior.
+      await tutelaService.actualizarDatos(id, {
+        derecho_vulnerado: categoriaFinal,
+        resultado_fallo: 'Favorable',
+        categoria_confirmada: true,
+      });
+      toast.success('Promovido a la memoria legal');
+      setPromocionPendiente(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || 'Error al promover a la memoria legal');
+    } finally {
+      setConfirmandoPromocion(false);
     }
   };
 
@@ -308,6 +350,17 @@ export default function DetalleHeader({
           </div>
         </div>
       )}
+
+      <ConfirmarCategoriaModal
+        open={!!promocionPendiente}
+        categoria={editForm.derecho_vulnerado || tutela.derecho_vulnerado}
+        motivo={promocionPendiente?.motivo}
+        editable
+        opciones={DERECHOS_VULNERADOS}
+        loading={confirmandoPromocion}
+        onConfirm={confirmarPromocion}
+        onClose={() => { setPromocionPendiente(null); fetchData(); }}
+      />
     </>
   );
 }
