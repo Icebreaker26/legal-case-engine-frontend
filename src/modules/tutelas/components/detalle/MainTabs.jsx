@@ -292,16 +292,35 @@ export default function MainTabs({
         if (!jsonLlm.trim()) return toast.error('Pega el JSON del LLM primero.');
         setGuardandoRespuesta(true);
         try {
+            const textoOriginal = jsonLlm.trim();
+
             // Strip markdown code fences that LLMs often add around JSON
-            let cleanJson = jsonLlm.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+            let cleanJson = textoOriginal.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+            const teniaFences = cleanJson !== textoOriginal;
+
             const start = cleanJson.indexOf('{');
             const end = cleanJson.lastIndexOf('}');
-            if (start !== -1 && end !== -1) cleanJson = cleanJson.slice(start, end + 1);
+            let charsDescartados = 0;
+            if (start !== -1 && end !== -1) {
+                charsDescartados = start + (cleanJson.length - (end + 1));
+                cleanJson = cleanJson.slice(start, end + 1);
+            }
+
+            // #146 (backend) / #47: indicador de cuánta limpieza le hizo este
+            // paso al texto antes de mandarlo. Sin esto, la tasa de fallo de
+            // formato que mide el backend solo refleja lo que sobrevive a
+            // esta limpieza, no la adherencia real del LLM externo.
+            const limpieza = {
+                tenia_fences: teniaFences,
+                texto_fuera_de_llaves: charsDescartados > 0,
+                chars_descartados: charsDescartados,
+            };
 
             await apiService.post(`/tutelas/${id}/respuesta-peticion`, {
                 resultado_llm_json: cleanJson,
                 modo,
                 parte_index: parteActual,
+                limpieza,
             });
             toast.success(`Parte ${parteActual + 1} guardada correctamente.`);
             setJsonLlm('');
