@@ -280,8 +280,27 @@ export default function MainTabs({
         try {
             const { data } = await apiService.get(`/tutelas/${id}/respuesta-peticion`);
             setRespuestaAcumulada(data);
+            // #48: esto NO es una condición de carrera con la carga de
+            // `tutela` (ese fetch ya terminó antes de que MainTabs monte --
+            // DetalleTutela.jsx solo renderiza MainTabs cuando `loading` es
+            // false y `tutela` existe, y `aiDraftContent` se fija en el
+            // mismo fetch que `tutela`). Es un sobrescrito DETERMINISTA: si
+            // ya había contenido en el borrador (de `contestacion_generada`,
+            // o de algo que el abogado tipeó en esta misma sesión), este
+            // efecto lo reemplazaba en SILENCIO cada vez que se llamaba
+            // (al montar, y de nuevo tras cada guardado de un lote), con el
+            // texto reconstruido desde los ítems estructurados -- perdiendo
+            // cualquier edición manual. Se usa la forma funcional de
+            // setState para leer el valor MÁS RECIENTE de `aiDraftContent`
+            // (sin depender de él en el array de dependencias, que
+            // reconstruiría `cargarRespuesta` en cada tecla). Ya existe un
+            // botón explícito más abajo para traer el texto actualizado de
+            // la respuesta cuando el abogado lo quiera
+            // (`setAiDraftContent(respuestaATexto(respuestaAcumulada))`), así
+            // que el autocompletado automático solo debe actuar si todavía
+            // no hay ningún borrador propio.
             if (data?.items?.length) {
-                setAiDraftContent(respuestaATexto(data));
+                setAiDraftContent(prev => prev || respuestaATexto(data));
             }
         } catch { /* silencioso */ }
     }, [id]);
