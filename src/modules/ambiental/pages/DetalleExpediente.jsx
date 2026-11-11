@@ -3181,7 +3181,7 @@ export default function DetalleExpediente() {
             <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
               <Search size={28} className="mx-auto text-gray-300 mb-3" />
               <p className="font-bold text-gray-400">Sin precedentes similares</p>
-              <p className="text-xs text-gray-400 mt-1">No se encontraron expedientes con similitud suficiente (mínimo 65%)</p>
+              <p className="text-xs text-gray-400 mt-1">No hay otros expedientes indexados con los que comparar este</p>
               <button onClick={cargarSimilares} className="mt-3 text-xs text-green-700 hover:underline">Buscar de nuevo</button>
             </div>
           )}
@@ -3214,15 +3214,21 @@ export default function DetalleExpediente() {
           {similares.length > 0 && (
             <>
               <div className="flex items-center justify-between">
-                <p className="text-sm font-bold text-gray-700">{similares.length} expediente{similares.length !== 1 ? 's' : ''} similar{similares.length !== 1 ? 'es' : ''} encontrado{similares.length !== 1 ? 's' : ''}</p>
+                <div>
+                  <p className="text-sm font-bold text-gray-700">{similares.length} expediente{similares.length !== 1 ? 's' : ''} similar{similares.length !== 1 ? 'es' : ''} encontrado{similares.length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-gray-400">Ordenados del más al menos parecido</p>
+                </div>
                 <p className="text-xs text-gray-400">{seleccionados.size} seleccionado{seleccionados.size !== 1 ? 's' : ''} para comparar</p>
               </div>
 
               <div className="space-y-3">
-                {similares.map(s => {
+                {similares.map((s, i) => {
                   const sel = seleccionados.has(s.id);
-                  const pct = Math.round(s.similitud * 100);
-                  const color = pct >= 85 ? 'text-green-700 bg-green-50' : pct >= 70 ? 'text-amber-700 bg-amber-50' : 'text-gray-500 bg-gray-100';
+                  // Se muestra la posición, no el porcentaje: con el modelo e5 la similitud de
+                  // todos los resultados queda entre 0.86 y 0.94 y casi no distingue un precedente
+                  // aplicable de uno no relacionado (banco de pruebas ambiental del backend). El
+                  // orden sí está validado. Los tres primeros son los que se preseleccionan.
+                  const color = i < 3 ? 'text-green-700 bg-green-50' : 'text-gray-500 bg-gray-100';
                   const riesgoCfg = { 'Crítico': 'text-red-700 bg-red-50', 'Alto': 'text-orange-700 bg-orange-50', 'Medio': 'text-yellow-700 bg-yellow-50', 'Bajo': 'text-green-700 bg-green-50' };
                   return (
                     <div
@@ -3236,7 +3242,7 @@ export default function DetalleExpediente() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className={`text-xs font-black px-2 py-0.5 rounded-full ${color}`}>{pct}% similitud</span>
+                            <span className={`text-xs font-black px-2 py-0.5 rounded-full ${color}`} title="Posición en el orden de similitud">#{i + 1}</span>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 capitalize">{s.tipo_instrumento}</span>
                             {s.nivel_riesgo && <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${riesgoCfg[s.nivel_riesgo] || 'text-gray-500 bg-gray-100'}`}>Riesgo {s.nivel_riesgo}</span>}
                             <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{s.estado}</span>
